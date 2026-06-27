@@ -1,0 +1,19 @@
+{
+  "name": "helix",
+  "version": "1.0.0",
+  "description": "A webserver written in pure node js from scratch",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SystematicCrash/Helix.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SystematicCrash/Helix/issues"
+  },
+  "homepage": "https://github.com/SystematicCrash/Helix#readme"
+}
