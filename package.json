@@ -2,7 +2,8 @@
   "name": "helix",
   "version": "1.0.0",
   "description": "A webserver written in pure node js from scratch",
-  "main": "index.js",
+  "main": "index.ts",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/SystematicCrash/Helix/issues"
   },
-  "homepage": "https://github.com/SystematicCrash/Helix#readme"
+  "homepage": "https://github.com/SystematicCrash/Helix#readme",
+  "dependencies": {
+    "@types/node": "^26.0.1"
+  }
 }
