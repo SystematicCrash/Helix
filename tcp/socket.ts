@@ -16,7 +16,9 @@ type TCPConn = {
 
 /** Fulfills the pending read promise with the received chunk and pauses the socket. */
 function onData(data: Buffer): void {
-    console.assert(!!this.reader, "Reader does not exist");
+    if (!this.reader) {
+        throw new Error("reader does not exist!");
+    }
     this.socket.pause();
     this.reader!.resolve(data);
     this.reader = null;
@@ -63,7 +65,9 @@ function soInit(socket: Socket): TCPConn {
  * Rejects immediately if the connection has a stored error.
  */
 function soRead(conn: TCPConn): Promise<Buffer> {
-    console.assert(!conn.reader);
+    if (conn.reader) {
+        throw new Error("reader should be null at this step!");
+    }
     return new Promise((resolve, reject) => {
         if (conn.error) return reject(conn.error);
         if (conn.ended) return reject(Buffer.from(''));
@@ -75,7 +79,9 @@ function soRead(conn: TCPConn): Promise<Buffer> {
 
 /** Writes a buffer to the socket and returns a promise that resolves on success. */
 function soWrite(conn: TCPConn, data: Buffer): Promise<void> {
-    console.assert(data.length > 0);
+    if (data.length === 0) {
+        throw new Error("data length should be greater than 0!");
+    }
     return new Promise((resolve, reject) => {
         if (conn.error) return reject(conn.error);
 
