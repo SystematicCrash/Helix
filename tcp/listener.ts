@@ -20,7 +20,10 @@ function onConnection(socket: net.Socket): void {
     this.reader = null;
 }
 
-/** Creates a TCP server paused on connect and starts listening on the given port. */
+/**
+ * Creates a TCP server paused on connect and starts listening on the given port.
+ * Sockets are paused immediately so data is not lost before a reader is registered.
+ * */
 function listen(port: Number): TCPListener {
     const server: net.Server = net.createServer({
         pauseOnConnect: true,
@@ -39,7 +42,10 @@ function accept(listener: TCPListener): Promise<TCPConn> {
     })
 }
 
-/** Echoes data back to the client in a loop until the connection is closed. */
+/**
+ * Reads newline-delimited messages in a loop, dispatching each to replyMessage
+ * until the connection is closed.
+ */
 async function serveClient(conn: TCPConn): Promise<void> {
     const buf: DynBuf = { data: Buffer.alloc(0), length: 0, start: 0 };
 
@@ -57,7 +63,10 @@ async function serveClient(conn: TCPConn): Promise<void> {
     }
 }
 
-/** Processing client message and returning response message. */
+/**
+ * Parses a single framed message and writes the appropriate response.
+ * Destroys the socket on a quit command.
+ */
 async function replyMessage(conn: TCPConn, msg: Buffer): Promise<void> {
     const str = msg.toString();
 

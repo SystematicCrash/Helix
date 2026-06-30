@@ -1,9 +1,11 @@
+/** A growable buffer with a sliding window to avoid redundant copies on consume. */
 type DynBuf = {
     data: Buffer;
     length: number;
     start: number;
 }
 
+/** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
 function bufPush(buf: DynBuf, data: Buffer) {
     const newLen = buf.length + data.length;
 
@@ -21,6 +23,10 @@ function bufPush(buf: DynBuf, data: Buffer) {
     buf.length = newLen;
 }
 
+/**
+ * Compacts the buffer by shifting remaining data to the front.
+ * Only triggers when consumed bytes exceed half the allocated capacity, to amortize copy cost.
+ */
 function bufPop(buf: DynBuf, length: number): void {
     if (length < (buf.data.length / 2)) return;
 
@@ -29,6 +35,10 @@ function bufPop(buf: DynBuf, length: number): void {
     buf.start = 0;
 }
 
+/**
+ * Scans for the next newline-delimited message and returns it, advancing the start pointer.
+ * Returns null if no complete message is available yet.
+ */
 function popMessage(buf: DynBuf): Buffer|null {
     let idx = buf.data.subarray(buf.start, buf.length)
         .indexOf('\n') + buf.start;

@@ -1,6 +1,9 @@
 import {Socket} from 'net';
 
-/** A TCP connection wrapping a Node.js socket with a promise-based read queue. */
+/**
+ * A TCP connection wrapping a Node.js socket with a promise-based read queue.
+ * Only one read can be in flight at a time — `reader` holds the active promise callbacks.
+ */
 type TCPConn = {
     socket: Socket;
     error: null|Error;
@@ -27,7 +30,10 @@ function onEnd(): void {
     }
 }
 
-/** Stores the error on the connection and rejects any pending read. */
+/**
+ * Stores the error on the connection and rejects any pending read.
+ * Subsequent soRead calls will fail immediately via conn.error.
+ */
 function onError(err: Error): void {
     this.error = err;
     if (this.reader) {
@@ -52,7 +58,10 @@ function soInit(socket: Socket): TCPConn {
     return conn;
 }
 
-/** Resumes the socket and returns a promise that resolves with the next data chunk. */
+/**
+ * Resumes the socket and returns a promise that resolves with the next data chunk.
+ * Rejects immediately if the connection has a stored error.
+ */
 function soRead(conn: TCPConn): Promise<Buffer> {
     console.assert(!conn.reader);
     return new Promise((resolve, reject) => {
