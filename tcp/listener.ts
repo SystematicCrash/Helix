@@ -12,7 +12,7 @@ type TCPListener = {
 };
 
 /** Wraps the incoming socket into a TCPConn and fulfills the pending accept promise. */
-function onConnection(socket: net.Socket): void {
+function onConnection(this: TCPListener, socket: net.Socket): void {
     if (!this.reader) return;
 
     const conn = soInit(socket);
