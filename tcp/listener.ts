@@ -1,5 +1,6 @@
 import * as net from "net";
 import {soInit, soRead, soWrite, TCPConn} from "./socket";
+import {bufPush, popMessage, DynBuf} from "../mem/buffer";
 
 /** A TCP server with a single pending accept slot for the next incoming connection. */
 type TCPListener = {
@@ -12,6 +13,8 @@ type TCPListener = {
 
 /** Wraps the incoming socket into a TCPConn and fulfills the pending accept promise. */
 function onConnection(socket: net.Socket): void {
+    if (!this.reader) return;
+
     const conn = soInit(socket);
     this.reader.resolve(conn);
     this.reader = null;
@@ -38,15 +41,31 @@ function accept(listener: TCPListener): Promise<TCPConn> {
 
 /** Echoes data back to the client in a loop until the connection is closed. */
 async function serveClient(conn: TCPConn): Promise<void> {
+    const buf: DynBuf = { data: Buffer.alloc(0), length: 0, start: 0 };
+
     while (true) {
-        const data = await soRead(conn);
-        if (data?.length === 0) {
-            console.log('end connection');
-            break;
+        const msg: Buffer|null = popMessage(buf);
+
+        if (!msg) {
+            const data = await soRead(conn);
+            if (data.length === 0) break;
+            bufPush(buf, data);
+            continue;
         }
 
-        console.log('data', data);
-        await soWrite(conn, data);
+        await replyMessage(conn, msg);
+    }
+}
+
+/** Processing client message and returning response message. */
+async function replyMessage(conn: TCPConn, msg: Buffer): Promise<void> {
+    const str = msg.toString();
+
+    if (str === 'quit\n') {
+        await soWrite(conn, Buffer.from('Bye!'));
+        conn.socket.destroy();
+    } else {
+        await soWrite(conn, Buffer.from(`Echo: ${str}`));
     }
 }
 
