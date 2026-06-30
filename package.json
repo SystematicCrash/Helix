@@ -19,5 +19,8 @@
   "homepage": "https://github.com/SystematicCrash/Helix#readme",
   "dependencies": {
     "@types/node": "^26.0.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
   }
 }
