@@ -7,11 +7,12 @@ export interface HttpRequest {
 
 export interface HttpResponse {
     code: number;
-    headers: Buffer[];
+    version: string;
+    headers: Map<string, string>;
     body: BodyReader;
 }
 
 export interface BodyReader {
     length: number;
-    read(): Promise<Buffer>;
+    read: () => Promise<Buffer>;
 }
