@@ -4,7 +4,10 @@ import {serveClient} from "./network/tcp/server";
 async function main() {
     const listener = new TCPListener();
     listener.listen(1234);
-    const conn = await listener.accept();
-    await serveClient(conn);
+
+    while (true) {
+        const conn = await listener.accept();
+        serveClient(conn).catch(console.error);
+    }
 }
 main().catch(console.error);
