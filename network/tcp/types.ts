@@ -1,3 +1,5 @@
+import TCPConnection from "./TCPConnection";
+
 export interface DataReader {
     resolve(value: Buffer): void;
     reject(reason: Error): void;
