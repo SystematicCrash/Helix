@@ -14,7 +14,7 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
 
         if (!msg) {
             const data = await conn.read();
-            if (data.length === 0) break;
+            if (data.length === 0) break; // EOF
             buf.push(data);
             continue;
         }
