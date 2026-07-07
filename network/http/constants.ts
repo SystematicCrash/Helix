@@ -6,7 +6,8 @@ export const MAX_HEADER_LENGTH = 8 * 1024;
 export const HEADER_NAME_REGEX = /^[-a-zA-Z0-9!#$%&'*+.^_`|~]+$/;
 export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]*$/;
 
-export const MANDATORY_HEADERS = ['host'];
+export const MANDATORY_HEADERS = ['host'] as const;
+export const SUPPORTED_VERSIONS = ['HTTP/1.1'];
 
 export enum HttpHeader {
     // General
