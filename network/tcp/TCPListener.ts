@@ -1,11 +1,11 @@
 import * as net from "net";
 import TCPConnection from "./TCPConnection";
-import {ConnectionReader} from "./tcp";
+import {ConnectionReader} from "./types";
 
 
 /** A TCP server with a single pending accept slot for the next incoming connection. */
 export default class TCPListener {
-    public reader: null|ConnectionReader = null;
+    private reader: null|ConnectionReader = null;
     private server: net.Server|null = null;
 
     /** Returns a promise that resolves with the next accepted connection. */
