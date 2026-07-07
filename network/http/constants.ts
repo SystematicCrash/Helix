@@ -42,3 +42,22 @@ export enum HttpHeader {
     RetryAfter        = 'retry-after',
 }
 
+export enum HttpMethod {
+    POST = 'POST',
+    PUT = 'PUT',
+    PATCH = 'PATCH',
+    DELETE = 'DELETE',
+    OPTIONS = 'OPTIONS',
+    HEAD = 'HEAD',
+    GET = 'GET',
+}
+
+export const VALID_METHODS = new Set([
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
+    'HEAD',
+    'GET'
+]);
