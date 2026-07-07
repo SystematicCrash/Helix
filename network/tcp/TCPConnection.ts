@@ -1,5 +1,5 @@
 import {Socket} from 'net';
-import {DataReader} from "./tcp";
+import {DataReader} from "./types";
 
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
@@ -7,13 +7,48 @@ import {DataReader} from "./tcp";
  */
 export default class TCPConnection {
     private ended: boolean = false;
-    public error: Error|null = null;
-    public reader: null|DataReader = null;
+    private error: Error|null = null;
+    private reader: null|DataReader = null;
 
     constructor(public socket: Socket) {
         socket.on('data', this.onData);
         socket.on('end', this.onEnd);
         socket.on('error', this.onError);
+    }
+
+    /**
+     * Resumes the socket and returns a promise that resolves with the next data chunk.
+     * Rejects immediately if the connection has a stored error.
+     */
+    public read(): Promise<Buffer> {
+        if (this.reader) {
+            throw new Error("Another read is in progress!");
+        }
+        return new Promise((resolve, reject) => {
+            if (this.error) {
+                return reject(this.error);
+            }
+            if (this.ended || this.socket.destroyed) {
+                return resolve(Buffer.from(''));
+            }
+            this.reader = {resolve, reject};
+            this.socket.resume();
+        })
+    }
+
+    /** Writes a buffer to the socket and returns a promise that resolves on success. */
+    public write(data: Buffer): Promise<void> {
+        if (data.length === 0) {
+            throw new Error("data length should be greater than 0!");
+        }
+        return new Promise((resolve, reject) => {
+            if (this.error) return reject(this.error);
+
+            this.socket.write(data, (err?: Error | null) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
     }
 
     /** Fulfills the pending read promise with the received chunk and pauses the socket. */
@@ -45,37 +80,5 @@ export default class TCPConnection {
             this.reader!.reject(err);
             this.reader = null;
         }
-    }
-
-    /**
-     * Resumes the socket and returns a promise that resolves with the next data chunk.
-     * Rejects immediately if the connection has a stored error.
-     */
-    read(): Promise<Buffer> {
-        if (this.reader) {
-            throw new Error("reader should be null at this step!");
-        }
-        return new Promise((resolve, reject) => {
-            if (this.error) return reject(this.error);
-            if (this.ended) return reject(Buffer.from(''));
-
-            this.reader = {resolve, reject};
-            this.socket.resume();
-        })
-    }
-
-    /** Writes a buffer to the socket and returns a promise that resolves on success. */
-    write(data: Buffer): Promise<void> {
-        if (data.length === 0) {
-            throw new Error("data length should be greater than 0!");
-        }
-        return new Promise((resolve, reject) => {
-            if (this.error) return reject(this.error);
-
-            this.socket.write(data, (err?: Error | null) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
     }
 }
