@@ -7,12 +7,13 @@ import {
     MAX_HEADER_VALUE_LENGTH
 } from "./constants";
 
+
 export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
     const parsed = new Map<string, string>();
 
     for (const header of rawHeaders) {
         const entry = parseHeaderLine(header);
-        if (!isValidHeader(entry)) throw new HttpError(400, 'bad headers');
+        if (!isValidHeader(entry)) throw new HttpError(400, 'Bad Headers');
         parsed.set(entry[0], entry[1]);
     }
 
@@ -20,9 +21,22 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
     return parsed;
 }
 
-export function isValidHeader(header: [string, string]): boolean {
+function parseHeaderLine(rawHeader: Buffer): [string, string] {
+    const idx = rawHeader.indexOf(':');
+    if (idx === -1) throw new HttpError(400, 'Bad Headers');
+
+    const name   = rawHeader.subarray(0, idx).toString().trim().toLowerCase();
+    const value = rawHeader.subarray(idx + 1).toString('latin1').trim();
+
+    return [name, value];
+}
+
+function isValidHeader(header: [string, string]): boolean {
     const [name, value] = header;
-    return isValidHeaderName(name) && !isValidHeaderValue(value);
+    const validName = HEADER_NAME_REGEX.test(name) && name.length <= MAX_HEADER_NAME_LENGTH;
+    const validValue = HEADER_VALUE_REGEX.test(value) && value.length <= MAX_HEADER_VALUE_LENGTH;
+
+    return validName && validValue;
 }
 
 function checkMandatories(headers: Map<string, string>): void {
@@ -30,22 +44,4 @@ function checkMandatories(headers: Map<string, string>): void {
         if (!headers.has(mandatory))
             throw new HttpError(400, `${mandatory} header must be present`);
     }
-}
-
-function parseHeaderLine(rawHeader: Buffer): [string, string] {
-    const idx = rawHeader.indexOf(':');
-    if (idx === -1) throw new HttpError(400, 'bad headers');
-
-    const name   = rawHeader.subarray(0, idx).toString().trim().toLowerCase();
-    const value = rawHeader.subarray(idx + 1).toString().trim();
-
-    return [name, value];
-}
-
-function isValidHeaderName(name: string): boolean {
-    return HEADER_NAME_REGEX.test(name) && name.length <= MAX_HEADER_NAME_LENGTH;
-}
-
-function isValidHeaderValue(value: string): boolean {
-    return HEADER_VALUE_REGEX.test(value) && value.length <= MAX_HEADER_VALUE_LENGTH;
 }
