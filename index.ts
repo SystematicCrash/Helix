@@ -1,5 +1,5 @@
-import TCPListener from "./network/tcp/TCPListener";
-import {serveClient} from "./network/tcp/server";
+import TCPListener from "./src/network/tcp/TCPListener";
+import {serveClient} from "./src/network/tcp/server";
 
 async function main() {
     const listener = new TCPListener();
