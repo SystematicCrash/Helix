@@ -2,40 +2,36 @@ import HttpError from "./HttpError";
 import DynamicBuffer from "../mem/DynamicBuffer";
 import TCPConnection from "../tcp/TCPConnection";
 import {BodyReader, HttpRequest, HttpResponse} from "./types";
-import {handleRequest, parseHttpRequest, readerFromRequest} from "./request";
-import {writeHttpResponse} from "./response";
+import {handleRequest, parseRequest, getReader} from "./request";
+import {writeResponse} from "./response";
 import {MAX_HEADER_LENGTH} from "./constants";
 
 
 export async function serveClient(conn: TCPConnection) {
     const buf = new DynamicBuffer();
 
-    while(true) {
-        const msg: null|HttpRequest = cutMessage(buf);
+    while (true) {
+        const request: null|HttpRequest = cutMessage(buf);
 
-        if (!msg) {
+        if (!request) {
             const data = await conn.read();
+
+            if (data.length === 0 && buf.length === 0) return; // EOF
+            if (data.length === 0) throw new HttpError(400, 'Unexpected EOF');
+
             buf.push(data);
-
-            if (data.length === 0 && buf.length) return; // EOF
-
-            if (data.length === 0) {
-                throw new HttpError(400, 'Unexpected EOF');
-            }
             continue;
         }
-        const body: BodyReader = readerFromRequest(conn, buf, msg);
-        const response: HttpResponse = await handleRequest(msg, body);
-        await writeHttpResponse(conn, response);
-
-        if (msg.version.toString() === '1.0') return; // HTTP/1.0 is not supported
+        const body: BodyReader = getReader(conn, buf, request);
+        const response: HttpResponse = await handleRequest(request, body);
+        await writeResponse(conn, response);
 
         while ((await body.read()).length > 0);
     }
 }
 
 function cutMessage(buf: DynamicBuffer): null|HttpRequest {
-    const idx = buf.data.subarray(0, buf.length)
+    const idx = buf.cut(buf.length)
         .indexOf('\r\n\r\n');
 
     if (idx < 0) {
@@ -44,7 +40,7 @@ function cutMessage(buf: DynamicBuffer): null|HttpRequest {
         }
         return null;
     }
-    const msg: HttpRequest = parseHttpRequest(buf.data.subarray(0, idx + 4));
+    const msg: HttpRequest = parseRequest(buf.cut(idx));
     buf.pop(idx + 4);
     return msg;
 }
