@@ -1,41 +1,75 @@
 /** A growable buffer with a sliding window to avoid redundant copies on consume. */
 export default class DynamicBuffer {
-    public length: number;
-    public start: number;
+    private _length: number;
+    private _start: number;
+    private _capacity: number;
 
-    constructor(public data: Buffer = Buffer.alloc(0)) {
-        this.length = data.length;
-        this.start = 0;
+    constructor(private _data: Buffer = Buffer.alloc(0)) {
+        this._start = 0;
+        this._length = _data.length;
+        this._capacity = _data.length;
+    }
+
+    public get start(): number {
+        return this._start;
+    }
+
+    public get length(): number {
+        return this._length;
+    }
+
+    public get capacity(): number {
+        return this._capacity;
+    }
+
+    public get end(): number {
+        return this._start + this._length;
+    }
+
+    public cut(length: number): Buffer {
+        if (length > this._length) {
+            throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);
+        }
+        return Buffer.from(
+            this._data.subarray(this._start, this._start + length)
+        );
     }
 
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
-    push(data: Buffer) {
+    public push(data: Buffer): void {
         const newLen = this.length + data.length;
 
-        if (newLen > this.data.length) {
-            let cap = Math.max(this.data.length, 32);
+        if (newLen > this._capacity) {
+            let newCap = Math.max(this._capacity, 32);
 
-            while(cap < newLen) cap *= 2;
+            while(newCap < newLen) newCap *= 2;
 
-            const grown = Buffer.alloc(cap);
-            this.data.copy(grown, 0, 0);
-            this.data = grown;
+            const grown = Buffer.alloc(newCap);
+            this._data.copy(grown, 0, this._start, this.end);
+            this._capacity = newCap;
+            this._start = 0;
+            this._data = grown;
         }
 
-        data.copy(this.data, this.length, 0);
-        this.length = newLen;
+        data.copy(this._data, this.end, 0);
+        this._length = newLen;
     }
 
     /**
      * Compacts the buffer by shifting remaining data to the front.
      * Only triggers when consumed bytes exceed half the allocated capacity, to amortize copy cost.
      */
-    pop(length: number): void {
-        if (length < (this.data.length / 2)) return;
-
-        this.data.copyWithin(0, length, this.length);
-        this.length -= length;
-        this.start = 0;
+    public pop(length: number): void {
+        if (length > this._length) {
+            throw new Error(`Cannot pop ${length} bytes, only ${this._length} is available!`);
+        }
+        if (length < (this._capacity / 2)) {
+            this._start += length;
+        } else {
+            this._data.copyWithin(0, this._start, this.end);
+            this._start = 0;
+        }
+        this._length -= length;
     }
 
     /**
@@ -43,16 +77,12 @@ export default class DynamicBuffer {
      * Scans for the next newline-delimited message and returns it, advancing the start pointer.
      * Returns null if no complete message is available yet.
      */
-    popMessage(): Buffer|null {
-        let idx = this.data.subarray(this.start, this.length)
-            .indexOf('\n') + this.start;
+    public popMessage(): Buffer|null {
+        let idx = this.cut(this._length).indexOf('\n');
 
-        if (idx < this.start) return null;
+        if (idx < 0) return null;
 
-        const msg = Buffer.from(
-            this.data.subarray(this.start, idx + 1)
-        );
-        this.start = idx + 1;
+        const msg = this.cut(idx + 1)
         this.pop(idx + 1);
         return msg;
     }
