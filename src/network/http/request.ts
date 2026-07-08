@@ -117,7 +117,7 @@ function untilEOFReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
     throw new HttpError(501, 'Cannot read the rest of connection');
 }
 
-function memoryReader(data: Buffer): BodyReader {
+export function memoryReader(data: Buffer): BodyReader {
     let done = false;
     return {
         length: data.length,
