@@ -63,13 +63,13 @@ export default class DynamicBuffer {
         if (length > this._length) {
             throw new Error(`Cannot pop ${length} bytes, only ${this._length} is available!`);
         }
-        if (length < (this._capacity / 2)) {
-            this._start += length;
-        } else {
+        this._start += length;
+        this._length -= length;
+
+        if (this._start > (this._capacity / 2)) {
             this._data.copyWithin(0, this._start, this.end);
             this._start = 0;
         }
-        this._length -= length;
     }
 
     /**
