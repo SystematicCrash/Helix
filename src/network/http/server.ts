@@ -3,31 +3,36 @@ import DynamicBuffer from "../mem/DynamicBuffer";
 import TCPConnection from "../tcp/TCPConnection";
 import {BodyReader, HttpRequest, HttpResponse} from "./types";
 import {handleRequest, parseRequest, getReader} from "./request";
-import {writeResponse} from "./response";
+import {mapErrorToResponse, writeResponse} from "./response";
 import {MAX_HEADER_LENGTH} from "./constants";
 
 
 export async function serveClient(conn: TCPConnection) {
     const buf = new DynamicBuffer();
+    try {
+        while (true) {
+            const request: null|HttpRequest = cutMessage(buf);
 
-    while (true) {
-        const request: null|HttpRequest = cutMessage(buf);
+            if (!request) {
+                const data = await conn.read();
 
-        if (!request) {
-            const data = await conn.read();
+                if (data.length === 0 && buf.length === 0) conn.socket.end(); // EOF
+                if (data.length === 0) throw new HttpError(400, 'Unexpected EOF');
 
-            if (data.length === 0 && buf.length === 0) conn.socket.end(); // EOF
-            if (data.length === 0) throw new HttpError(400, 'Unexpected EOF');
+                buf.push(data);
+                continue;
+            }
+            const body: BodyReader = getReader(conn, buf, request);
+            const response: HttpResponse = await handleRequest(request, body);
+            await writeResponse(conn, response);
 
-            buf.push(data);
-            continue;
+            while ((await body.read()).length > 0);
         }
-        const body: BodyReader = getReader(conn, buf, request);
-        const response: HttpResponse = await handleRequest(request, body);
+    } catch (error: unknown) {
+        const response = mapErrorToResponse(error);
         await writeResponse(conn, response);
-
-        while ((await body.read()).length > 0);
     }
+
 }
 
 function cutMessage(buf: DynamicBuffer): null|HttpRequest {
