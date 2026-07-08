@@ -1,7 +1,8 @@
-import {HttpResponse} from "./types";
+import {BodyReader, HttpResponse} from "./types";
 import TCPConnection from "../tcp/TCPConnection";
 import HttpError from "./HttpError";
-import {HTTP_STATUS, HttpHeader} from "./constants";
+import {HTTP_STATUS, HttpHeader, HttpVersion, SUPPORTED_VERSIONS} from "./constants";
+import {memoryReader} from "./request";
 
 
 export async function writeResponse(conn: TCPConnection, response: HttpResponse): Promise<void> {
@@ -17,6 +18,29 @@ export async function writeResponse(conn: TCPConnection, response: HttpResponse)
         if (data.length === 0) break;
         await conn.write(data);
     }
+}
+
+export function mapErrorToResponse(error: unknown): HttpResponse {
+    let code: number;
+    let body: BodyReader;
+
+    if (error instanceof HttpError) {
+        code = error.status;
+        body = memoryReader(Buffer.from(error.message));
+    } else if (error instanceof Error) {
+        code = 500;
+        body = memoryReader(Buffer.from(error.message));
+    } else {
+        code = 500;
+        body = memoryReader(Buffer.from("Webserver Internal Error"));
+    }
+
+    return {
+        code,
+        body,
+        version: HttpVersion.HTTP_1_1,
+        headers: new Map(),
+    };
 }
 
 function encodeResponse(response: HttpResponse): Buffer {
