@@ -16,7 +16,7 @@ export async function serveClient(conn: TCPConnection) {
         if (!request) {
             const data = await conn.read();
 
-            if (data.length === 0 && buf.length === 0) return; // EOF
+            if (data.length === 0 && buf.length === 0) conn.socket.end(); // EOF
             if (data.length === 0) throw new HttpError(400, 'Unexpected EOF');
 
             buf.push(data);
@@ -35,7 +35,7 @@ function cutMessage(buf: DynamicBuffer): null|HttpRequest {
         .indexOf('\r\n\r\n');
 
     if (idx < 0) {
-        if (buf.length >= MAX_HEADER_LENGTH) {
+        if (buf.length > MAX_HEADER_LENGTH) {
             throw new HttpError(413, 'Too long header');
         }
         return null;
