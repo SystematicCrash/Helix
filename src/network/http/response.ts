@@ -5,6 +5,7 @@ import {HTTP_STATUS, HttpHeader, HttpVersion, SUPPORTED_VERSIONS} from "./consta
 import {memoryReader} from "./request";
 
 
+/** Writes the response headers and streams the body to the connection. */
 export async function writeResponse(conn: TCPConnection, response: HttpResponse): Promise<void> {
     if (response.body.length < 0) {
         throw new Error("Chunked encoding not implemented.");
@@ -20,6 +21,7 @@ export async function writeResponse(conn: TCPConnection, response: HttpResponse)
     }
 }
 
+/** Converts any thrown error into an HttpResponse with an appropriate status code. */
 export function mapErrorToResponse(error: unknown): HttpResponse {
     let code: number;
     let body: BodyReader;
@@ -43,6 +45,7 @@ export function mapErrorToResponse(error: unknown): HttpResponse {
     };
 }
 
+/** Serializes the response status line and headers into a buffer. */
 function encodeResponse(response: HttpResponse): Buffer {
     const parts: string[] = [];
     parts.push(`${response.version} ${response.code} ${HTTP_STATUS[response.code]}`);

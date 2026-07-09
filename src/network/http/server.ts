@@ -7,6 +7,7 @@ import {mapErrorToResponse, writeResponse} from "./response";
 import {MAX_HEADER_LENGTH} from "./constants";
 
 
+/** Reads newline-delimited messages in a loop, dispatching each to replyMessage until the connection is closed. */
 export async function serveClient(conn: TCPConnection) {
     const buf = new DynamicBuffer();
     try {
@@ -35,6 +36,7 @@ export async function serveClient(conn: TCPConnection) {
 
 }
 
+/** Scans the buffer for a complete HTTP header block (CRLFCRLF) and returns a parsed request. */
 function cutMessage(buf: DynamicBuffer): null|HttpRequest {
     const idx = buf.cut(buf.length)
         .indexOf('\r\n\r\n');

@@ -8,6 +8,7 @@ import {
 } from "./constants";
 
 
+/** Parses and validates raw header buffers into a name/value map. */
 export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
     const parsed = new Map<string, string>();
 
@@ -21,6 +22,7 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
     return parsed;
 }
 
+/** Splits a single raw header buffer on the first colon into a normalized name/value pair. */
 function parseHeaderLine(rawHeader: Buffer): [string, string] {
     const idx = rawHeader.indexOf(':');
     if (idx === -1) throw new HttpError(400, 'Bad Headers');
@@ -31,6 +33,7 @@ function parseHeaderLine(rawHeader: Buffer): [string, string] {
     return [name, value];
 }
 
+/** Returns true if both the header name and value pass their respective format checks. */
 function isValidHeader(header: [string, string]): boolean {
     const [name, value] = header;
     const validName = HEADER_NAME_REGEX.test(name) && name.length <= MAX_HEADER_NAME_LENGTH;
@@ -39,6 +42,7 @@ function isValidHeader(header: [string, string]): boolean {
     return validName && validValue;
 }
 
+/** Throws a 400 error if any mandatory header (e.g. Host) is missing from the parsed map. */
 function checkMandatories(headers: Map<string, string>): void {
     for (const mandatory of MANDATORY_HEADERS) {
         if (!headers.has(mandatory))

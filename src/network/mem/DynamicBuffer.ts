@@ -10,22 +10,27 @@ export default class DynamicBuffer {
         this._capacity = _data.length;
     }
 
+    /** Index of the first valid byte in the underlying buffer. */
     public get start(): number {
         return this._start;
     }
 
+    /** Number of valid bytes currently held in the buffer. */
     public get length(): number {
         return this._length;
     }
 
+    /** Total allocated size of the underlying buffer. */
     public get capacity(): number {
         return this._capacity;
     }
 
+    /** Index one past the last valid byte (start + length). */
     public get end(): number {
         return this._start + this._length;
     }
 
+    /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
     public cut(length: number): Buffer {
         if (length > this._length) {
             throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);

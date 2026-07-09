@@ -1,5 +1,6 @@
 import Delimiter from "../common/constants";
 
+/** Splits a buffer on all occurrences of a delimiter, returning the parts without the delimiter. */
 export function splitBuffer(bytes: Buffer, delimiter: Delimiter|string): Buffer[] {
     let start = 0;
     const parts: Buffer[] = [];
@@ -16,6 +17,7 @@ export function splitBuffer(bytes: Buffer, delimiter: Delimiter|string): Buffer[
     return parts;
 }
 
+/** Removes all leading and trailing occurrences of a delimiter sequence from a buffer. */
 export function stripBuffer(bytes: Buffer, delimiter: Delimiter): Buffer {
     const trim = Buffer.from(delimiter);
     // Removing from start

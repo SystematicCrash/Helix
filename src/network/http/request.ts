@@ -8,6 +8,7 @@ import HttpError from "./HttpError";
 import TCPConnection from "../tcp/TCPConnection";
 
 
+/** Dispatches the request to the appropriate handler and returns an HTTP response. */
 export async function handleRequest(request: HttpRequest, body: BodyReader): Promise<HttpResponse> {
     let payload: BodyReader;
 
@@ -28,6 +29,7 @@ export async function handleRequest(request: HttpRequest, body: BodyReader): Pro
     }
 }
 
+/** Parses a raw HTTP request buffer into an HttpRequest, validating method and version. */
 export function parseRequest(data: Buffer): HttpRequest {
     data = stripBuffer(data, Delimiter.CRLF);
 
@@ -48,6 +50,7 @@ export function parseRequest(data: Buffer): HttpRequest {
     };
 }
 
+/** Selects the appropriate BodyReader based on Content-Length, Transfer-Encoding, or EOF. */
 export function getReader(conn: TCPConnection, buf: DynamicBuffer, request: HttpRequest): BodyReader {
     const bodyAllowed = isBodyAllowed(request);
     const bodyLen = getBodyLength(request);
@@ -63,6 +66,7 @@ export function getReader(conn: TCPConnection, buf: DynamicBuffer, request: Http
     else return untilEOFReader(conn, buf);
 }
 
+/** Extracts and parses the Content-Length header value, returning -1 if absent. */
 function getBodyLength(request: HttpRequest): number {
     let bodyLen = -1;
     const contentLen = request.headers.get(HttpHeader.ContentLength);
@@ -76,15 +80,18 @@ function getBodyLength(request: HttpRequest): number {
     return bodyLen;
 }
 
+/** Returns the Transfer-Encoding header value, or null if not present. */
 function getTransferEncoding(request: HttpRequest): string|null {
     const transferEn = request.headers.get(HttpHeader.TransferEncoding);
     return transferEn ? transferEn : null;
 }
 
+/** Returns false for methods that must not carry a body (GET, HEAD). */
 function isBodyAllowed(request: HttpRequest): boolean {
     return request.method !== HttpMethod.GET && request.method !== HttpMethod.HEAD;
 }
 
+/** Reads exactly `remain` bytes from the connection, consuming from the buffer first. */
 function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): BodyReader {
     return {
         length: remain,
@@ -107,16 +114,19 @@ function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): B
     }
 }
 
+/** Reads a Transfer-Encoding: chunked body. Not yet implemented. */
 function chunkedReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
     // TODO: Implement chuck read
     throw new HttpError(501, 'Chunk read is not implemented');
 }
 
+/** Reads until the connection closes. Not yet implemented. */
 function untilEOFReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
     // TODO: Read the rest of connection
     throw new HttpError(501, 'Cannot read the rest of connection');
 }
 
+/** Returns a BodyReader that yields the given buffer once, then signals EOF. */
 export function memoryReader(data: Buffer): BodyReader {
     let done = false;
     return {
