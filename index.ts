@@ -1,10 +1,13 @@
-import {listen, accept, serveClient} from "./tcp/listener";
-
-
+import TCPListener from "./src/network/tcp/TCPListener";
+import {serveClient} from "./src/network/http/server";
 
 async function main() {
-    const listener = listen(1234);
-    const conn = await accept(listener);
-    await serveClient(conn);
+    const listener = new TCPListener();
+    listener.listen(1234);
+
+    while (true) {
+        const conn = await listener.accept();
+        serveClient(conn).catch(console.error);
+    }
 }
 main().catch(console.error);

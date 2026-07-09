@@ -4,5 +4,8 @@
 # Third-Party
 node_modules
 
-# Environment
+# Secret
 .env
+
+# Build
+dist
