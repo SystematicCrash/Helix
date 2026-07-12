@@ -17,9 +17,9 @@
   },
   "homepage": "https://github.com/SystematicCrash/Helix#readme",
   "dependencies": {
+    "@rolldown/binding-linux-x64-gnu": "^1.1.5",
     "@types/node": "^26.0.1",
-    "mocha": "^11.7.6",
-    "sinon": "^22.0.0"
+    "vitest": "^4.1.10"
   },
   "devDependencies": {
     "tsx": "^4.22.4"
