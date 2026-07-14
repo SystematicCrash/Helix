@@ -23,7 +23,11 @@ describe("TCPConnection", () => {
 
         afterEach(async () => {
             client.destroy();
-            conn.socket.destroy();
+            (conn as any).socket.destroy();
+        });
+
+        test('reader should be null before read', async () => {
+           expect((conn as any).reader).toBeNull();
         });
 
         test('sets reader value after read', async () => {
@@ -36,6 +40,12 @@ describe("TCPConnection", () => {
             expect((conn as any).socket.isPaused()).toBe(true);
             const readPromise = conn.read();
             expect((conn as any).socket.isPaused()).toBe(false);
+        });
+
+        test('should pause socket after read resolved', async () => {
+            client.write(Buffer.from('Hello'));
+            const data = await conn.read(); // resolve read data
+            expect((conn as any).socket.isPaused()).toBe(true);
         });
 
         test('should return buffered data after read', async () => {
@@ -60,6 +70,5 @@ describe("TCPConnection", () => {
             (conn as any).socket.emit('error', new Error('Broken pipe!'));
             await expect(conn.read()).rejects.toThrow(new Error('Broken pipe!'));
         });
-
    });
 });
