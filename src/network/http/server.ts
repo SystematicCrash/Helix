@@ -38,7 +38,7 @@ export async function serveClient(conn: TCPConnection) {
 
 /** Scans the buffer for a complete HTTP header block (CRLFCRLF) and returns a parsed request. */
 function cutMessage(buf: DynamicBuffer): null|HttpRequest {
-    const idx = buf.cut(buf.length)
+    const idx = buf.cutUntil(buf.length)
         .indexOf('\r\n\r\n');
 
     if (idx < 0) {
@@ -47,7 +47,7 @@ function cutMessage(buf: DynamicBuffer): null|HttpRequest {
         }
         return null;
     }
-    const msg: HttpRequest = parseRequest(buf.cut(idx));
+    const msg: HttpRequest = parseRequest(buf.cutUntil(idx));
     buf.pop(idx + 4);
     return msg;
 }
