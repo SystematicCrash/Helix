@@ -1,8 +1,8 @@
 import {describe, test, expect, beforeEach, afterEach, vi} from 'vitest';
 import * as net from "node:net";
-import TCPListener from "../../../src/network/tcp/TCPListener";
-import TCPConnection from "../../../src/network/tcp/TCPConnection";
 import {createClient, getRandomPort} from "./common/utils";
+import TCPListener from "../../../../src/network/tcp/TCPListener.js";
+import TCPConnection from "../../../../src/network/tcp/TCPConnection.js";
 
 describe("tcp-listener", () => {
 

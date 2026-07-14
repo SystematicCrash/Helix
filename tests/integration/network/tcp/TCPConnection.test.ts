@@ -1,7 +1,7 @@
 import {describe, test, expect, beforeEach, afterEach} from 'vitest';
-import TCPConnection from "../../../src/network/tcp/TCPConnection";
-import TCPListener from "../../../src/network/tcp/TCPListener";
 import {createClient, getRandomPort} from "./common/utils";
+import TCPConnection from "../../../../src/network/tcp/TCPConnection.js";
+import TCPListener from "../../../../src/network/tcp/TCPListener.js";
 import {Socket} from "net";
 
 describe("TCPConnection", () => {
