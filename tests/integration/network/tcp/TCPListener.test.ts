@@ -35,7 +35,6 @@ describe("tcp-listener", () => {
 
         test('should listen on the given port', async () => {
             listener.listen(port);
-
             const address = (listener as any).server?.address() as net.AddressInfo;
             expect(address.port).toBe(port);
         });
@@ -48,7 +47,7 @@ describe("tcp-listener", () => {
                 (another as any).server = net.createServer();
                 (another as any).server.on('error', reject);
                 (another as any).server.listen(port);
-            })).rejects.toThrow('EADDRINUSE');
+            })).rejects.toMatchObject({code: 'EADDRINUSE'});
 
             (another as any).server?.close();
         });
@@ -71,17 +70,14 @@ describe("tcp-listener", () => {
             (listener as any).server?.close();
         });
 
-        test('should return a Promise', () => {
-            const result = listener.accept();
-            expect(result).toBeInstanceOf(Promise);
+        test('reader should be null before accept()', () => {
+           expect((listener as any).reader).toBeNull();
         });
 
         test('should resolve with a TCPConnection when client connects', async () => {
             const acceptPromise = listener.accept();
 
-            const client = await createClient(port);
-            clients.push(client);
-
+            clients.push(await createClient(port));
             const conn = await acceptPromise;
             expect(conn).toBeInstanceOf(TCPConnection);
         });
@@ -89,23 +85,19 @@ describe("tcp-listener", () => {
         test('should set reader to null after connection is accepted', async () => {
             const acceptPromise = listener.accept();
 
-            const client = await createClient(port);
-            clients.push(client);
-
+            clients.push(await createClient(port));
             await acceptPromise;
             expect((listener as any).reader).toBeNull();
         });
 
         test('should accept multiple sequential connections in order', async () => {
             const accept1 = listener.accept();
-            const client1 = await createClient(port);
-            clients.push(client1);
+            clients.push(await createClient(port));
             const conn1 = await accept1;
             expect(conn1).toBeInstanceOf(TCPConnection);
 
             const accept2 = listener.accept();
-            const client2 = await createClient(port);
-            clients.push(client2);
+            clients.push(await createClient(port));
             const conn2 = await accept2;
             expect(conn2).toBeInstanceOf(TCPConnection);
 
@@ -115,9 +107,7 @@ describe("tcp-listener", () => {
         test('socket should be paused immediately on connect', async () => {
             const acceptPromise = listener.accept();
 
-            const client = await createClient(port);
-            clients.push(client);
-
+            clients.push(await createClient(port));
             const conn = await acceptPromise;
             expect((conn as any).socket.isPaused()).toBe(true);
         });
