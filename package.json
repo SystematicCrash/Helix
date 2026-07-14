@@ -4,7 +4,7 @@
   "description": "A webserver written in pure node js from scratch",
   "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run"
   },
   "repository": {
     "type": "git",
