@@ -2,26 +2,7 @@ import {describe, test, expect, beforeEach, afterEach, vi} from 'vitest';
 import * as net from "node:net";
 import TCPListener from "../../../src/network/tcp/TCPListener";
 import TCPConnection from "../../../src/network/tcp/TCPConnection";
-
-/** creates a client that connects to the given port */
-function createClient(port: number): Promise<net.Socket> {
-    return new Promise((resolve, reject) => {
-        const socket = net.createConnection(port, '127.0.0.1', () => resolve(socket));
-        socket.on('error', reject);
-    });
-}
-
-/** let OS pick a random port */
-function getRandomPort(): Promise<number> {
-    return new Promise((resolve, reject) => {
-        const server = net.createServer();
-        server.listen(0, () => {
-            const addr = server.address() as net.AddressInfo;
-            server.close(() => resolve(addr.port));
-        });
-        server.on('error', reject);
-    });
-}
+import {createClient, getRandomPort} from "./common/utils";
 
 describe("tcp-listener", () => {
 
