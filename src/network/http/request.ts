@@ -8,7 +8,10 @@ import HttpError from "./HttpError";
 import TCPConnection from "../tcp/TCPConnection";
 
 
-/** Dispatches the request to the appropriate handler and returns an HTTP response. */
+/**
+ * TODO: This is just a toy and should be changed in the real product
+ * Dispatches the request to the appropriate handler and returns an HTTP response.
+ **/
 export async function handleRequest(request: HttpRequest, body: BodyReader): Promise<HttpResponse> {
     let payload: BodyReader;
 
@@ -107,7 +110,7 @@ function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): B
             }
             const consume = Math.min(buf.length, remain);
             remain -= consume;
-            const data = buf.cut(consume);
+            const data = buf.cutUntil(consume);
             buf.pop(consume);
             return data;
         }
