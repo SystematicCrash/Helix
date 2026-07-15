@@ -38,7 +38,7 @@ describe("Http Response", () => {
             });
         });
 
-        test('should correctly map not-error object to HttpResponse object', () => {
+        test('should correctly map non-error object to HttpResponse object', () => {
             const errObj = {};
             const mappedRes = mapErrorToResponse(errObj);
 
@@ -86,7 +86,16 @@ describe("Http Response", () => {
             await expect(() => writePromise).rejects.toThrow();
         });
 
+        test('should correctly set the content-length header before before writing response', async () => {
+           const response: HttpResponse = {
+               code: 200,
+               body: memoryReader(Buffer.from("Hello")),
+               version: HttpVersion.HTTP_1_1,
+               headers: new Map(),
+           };
+
+           await writeResponse(conn, response);
+           expect(response.headers.has('content-length')).toBe(true);
+        });
     });
-
-
 });
