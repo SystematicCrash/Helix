@@ -31,7 +31,7 @@ export default class DynamicBuffer {
     }
 
     /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
-    public cut(length: number): Buffer {
+    public cutUntil(length: number): Buffer {
         if (length > this._length) {
             throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);
         }
@@ -83,11 +83,11 @@ export default class DynamicBuffer {
      * Returns null if no complete message is available yet.
      */
     public popMessage(): Buffer|null {
-        let idx = this.cut(this._length).indexOf('\n');
+        let idx = this.cutUntil(this._length).indexOf('\n');
 
         if (idx < 0) return null;
 
-        const msg = this.cut(idx + 1)
+        const msg = this.cutUntil(idx + 1)
         this.pop(idx + 1);
         return msg;
     }
