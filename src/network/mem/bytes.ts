@@ -19,12 +19,13 @@ export function splitBuffer(bytes: Buffer, delimiter: Delimiter|string): Buffer[
 
 /** Removes all leading and trailing occurrences of a delimiter sequence from a buffer. */
 export function stripBuffer(bytes: Buffer, delimiter: Delimiter): Buffer {
-    const trim = Buffer.from(delimiter);
+    let trim = Buffer.from(delimiter);
     // Removing from start
     while (bytes.length >= trim.length && bytes.subarray(0, trim.length).equals(trim))
         bytes = bytes.subarray(trim.length);
     // Removing from end
     bytes = bytes.reverse();
+    trim = trim.reverse();
     while (bytes.length >= trim.length && bytes.subarray(0, trim.length).equals(trim))
         bytes = bytes.subarray(trim.length);
 
