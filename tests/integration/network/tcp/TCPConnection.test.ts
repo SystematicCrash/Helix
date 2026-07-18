@@ -1,98 +1,108 @@
-import {describe, test, expect, beforeEach, afterEach} from 'vitest';
-import {createClient, getRandomPort} from "./common/utils";
-import TCPConnection from "../../../../src/network/tcp/TCPConnection.js";
-import TCPListener from "../../../../src/network/tcp/TCPListener.js";
-import {Socket} from "net";
+import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { Socket } from 'net';
+import { createClient, getRandomPort } from './common/utils';
+import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
+import TCPListener from '../../../../src/network/tcp/TCPListener.js';
 
-describe("TCPConnection", () => {
+describe('TCPConnection', () => {
     let conn: TCPConnection;
     let client: Socket;
+    let listener: TCPListener;
 
     beforeEach(async () => {
         const port = await getRandomPort();
-        const listener = new TCPListener();
+        listener = new TCPListener();
         listener.listen(port);
 
         const acceptPromise = listener.accept();
-
         client = await createClient(port);
         conn = await acceptPromise;
     });
 
-    afterEach(async () => {
+    afterEach(() => {
         client.destroy();
         (conn as any).socket.destroy();
+        (listener as any).server?.close();
     });
 
-    describe("read()", () => {
-
-        test('reader is null before any read() call', () => {
+    describe('read()', () => {
+        test('reader should be null before any read() call', () => {
             expect((conn as any).reader).toBeNull();
         });
 
-        test('stores a pending reader while waiting for data', () => {
-            expect((conn as any).reader).toBeNull();
+        test('reader should be set while waiting for data', () => {
             conn.read().catch(() => {});
             expect((conn as any).reader).not.toBeNull();
         });
 
-        test('resumes the socket while read() is pending', () => {
+        test('socket should resume while read() is pending', () => {
             expect((conn as any).socket.isPaused()).toBe(true);
             conn.read().catch(() => {});
             expect((conn as any).socket.isPaused()).toBe(false);
         });
 
-        test('pauses the socket once read() resolves', async () => {
-            client.write(Buffer.from('Hello'));
+        test('socket should pause after read() resolves', async () => {
+            client.write(Buffer.from('hello'));
             await conn.read();
             expect((conn as any).socket.isPaused()).toBe(true);
         });
 
-        test('resolves with the data sent by the client', async () => {
+        test('should resolve with data sent by client', async () => {
             client.write(Buffer.from('hello'));
             const data = await conn.read();
             expect(data).toEqual(Buffer.from('hello'));
         });
 
-        test('resolves with an empty buffer on EOF (client sent FIN)', async () => {
+        test('should resolve with empty buffer on EOF', async () => {
             client.end();
             const data = await conn.read();
             expect(data).toEqual(Buffer.from(''));
         });
 
-        test('resolves with an empty buffer when the remote end is destroyed', async () => {
+        test('should resolve with empty buffer when client is destroyed', async () => {
             client.destroy();
             const data = await conn.read();
             expect(data).toEqual(Buffer.from(''));
         });
 
-        test('rejects immediately when a stored error exists', async () => {
-            (conn as any).socket.emit('error', new Error('Broken pipe!'));
-            await expect(conn.read()).rejects.toThrow('Broken pipe!');
+        test('should reject immediately if a socket error exists', async () => {
+            (conn as any).socket.emit('error', new Error('Broken pipe'));
+            await expect(conn.read()).rejects.toThrow('Broken pipe');
+        });
+
+        test('reader should be null after read() resolves', async () => {
+            client.write(Buffer.from('hello'));
+            await conn.read();
+            expect((conn as any).reader).toBeNull();
+        });
+
+        test('should reject on concurrent read() calls', async () => {
+            conn.read().catch(() => {});
+            expect(() => conn.read()).toThrow('Another read is in progress!');
         });
     });
 
-    describe("write()", () => {
-
-        test('throws synchronously if data is empty', () => {
+    describe('write()', () => {
+        test('should throw if data buffer is empty', () => {
             expect(() => conn.write(Buffer.from('')))
                 .toThrow('data length should be greater than 0!');
         });
 
-        test('rejects immediately when a stored error exists', async () => {
-            (conn as any).socket.emit('error', new Error('Broken pipe!'));
-            await expect(conn.write(Buffer.from('Hello'))).rejects.toThrow('Broken pipe!');
+        test('should reject immediately if a socket error exists', async () => {
+            (conn as any).socket.emit('error', new Error('Broken pipe'));
+            await expect(conn.write(Buffer.from('hello'))).rejects.toThrow('Broken pipe');
         });
 
-        test('rejects when the socket is destroyed', async () => {
+        test('should reject when socket is destroyed', async () => {
             (conn as any).socket.destroy();
-            await expect(conn.write(Buffer.from('hello'))).rejects.toMatchObject({code: 'ERR_STREAM_DESTROYED'});
+            await expect(conn.write(Buffer.from('hello')))
+                .rejects.toMatchObject({ code: 'ERR_STREAM_DESTROYED' });
         });
 
-        test('client receives the data written to the connection', async () => {
-            const dataPromise = new Promise((resolve) => client.once('data', resolve));
-            await conn.write(Buffer.from('Hello'));
-            expect(await dataPromise).toEqual(Buffer.from('Hello'));
+        test('should deliver written data to client', async () => {
+            const dataPromise = new Promise<Buffer>((resolve) => client.once('data', resolve));
+            await conn.write(Buffer.from('hello'));
+            expect(await dataPromise).toEqual(Buffer.from('hello'));
         });
     });
 });
