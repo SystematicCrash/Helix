@@ -1,18 +1,18 @@
-import {describe, test, expect, beforeEach, afterEach, vi} from 'vitest';
-import * as net from "node:net";
-import {createClient, getRandomPort} from "./common/utils";
-import TCPListener from "../../../../src/network/tcp/TCPListener.js";
-import TCPConnection from "../../../../src/network/tcp/TCPConnection.js";
+import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import * as net from 'node:net';
+import { createClient, getRandomPort } from './common/utils';
+import TCPListener from '../../../../src/network/tcp/TCPListener.js';
+import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
 
-describe("tcp-listener", () => {
+describe('TCPListener', () => {
 
-    describe("listen()", () => {
+    describe('listen()', () => {
         let port: number;
         let listener: TCPListener;
 
         beforeEach(async () => {
             port = await getRandomPort();
-            listener = new TCPListener() as any;
+            listener = new TCPListener();
         });
 
         afterEach(() => {
@@ -28,26 +28,28 @@ describe("tcp-listener", () => {
             expect((listener as any).server).toBeInstanceOf(net.Server);
         });
 
-        test('should create server with pauseOnConnect enabled', () => {
+        test('should enable pauseOnConnect on the server', () => {
             listener.listen(port);
             expect((listener as any).server.pauseOnConnect).toBe(true);
         });
 
-        test('should listen on the given port', async () => {
+        test('should bind to the given port', () => {
             listener.listen(port);
             const address = (listener as any).server?.address() as net.AddressInfo;
             expect(address.port).toBe(port);
         });
 
-        test('should emit error when port is already in use', async () => {
+        test('should error when port is already in use', async () => {
             listener.listen(port);
-            const another = new TCPListener();
 
-            await expect(new Promise<void>((resolve, reject) => {
-                (another as any).server = net.createServer();
-                (another as any).server.on('error', reject);
-                (another as any).server.listen(port);
-            })).rejects.toMatchObject({code: 'EADDRINUSE'});
+            const another = new TCPListener();
+            await expect(
+                new Promise<void>((_, reject) => {
+                    (another as any).server = net.createServer();
+                    (another as any).server.on('error', reject);
+                    (another as any).server.listen(port);
+                })
+            ).rejects.toMatchObject({ code: 'EADDRINUSE' });
 
             (another as any).server?.close();
         });
@@ -60,7 +62,7 @@ describe("tcp-listener", () => {
 
         beforeEach(async () => {
             port = await getRandomPort();
-            listener = new TCPListener() as any;
+            listener = new TCPListener();
             listener.listen(port);
         });
 
@@ -71,26 +73,55 @@ describe("tcp-listener", () => {
         });
 
         test('reader should be null before accept()', () => {
-           expect((listener as any).reader).toBeNull();
+            expect((listener as any).reader).toBeNull();
         });
 
-        test('should resolve with a TCPConnection when client connects', async () => {
-            const acceptPromise = listener.accept();
+        test('should return a Promise', () => {
+            const result = listener.accept();
+            result.catch(() => {});
+            expect(result).toBeInstanceOf(Promise);
+        });
 
+        test('should resolve with a TCPConnection on connect', async () => {
+            const acceptPromise = listener.accept();
             clients.push(await createClient(port));
+
             const conn = await acceptPromise;
             expect(conn).toBeInstanceOf(TCPConnection);
         });
 
-        test('should set reader to null after connection is accepted', async () => {
+        test('should clear reader after connection is accepted', async () => {
             const acceptPromise = listener.accept();
-
             clients.push(await createClient(port));
+
             await acceptPromise;
             expect((listener as any).reader).toBeNull();
         });
 
-        test('should accept multiple sequential connections in order', async () => {
+        test('should not crash when connection arrives before accept()', async () => {
+            // connect before accept() — reader is null, should be ignored
+            clients.push(await createClient(port));
+            await new Promise(r => setTimeout(r, 50));
+            expect((listener as any).reader).toBeNull();
+        });
+
+        test('second accept() should overwrite the first', async () => {
+            let firstResolved = false;
+            let secondResolved = false;
+
+            const first  = listener.accept().then(() => { firstResolved  = true; });
+            const second = listener.accept().then(() => { secondResolved = true; });
+
+            clients.push(await createClient(port));
+
+            await second;
+            await new Promise(r => setTimeout(r, 50));
+
+            expect(firstResolved).toBe(false);
+            expect(secondResolved).toBe(true);
+        });
+
+        test('should accept multiple sequential connections', async () => {
             const accept1 = listener.accept();
             clients.push(await createClient(port));
             const conn1 = await accept1;
@@ -104,10 +135,10 @@ describe("tcp-listener", () => {
             expect(conn1).not.toBe(conn2);
         });
 
-        test('socket should be paused immediately on connect', async () => {
+        test('accepted socket should be paused on connect', async () => {
             const acceptPromise = listener.accept();
-
             clients.push(await createClient(port));
+
             const conn = await acceptPromise;
             expect((conn as any).socket.isPaused()).toBe(true);
         });
