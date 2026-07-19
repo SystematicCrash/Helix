@@ -1,27 +1,43 @@
 import {Socket} from 'net';
+import {EventEmitter} from 'events';
+import {clearTimeout} from "node:timers";
 import {DataReader} from "./types";
-import {IDLE_TIMEOUT} from "./config.js";
+import {IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./config.js";
+
+const events = {
+    IDLE: 'idle-timeout',
+    READ: 'read-timeout',
+    WRITE: 'write-timeout',
+    ERROR: 'error',
+    DATA: 'data',
+    END: 'end',
+};
 
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
  * Only one read can be in flight at a time — `reader` holds the active promise callbacks.
  */
 export default class TCPConnection {
-    private ended: boolean;
-    private error: Error|null;
-    private reader: null|DataReader;
-    private ideTimeout: NodeJS.Timeout|null;
+    private ended: boolean = false;
+    private error: Error|null = null;
+    private reader: null|DataReader = null;
+    private idleTimeout: NodeJS.Timeout|null = null;
+    private readTimeout: NodeJS.Timeout|null = null;
+    private writeTimeout: NodeJS.Timeout|null = null;
+    private emitter: EventEmitter = new EventEmitter();
 
     constructor(public socket: Socket) {
-        socket.on('data', this.onData);
-        socket.on('end', this.onEnd);
-        socket.on('error', this.onError);
+        socket.on(events.END, this.onEnd);
+        socket.on(events.DATA, this.onData);
+        socket.on(events.ERROR, this.onError);
 
-        this.ended = false;
-        this.error = null;
-        this.reader = null;
-        this.ideTimeout = null;
-        this.setIdleTimeout();
+        this.emitter.on(events.IDLE, this.onIdleTimeout);
+        this.emitter.on(events.READ, this.onReadTimeout);
+        this.emitter.on(events.WRITE, this.onWriteTimeout);
+
+        this.resetIdleTimeout();
+        this.resetReadTimeout();
+        this.resetWriteTimeout();
     }
 
     /**
@@ -32,6 +48,8 @@ export default class TCPConnection {
         if (this.reader) {
             throw new Error("Another read is in progress!");
         }
+        this.resetIdleTimeout();
+        this.resetReadTimeout();
         return this.readPromise();
     }
 
@@ -40,6 +58,8 @@ export default class TCPConnection {
         if (data.length === 0) {
             throw new Error("data length should be greater than 0!");
         }
+        this.resetIdleTimeout();
+        this.resetWriteTimeout();
         return this.writePromise(data);
     }
 
@@ -75,7 +95,6 @@ export default class TCPConnection {
         this.socket.pause();
         this.reader!.resolve(data);
         this.reader = null;
-        this.setIdleTimeout();
     }
 
     /** Resolves the pending read with an empty buffer to signal EOF. */
@@ -99,12 +118,30 @@ export default class TCPConnection {
         }
     }
 
-    private setIdleTimeout(): void {
-        if (this.ideTimeout) {
-            clearTimeout(this.ideTimeout);
-        }
-        this.ideTimeout = setTimeout((): void => {
-            this.socket.destroy(new Error('Connection lifetime exceeded'));
-        }, IDLE_TIMEOUT);
+    private onIdleTimeout = (): void => {
+        this.socket.destroy(new Error('TCP Connection lifetime exceeded'));
+    }
+
+    private onReadTimeout = (): void => {
+        this.socket.destroy(new Error('TCP Read timeout exceeded'));
+    }
+
+    private onWriteTimeout = (): void => {
+        this.socket.destroy(new Error('TCP Write timeout exceeded'));
+    }
+
+    private resetIdleTimeout(): void {
+        if (this.idleTimeout) clearTimeout(this.idleTimeout);
+        this.idleTimeout = setTimeout(() => this.emitter.emit(events.IDLE), IDLE_TIMEOUT);
+    }
+
+    private resetReadTimeout(): void {
+        if (this.readTimeout) clearTimeout(this.readTimeout);
+        this.readTimeout = setTimeout(() => this.emitter.emit(events.READ), READ_TIMEOUT);
+    }
+
+    private resetWriteTimeout(): void {
+        if (this.writeTimeout) clearTimeout(this.writeTimeout);
+        this.writeTimeout = setTimeout(() => this.emitter.emit(events.WRITE), WRITE_TIMEOUT);
     }
 }
