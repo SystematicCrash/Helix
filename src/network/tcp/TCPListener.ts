@@ -12,7 +12,7 @@ export default class TCPListener {
     public accept(): Promise<TCPConnection> {
         return new Promise((resolve, reject) => {
             this.reader = {resolve, reject};
-        })
+        });
     }
 
     /**
