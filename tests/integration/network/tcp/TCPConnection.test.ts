@@ -108,7 +108,6 @@ describe('TCPConnection', () => {
 
         test('should reject immediately if a socket error exists', async () => {
             (conn as any).socket.emit('error', new Error('Broken pipe'));
-            await expect(conn.write(Buffer.from('hello'))).rejects.toThrow('Broken pipe');
             await expect(() => conn.write(Buffer.from('hello')))
                 .rejects.toThrow(new Error('Broken pipe'));
         });
@@ -123,6 +122,21 @@ describe('TCPConnection', () => {
             const dataPromise = new Promise<Buffer>((resolve) => client.once('data', resolve));
             await conn.write(Buffer.from('hello'));
             expect(await dataPromise).toEqual(Buffer.from('hello'));
+        });
+
+        test('should fire timeout when write takes long after specific amount of time', async () => {
+            vi.spyOn((conn as any).socket, 'write').mockImplementation(
+                (_data, callback) => {
+                    setTimeout(() => {
+                        // @ts-ignore
+                        callback?.(null);
+                    }, 2_000); // Longer than WRITE_TIMEOUT
+                    return true;
+                }
+            );
+
+            await expect(conn.write(Buffer.from('hello')))
+                .rejects.toThrow(new Error('TCP Write timeout exceeded'));
         });
     });
 });
