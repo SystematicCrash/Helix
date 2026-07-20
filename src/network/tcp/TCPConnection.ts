@@ -1,8 +1,8 @@
 import {Socket} from 'net';
-import {EventEmitter} from 'events';
-import {clearTimeout} from "node:timers";
 import {DataReader} from "./types";
-import {IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./config.js";
+import {IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./config";
+import Timer from "../common/Timer";
+
 
 const events = {
     IDLE: 'idle-timeout',
@@ -21,46 +21,51 @@ export default class TCPConnection {
     private ended: boolean = false;
     private error: Error|null = null;
     private reader: null|DataReader = null;
-    private idleTimeout: NodeJS.Timeout|null = null;
-    private readTimeout: NodeJS.Timeout|null = null;
-    private writeTimeout: NodeJS.Timeout|null = null;
-    private emitter: EventEmitter = new EventEmitter();
+    private idleTimer: Timer;
+    private readTimer: Timer;
+    private writeTimer: Timer;
 
     constructor(public socket: Socket) {
         socket.on(events.END, this.onEnd);
         socket.on(events.DATA, this.onData);
         socket.on(events.ERROR, this.onError);
 
-        this.emitter.on(events.IDLE, this.onIdleTimeout);
-        this.emitter.on(events.READ, this.onReadTimeout);
-        this.emitter.on(events.WRITE, this.onWriteTimeout);
+        this.idleTimer = new Timer(events.IDLE, IDLE_TIMEOUT, this.onIdleTimeout);
+        this.readTimer = new Timer(events.READ, READ_TIMEOUT, this.onReadTimeout);
+        this.writeTimer = new Timer(events.WRITE, WRITE_TIMEOUT, this.onWriteTimeout);
 
-        this.resetIdleTimeout();
-        this.resetReadTimeout();
-        this.resetWriteTimeout();
+        this.idleTimer.start();
     }
 
     /**
      * Resumes the socket and returns a promise that resolves with the next data chunk.
      * Rejects immediately if the connection has a stored error.
      */
-    public read(): Promise<Buffer> {
+    public async read(): Promise<Buffer> {
         if (this.reader) {
             throw new Error("Another read is in progress!");
         }
-        this.resetIdleTimeout();
-        this.resetReadTimeout();
-        return this.readPromise();
+        this.idleTimer.reset();
+        this.readTimer.start();
+        try {
+            return await this.readPromise();
+        } finally {
+             this.readTimer.stop();
+        }
     }
 
     /** Writes a buffer to the socket and returns a promise that resolves on success. */
-    public write(data: Buffer): Promise<void> {
+    public async write(data: Buffer): Promise<void> {
         if (data.length === 0) {
             throw new Error("data length should be greater than 0!");
         }
-        this.resetIdleTimeout();
-        this.resetWriteTimeout();
-        return this.writePromise(data);
+        this.idleTimer.reset();
+        this.writeTimer.start();
+        try {
+            return await this.writePromise(data);
+        } finally {
+            this.writeTimer.stop();
+        }
     }
 
     private writePromise(data: Buffer): Promise<void> {
@@ -118,30 +123,18 @@ export default class TCPConnection {
         }
     }
 
+    /** Executed on idle timeout */
     private onIdleTimeout = (): void => {
         this.socket.destroy(new Error('TCP Connection lifetime exceeded'));
     }
 
+    /** Executed on read timeout */
     private onReadTimeout = (): void => {
         this.socket.destroy(new Error('TCP Read timeout exceeded'));
     }
 
+    /** Executed on write timeout */
     private onWriteTimeout = (): void => {
         this.socket.destroy(new Error('TCP Write timeout exceeded'));
-    }
-
-    private resetIdleTimeout(): void {
-        if (this.idleTimeout) clearTimeout(this.idleTimeout);
-        this.idleTimeout = setTimeout(() => this.emitter.emit(events.IDLE), IDLE_TIMEOUT);
-    }
-
-    private resetReadTimeout(): void {
-        if (this.readTimeout) clearTimeout(this.readTimeout);
-        this.readTimeout = setTimeout(() => this.emitter.emit(events.READ), READ_TIMEOUT);
-    }
-
-    private resetWriteTimeout(): void {
-        if (this.writeTimeout) clearTimeout(this.writeTimeout);
-        this.writeTimeout = setTimeout(() => this.emitter.emit(events.WRITE), WRITE_TIMEOUT);
     }
 }
