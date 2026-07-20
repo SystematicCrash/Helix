@@ -1,8 +1,19 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+/** Mocks */
+vi.mock('../../../../src/network/tcp/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../src/network/tcp/constants')>('../../../../src/network/tcp/constants');
+
+    return {
+        ...actual,
+        IDLE_TIMEOUT: 50,
+    };
+});
+
 import * as net from 'node:net';
 import { createClient, getRandomPort } from './common/utils';
 import TCPListener from '../../../../src/network/tcp/TCPListener.js';
 import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
+import {delay} from "@vitest/utils/timers";
 
 describe('TCPListener', () => {
 
@@ -141,6 +152,17 @@ describe('TCPListener', () => {
 
             const conn = await acceptPromise;
             expect((conn as any).socket.isPaused()).toBe(true);
+        });
+
+        test('should fire idle timeout when no activity is performed on connection', async () => {
+            const acceptPromise = listener.accept();
+            clients.push(await createClient(port));
+
+            const conn = await acceptPromise;
+            await delay(100); // Longer than IDLE_TIMEOUT
+
+            expect(conn.error).toEqual(new Error('TCP Connection lifetime exceeded'))
+
         });
     });
 });
