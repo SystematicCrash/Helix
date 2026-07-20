@@ -1,17 +1,7 @@
 import {Socket} from 'net';
 import {DataReader} from "./types";
-import {IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./config";
 import Timer from "../common/Timer";
-
-
-const events = {
-    IDLE: 'idle-timeout',
-    READ: 'read-timeout',
-    WRITE: 'write-timeout',
-    ERROR: 'error',
-    DATA: 'data',
-    END: 'end',
-};
+import {EOF, events, IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./constants";
 
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
@@ -19,20 +9,22 @@ const events = {
  */
 export default class TCPConnection {
     private ended: boolean = false;
-    private error: Error|null = null;
-    private reader: null|DataReader = null;
+    private isDead: boolean = false;
+    private error: Error | null = null;
+    private reader: null | DataReader = null;
     private idleTimer: Timer;
     private readTimer: Timer;
     private writeTimer: Timer;
 
     constructor(public socket: Socket) {
-        socket.on(events.END, this.onEnd);
-        socket.on(events.DATA, this.onData);
-        socket.on(events.ERROR, this.onError);
+        socket.on(events.end, this.onEnd);
+        socket.on(events.data, this.onData);
+        socket.on(events.error, this.onError);
+        socket.on(events.close, this.onClose);
 
-        this.idleTimer = new Timer(events.IDLE, IDLE_TIMEOUT, this.onIdleTimeout);
-        this.readTimer = new Timer(events.READ, READ_TIMEOUT, this.onReadTimeout);
-        this.writeTimer = new Timer(events.WRITE, WRITE_TIMEOUT, this.onWriteTimeout);
+        this.idleTimer = new Timer(events.idleTimeout, IDLE_TIMEOUT, this.onIdleTimeout);
+        this.readTimer = new Timer(events.readTimeout, READ_TIMEOUT, this.onReadTimeout);
+        this.writeTimer = new Timer(events.writeTimeout, WRITE_TIMEOUT, this.onWriteTimeout);
 
         this.idleTimer.start();
     }
@@ -45,12 +37,14 @@ export default class TCPConnection {
         if (this.reader) {
             throw new Error("Another read is in progress!");
         }
-        this.idleTimer.reset();
+        this.idleTimer.stop();
         this.readTimer.start();
         try {
             return await this.readPromise();
-        } finally {
-             this.readTimer.stop();
+        }
+        finally {
+            this.readTimer.stop();
+            if (!this.isDead) this.idleTimer.reset();
         }
     }
 
@@ -59,15 +53,19 @@ export default class TCPConnection {
         if (data.length === 0) {
             throw new Error("data length should be greater than 0!");
         }
-        this.idleTimer.reset();
+        this.idleTimer.stop();
         this.writeTimer.start();
         try {
             return await this.writePromise(data);
         } finally {
             this.writeTimer.stop();
+            if (!this.isDead) this.idleTimer.reset();
         }
     }
 
+    /**
+     * Wraps socket.write in a promise.
+     */
     private writePromise(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
             if (this.error) return reject(this.error);
@@ -79,13 +77,16 @@ export default class TCPConnection {
         });
     }
 
+    /**
+     * Creates a pending read operation waiting for incoming data.
+     */
     private readPromise(): Promise<Buffer> {
         return new Promise((resolve, reject) => {
             if (this.error) {
                 return reject(this.error);
             }
             if (this.ended || this.socket.destroyed) {
-                return resolve(Buffer.from(''));
+                return resolve(EOF);
             }
             this.reader = {resolve, reject};
             this.socket.resume();
@@ -109,9 +110,10 @@ export default class TCPConnection {
     private onEnd = (): void => {
         this.ended = true;
         if (this.reader) {
-            this.reader.resolve(Buffer.from(''));
+            this.reader.resolve(EOF);
             this.reader = null;
         }
+        this.cleanup();
     }
 
     /**
@@ -124,6 +126,7 @@ export default class TCPConnection {
             this.reader.reject(err);
             this.reader = null;
         }
+        this.cleanup();
     }
 
     /**
