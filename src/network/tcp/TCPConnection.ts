@@ -126,7 +126,19 @@ export default class TCPConnection {
         }
     }
 
-    /** Executed on idle timeout */
+    /**
+     * Handles socket close events and performs cleanup.
+     */
+    private onClose = (hadError: boolean): void => {
+        if (!this.error && !this.ended) {
+            this.error = new Error('Connection closed unexpectedly!');
+        }
+        this.cleanup();
+    }
+
+    /**
+     * Destroys the socket when idle timeout is reached.
+     */
     private onIdleTimeout = (): void => {
         this.error = new Error('TCP Connection lifetime exceeded');
         this.socket.destroy(this.error);
