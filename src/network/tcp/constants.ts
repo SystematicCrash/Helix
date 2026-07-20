@@ -6,13 +6,13 @@ export const WRITE_TIMEOUT = 10_000;
 
 export const EOF = Buffer.alloc(0);
 
-export const events = {
-    idleTimeout: 'idle-timeout',
-    readTimeout: 'read-timeout',
-    writeTimeout: 'write-timeout',
-    error: 'error',
-    data: 'data',
-    end: 'end',
+export const events = Object.freeze({
+    IDLE_TIMEOUT: 'idle-timeout',
+    READ_TIMEOUT: 'read-timeout',
+    WRITE_TIMEOUT: 'write-timeout',
+    ERROR: 'error',
+    DATA: 'data',
+    END: 'end',
     write: 'write',
-    close: 'close',
-};
+    CLOSE: 'close',
+});

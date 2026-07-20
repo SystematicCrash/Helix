@@ -8,23 +8,24 @@ import {EOF, events, IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./constant
  * Only one read can be in flight at a time — `reader` holds the active promise callbacks.
  */
 export default class TCPConnection {
-    private ended: boolean = false;
-    private isDead: boolean = false;
-    private error: Error | null = null;
-    private reader: null | DataReader = null;
     private idleTimer: Timer;
     private readTimer: Timer;
     private writeTimer: Timer;
 
-    constructor(public socket: Socket) {
-        socket.on(events.end, this.onEnd);
-        socket.on(events.data, this.onData);
-        socket.on(events.error, this.onError);
-        socket.on(events.close, this.onClose);
+    private ended: boolean = false;
+    private isDead: boolean = false;
+    private error: Error | null = null;
+    private reader: DataReader | null = null;
 
-        this.idleTimer = new Timer(events.idleTimeout, IDLE_TIMEOUT, this.onIdleTimeout);
-        this.readTimer = new Timer(events.readTimeout, READ_TIMEOUT, this.onReadTimeout);
-        this.writeTimer = new Timer(events.writeTimeout, WRITE_TIMEOUT, this.onWriteTimeout);
+    constructor(public socket: Socket) {
+        socket.on(events.END, this.onEnd);
+        socket.on(events.DATA, this.onData);
+        socket.on(events.ERROR, this.onError);
+        socket.on(events.CLOSE, this.onClose);
+
+        this.idleTimer = new Timer(events.IDLE_TIMEOUT, IDLE_TIMEOUT, this.onIdleTimeout);
+        this.readTimer = new Timer(events.READ_TIMEOUT, READ_TIMEOUT, this.onReadTimeout);
+        this.writeTimer = new Timer(events.WRITE_TIMEOUT, WRITE_TIMEOUT, this.onWriteTimeout);
 
         this.idleTimer.start();
     }
@@ -172,9 +173,9 @@ export default class TCPConnection {
         this.readTimer.stop();
         this.writeTimer.stop();
 
-        this.socket.off(events.end, this.onEnd);
-        this.socket.off(events.data, this.onData);
-        this.socket.off(events.error, this.onError);
-        this.socket.off(events.close, this.onClose);
+        this.socket.off(events.END, this.onEnd);
+        this.socket.off(events.DATA, this.onData);
+        this.socket.off(events.ERROR, this.onError);
+        this.socket.off(events.CLOSE, this.onClose);
     }
 }
