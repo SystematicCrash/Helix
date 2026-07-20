@@ -1,8 +1,20 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+
+/** Mocks */
+vi.mock('../../../../src/network/tcp/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../src/network/tcp/constants')>('../../../../src/network/tcp/constants');
+
+    return {
+        ...actual,
+        READ_TIMEOUT: 50,
+        WRITE_TIMEOUT: 50,
+    };
+});
+
+import TCPConnection from '../../../../src/network/tcp/TCPConnection';
 import { Socket } from 'net';
 import { createClient, getRandomPort } from './common/utils';
-import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
-import TCPListener from '../../../../src/network/tcp/TCPListener.js';
+import TCPListener from '../../../../src/network/tcp/TCPListener';
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;
@@ -78,7 +90,13 @@ describe('TCPConnection', () => {
 
         test('should reject on concurrent read() calls', async () => {
             conn.read().catch(() => {});
-            expect(() => conn.read()).toThrow('Another read is in progress!');
+            await expect(() => conn.read())
+                .rejects.toThrow('Another read is in progress!');
+        });
+
+        test('should fire timeout when no data is received after specific amount of time', async () => {
+            await expect(() => conn.read())
+                .rejects.toThrow(new Error('TCP Read timeout exceeded'));
         });
     });
 
