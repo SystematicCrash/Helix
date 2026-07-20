@@ -23,7 +23,7 @@ export default class Timer {
         }
     }
 
-    reset(): void {
+    restart(): void {
         this.stop();
         this.start();
     }
