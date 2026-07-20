@@ -125,16 +125,38 @@ export default class TCPConnection {
 
     /** Executed on idle timeout */
     private onIdleTimeout = (): void => {
-        this.socket.destroy(new Error('TCP Connection lifetime exceeded'));
+        this.error = new Error('TCP Connection lifetime exceeded');
+        this.socket.destroy(this.error);
     }
 
-    /** Executed on read timeout */
+    /**
+     * Destroys the socket when read timeout is reached.
+     */
     private onReadTimeout = (): void => {
-        this.socket.destroy(new Error('TCP Read timeout exceeded'));
+        this.error = new Error('TCP Read timeout exceeded');
+        this.socket.destroy(this.error);
     }
 
-    /** Executed on write timeout */
+    /**
+     * Destroys the socket when write timeout is reached.
+     */
     private onWriteTimeout = (): void => {
-        this.socket.destroy(new Error('TCP Write timeout exceeded'));
+        this.error = new Error('TCP Write timeout exceeded');
+        this.socket.destroy(this.error);
+    }
+
+    /**
+     * Stops timers and removes socket listeners.
+     */
+    private cleanup(): void {
+        this.isDead = true;
+        this.idleTimer.stop();
+        this.readTimer.stop();
+        this.writeTimer.stop();
+
+        this.socket.off(events.end, this.onEnd);
+        this.socket.off(events.data, this.onData);
+        this.socket.off(events.error, this.onError);
+        this.socket.off(events.close, this.onClose);
     }
 }
