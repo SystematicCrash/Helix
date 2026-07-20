@@ -1,5 +1,5 @@
 import {Socket} from 'net';
-import {DataReader} from "./types";
+import {DataReader, DataWriter} from "./types";
 import Timer from "../common/Timer";
 import {EOF, events, IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./constants";
 
@@ -16,6 +16,7 @@ export default class TCPConnection {
     private _isDead: boolean = false;
     private _error: Error | null = null;
     private reader: DataReader | null = null;
+    private writer: DataWriter | null = null;
 
     constructor(public socket: Socket) {
         socket.on(events.END, this.onEnd);
@@ -88,6 +89,7 @@ export default class TCPConnection {
             }
             this.writer = {resolve, reject};
             this.socket.write(data, (err?: Error | null) => {
+                this.writer = null;
                 if (err) reject(err);
                 else resolve();
             });
@@ -142,6 +144,10 @@ export default class TCPConnection {
         if (this.reader) {
             this.reader.reject(err);
             this.reader = null;
+        }
+        if (this.writer) {
+            this.writer.reject(err);
+            this.writer = null;
         }
         this.cleanup();
     }

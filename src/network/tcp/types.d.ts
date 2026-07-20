@@ -5,6 +5,11 @@ export interface DataReader {
     reject(reason: Error): void;
 }
 
+export interface DataWriter {
+    resolve(): void;
+    reject(reason: Error): void;
+}
+
 export interface ConnectionReader {
     resolve(conn: TCPConnection): void;
     reject(err: Error): void;
