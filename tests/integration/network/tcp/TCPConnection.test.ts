@@ -1,8 +1,20 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+
+/** Mocks */
+vi.mock('../../../../src/network/tcp/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../src/network/tcp/constants')>('../../../../src/network/tcp/constants');
+
+    return {
+        ...actual,
+        READ_TIMEOUT: 50,
+        WRITE_TIMEOUT: 50,
+    };
+});
+
+import TCPConnection from '../../../../src/network/tcp/TCPConnection';
 import { Socket } from 'net';
 import { createClient, getRandomPort } from './common/utils';
-import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
-import TCPListener from '../../../../src/network/tcp/TCPListener.js';
+import TCPListener from '../../../../src/network/tcp/TCPListener';
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;
@@ -78,19 +90,26 @@ describe('TCPConnection', () => {
 
         test('should reject on concurrent read() calls', async () => {
             conn.read().catch(() => {});
-            expect(() => conn.read()).toThrow('Another read is in progress!');
+            await expect(() => conn.read())
+                .rejects.toThrow('Another read is in progress!');
+        });
+
+        test('should fire timeout when no data is received after specific amount of time', async () => {
+            await expect(() => conn.read())
+                .rejects.toThrow(new Error('TCP Read timeout exceeded'));
         });
     });
 
     describe('write()', () => {
-        test('should throw if data buffer is empty', () => {
-            expect(() => conn.write(Buffer.from('')))
-                .toThrow('data length should be greater than 0!');
+        test('should throw if data buffer is empty', async () => {
+            await expect(() => conn.write(Buffer.from('')))
+                .rejects.toThrow('data length should be greater than 0!');
         });
 
         test('should reject immediately if a socket error exists', async () => {
             (conn as any).socket.emit('error', new Error('Broken pipe'));
-            await expect(conn.write(Buffer.from('hello'))).rejects.toThrow('Broken pipe');
+            await expect(() => conn.write(Buffer.from('hello')))
+                .rejects.toThrow(new Error('Broken pipe'));
         });
 
         test('should reject when socket is destroyed', async () => {
@@ -103,6 +122,21 @@ describe('TCPConnection', () => {
             const dataPromise = new Promise<Buffer>((resolve) => client.once('data', resolve));
             await conn.write(Buffer.from('hello'));
             expect(await dataPromise).toEqual(Buffer.from('hello'));
+        });
+
+        test('should fire timeout when write takes long after specific amount of time', async () => {
+            vi.spyOn((conn as any).socket, 'write').mockImplementation(
+                (_data, callback) => {
+                    setTimeout(() => {
+                        // @ts-ignore
+                        callback?.(null);
+                    }, 2_000); // Longer than WRITE_TIMEOUT
+                    return true;
+                }
+            );
+
+            await expect(conn.write(Buffer.from('hello')))
+                .rejects.toThrow(new Error('TCP Write timeout exceeded'));
         });
     });
 });
