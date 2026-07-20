@@ -94,11 +94,14 @@ export default class TCPConnection {
 
     /** Fulfills the pending read promise with the received chunk and pauses the socket. */
     private onData = (data: Buffer): void => {
-        if (!this.reader) {
-            throw new Error("reader does not exist!");
-        }
         this.socket.pause();
-        this.reader!.resolve(data);
+
+        if (!this.reader) {
+            return;
+        }
+
+        this.socket.pause();
+        this.reader.resolve(data);
         this.reader = null;
     }
 
