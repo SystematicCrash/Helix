@@ -12,9 +12,9 @@ export default class TCPConnection {
     private readTimer: Timer;
     private writeTimer: Timer;
 
-    private ended: boolean = false;
-    private isDead: boolean = false;
-    private error: Error | null = null;
+    private _ended: boolean = false;
+    private _isDead: boolean = false;
+    private _error: Error | null = null;
     private reader: DataReader | null = null;
 
     constructor(public socket: Socket) {
@@ -30,6 +30,18 @@ export default class TCPConnection {
         this.idleTimer.start();
     }
 
+    public get error(): Error | null {
+        return this._error;
+    }
+
+    public get ended(): boolean {
+        return this._ended;
+    }
+
+    public get isDead(): boolean {
+        return this._isDead;
+    }
+
     /**
      * Resumes the socket and returns a promise that resolves with the next data chunk.
      * Rejects immediately if the connection has a stored error.
@@ -42,10 +54,9 @@ export default class TCPConnection {
         this.readTimer.start();
         try {
             return await this.readPromise();
-        }
-        finally {
+        } finally {
             this.readTimer.stop();
-            if (!this.isDead) this.idleTimer.reset();
+            if (!this._isDead) this.idleTimer.restart();
         }
     }
 
@@ -60,7 +71,7 @@ export default class TCPConnection {
             return await this.writePromise(data);
         } finally {
             this.writeTimer.stop();
-            if (!this.isDead) this.idleTimer.reset();
+            if (!this._isDead) this.idleTimer.restart();
         }
     }
 
@@ -69,8 +80,13 @@ export default class TCPConnection {
      */
     private writePromise(data: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
-            if (this.error) return reject(this.error);
-
+            if (this._error) {
+                return reject(this._error);
+            }
+            if (this._isDead) {
+                return reject(new Error('Cannot write to a dead connection!'));
+            }
+            this.writer = {resolve, reject};
             this.socket.write(data, (err?: Error | null) => {
                 if (err) reject(err);
                 else resolve();
@@ -83,10 +99,10 @@ export default class TCPConnection {
      */
     private readPromise(): Promise<Buffer> {
         return new Promise((resolve, reject) => {
-            if (this.error) {
-                return reject(this.error);
+            if (this._error) {
+                return reject(this._error);
             }
-            if (this.ended || this.socket.destroyed) {
+            if (this._ended || this._isDead) {
                 return resolve(EOF);
             }
             this.reader = {resolve, reject};
@@ -109,7 +125,7 @@ export default class TCPConnection {
 
     /** Resolves the pending read with an empty buffer to signal EOF. */
     private onEnd = (): void => {
-        this.ended = true;
+        this._ended = true;
         if (this.reader) {
             this.reader.resolve(EOF);
             this.reader = null;
@@ -122,7 +138,7 @@ export default class TCPConnection {
      * Subsequent soRead calls will fail immediately via conn.error.
      */
     private onError = (err: Error): void => {
-        this.error = err;
+        this._error = err;
         if (this.reader) {
             this.reader.reject(err);
             this.reader = null;
@@ -134,8 +150,8 @@ export default class TCPConnection {
      * Handles socket close events and performs cleanup.
      */
     private onClose = (hadError: boolean): void => {
-        if (!this.error && !this.ended) {
-            this.error = new Error('Connection closed unexpectedly!');
+        if (!this._error && !this._ended) {
+            this._error = new Error('Connection closed unexpectedly!');
         }
         this.cleanup();
     }
@@ -144,31 +160,31 @@ export default class TCPConnection {
      * Destroys the socket when idle timeout is reached.
      */
     private onIdleTimeout = (): void => {
-        this.error = new Error('TCP Connection lifetime exceeded');
-        this.socket.destroy(this.error);
+        this._error = new Error('TCP Connection lifetime exceeded');
+        this.socket.destroy(this._error);
     }
 
     /**
      * Destroys the socket when read timeout is reached.
      */
     private onReadTimeout = (): void => {
-        this.error = new Error('TCP Read timeout exceeded');
-        this.socket.destroy(this.error);
+        this._error = new Error('TCP Read timeout exceeded');
+        this.socket.destroy(this._error);
     }
 
     /**
      * Destroys the socket when write timeout is reached.
      */
     private onWriteTimeout = (): void => {
-        this.error = new Error('TCP Write timeout exceeded');
-        this.socket.destroy(this.error);
+        this._error = new Error('TCP Write timeout exceeded');
+        this.socket.destroy(this._error);
     }
 
     /**
      * Stops timers and removes socket listeners.
      */
     private cleanup(): void {
-        this.isDead = true;
+        this._isDead = true;
         this.idleTimer.stop();
         this.readTimer.stop();
         this.writeTimer.stop();
