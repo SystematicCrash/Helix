@@ -101,14 +101,16 @@ describe('TCPConnection', () => {
     });
 
     describe('write()', () => {
-        test('should throw if data buffer is empty', () => {
-            expect(() => conn.write(Buffer.from('')))
-                .toThrow('data length should be greater than 0!');
+        test('should throw if data buffer is empty', async () => {
+            await expect(() => conn.write(Buffer.from('')))
+                .rejects.toThrow('data length should be greater than 0!');
         });
 
         test('should reject immediately if a socket error exists', async () => {
             (conn as any).socket.emit('error', new Error('Broken pipe'));
             await expect(conn.write(Buffer.from('hello'))).rejects.toThrow('Broken pipe');
+            await expect(() => conn.write(Buffer.from('hello')))
+                .rejects.toThrow(new Error('Broken pipe'));
         });
 
         test('should reject when socket is destroyed', async () => {
