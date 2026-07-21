@@ -1,7 +1,7 @@
 import {Socket} from 'net';
 import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
-import {EOF, events, IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./constants";
+import {events, IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./constants";
 
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
@@ -27,6 +27,10 @@ export default class TCPConnection {
 
     public get error(): Error | null {
         return this._error;
+    }
+
+    public close(): void {
+        this.socket.destroy();
     }
 
     /**
@@ -87,7 +91,7 @@ export default class TCPConnection {
                 return reject(this._error);
             }
             if (this.socket.readableEnded) {
-                return resolve(EOF);
+                return this._error = new Error('Cannot read from a closed connection!');
             }
             this.reader = {resolve, reject};
             this.socket.resume();
@@ -109,10 +113,9 @@ export default class TCPConnection {
     /** Resolves the pending read with an empty buffer to signal EOF. */
     private onEnd = (): void => {
         if (this.reader) {
-            this.reader.resolve(EOF);
+            this.reader.resolve(Buffer.alloc(0));
             this.reader = null;
         }
-        this.cleanup();
     }
 
     /**
