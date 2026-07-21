@@ -24,9 +24,7 @@ export default class TCPConnection {
         socket.on(Event.ERROR, this.onError);
         socket.on(Event.CLOSE, this.onClose);
 
-        this.socket.setTimeout(IDLE_TIMEOUT, this.onIdleTimeout);
-        this.readTimer = new Timer(events.READ_TIMEOUT, READ_TIMEOUT, this.onReadTimeout);
-        this.writeTimer = new Timer(events.WRITE_TIMEOUT, WRITE_TIMEOUT, this.onWriteTimeout);
+        socket.setTimeout(IDLE_TIMEOUT, () => this.handleTimeout(Event.IDLE_TIMEOUT));
         this.readTimer = new Timer(Event.READ_TIMEOUT, READ_TIMEOUT, this.handleTimeout);
         this.writeTimer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
     }
@@ -160,18 +158,19 @@ export default class TCPConnection {
     }
 
     /**
-     * Destroys the socket when read timeout is reached.
+     * Destroys the socket when a timeout is reached.
      */
-    private onReadTimeout = (): void => {
-        this._error = new Error('TCP Read timeout exceeded');
-        this.socket.destroy(this._error);
-    }
+    private handleTimeout = (event: string): void => {
+        const message = (() => {
+            switch (event) {
+                case Event.IDLE_TIMEOUT: return 'TCP Connection lifetime exceeded';
+                case Event.READ_TIMEOUT: return 'TCP Read timeout exceeded';
+                case Event.WRITE_TIMEOUT: return 'TCP Write timeout exceeded';
+                default: return 'Unexpected connection timeout';
+            }
+        })();
 
-    /**
-     * Destroys the socket when write timeout is reached.
-     */
-    private onWriteTimeout = (): void => {
-        this._error = new Error('TCP Write timeout exceeded');
+        this._error = new Error(message);
         this.socket.destroy(this._error);
     }
 
