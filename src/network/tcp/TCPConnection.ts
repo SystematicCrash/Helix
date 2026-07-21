@@ -1,7 +1,7 @@
 import {Socket} from 'net';
 import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
-import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_LENGTH, WRITE_TIMEOUT} from "./constants";
+import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT} from "./constants";
 
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
@@ -10,19 +10,17 @@ import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_LENGTH, WRITE_TIMEOU
 export default class TCPConnection {
     private readTimer: Timer;
     private writeTimer: Timer;
+    private canWrite: boolean = true;
     private _error: Error | null = null;
     private reader: DataReader | null = null;
     private writer: DataWriter | null = null;
 
     constructor(private socket: Socket) {
-        socket.on(events.END, this.onEnd);
-        socket.on(events.DATA, this.onData);
-        socket.on(events.ERROR, this.onError);
-        socket.on(events.CLOSE, this.onClose);
         socket.on(Event.END, this.onEnd);
         socket.on(Event.DATA, this.onData);
         socket.on(Event.ERROR, this.onError);
         socket.on(Event.CLOSE, this.onClose);
+        socket.on(Event.DRAIN, this.onDrain);
 
         socket.setTimeout(IDLE_TIMEOUT, () => this.handleTimeout(Event.IDLE_TIMEOUT));
         this.readTimer = new Timer(Event.READ_TIMEOUT, READ_TIMEOUT, this.handleTimeout);
@@ -58,18 +56,22 @@ export default class TCPConnection {
         if (data.length === 0) {
             throw new Error("data length should be greater than 0!");
         }
+        if (!this.canWrite) {
+            throw new Error("Can't write to connection, send buffer is filled!");
+        }
         try {
             this.writeTimer.start();
-            return await this.writePromise(data);
+            const sentToKernel = await this.writePromise(data);
+            this.canWrite = sentToKernel || this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
         } finally {
             this.writeTimer.stop();
         }
     }
 
     /**
-     * Wraps socket.write in a promise.
+     * Wraps socket.write() in a promise.
      */
-    private writePromise(data: Buffer): Promise<void> {
+    private writePromise(data: Buffer): Promise<boolean> {
         return new Promise((resolve, reject) => {
             if (this._error) {
                 return reject(this._error);
@@ -78,10 +80,10 @@ export default class TCPConnection {
                 return this._error = new Error('Cannot write to a closed connection!');
             }
             this.writer = {resolve, reject};
-            this.socket.write(data, (err?: Error | null) => {
+            const sentToKernel = this.socket.write(data, (err?: Error | null) => {
                 this.writer = null;
                 if (err) reject(err);
-                else resolve();
+                else resolve(sentToKernel);
             });
         });
     }
@@ -149,12 +151,8 @@ export default class TCPConnection {
         this.cleanup();
     }
 
-    /**
-     * Destroys the socket when idle timeout is reached.
-     */
-    private onIdleTimeout = (): void => {
-        this._error = new Error('TCP Connection lifetime exceeded');
-        this.socket.destroy(this._error);
+    private onDrain = (): void => {
+        this.canWrite = true;
     }
 
     /**
@@ -181,13 +179,10 @@ export default class TCPConnection {
         this.readTimer.stop();
         this.writeTimer.stop();
 
-        this.socket.off(events.END, this.onEnd);
-        this.socket.off(events.DATA, this.onData);
-        this.socket.off(events.ERROR, this.onError);
-        this.socket.off(events.CLOSE, this.onClose);
         this.socket.off(Event.END, this.onEnd);
         this.socket.off(Event.DATA, this.onData);
         this.socket.off(Event.ERROR, this.onError);
         this.socket.off(Event.CLOSE, this.onClose);
+        this.socket.off(Event.DRAIN, this.onDrain);
     }
 }
