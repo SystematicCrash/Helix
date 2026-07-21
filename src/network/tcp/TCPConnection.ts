@@ -1,7 +1,7 @@
 import {Socket} from 'net';
 import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
-import {events, IDLE_TIMEOUT, READ_TIMEOUT, WRITE_TIMEOUT} from "./constants";
+import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_LENGTH, WRITE_TIMEOUT} from "./constants";
 
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
@@ -19,10 +19,16 @@ export default class TCPConnection {
         socket.on(events.DATA, this.onData);
         socket.on(events.ERROR, this.onError);
         socket.on(events.CLOSE, this.onClose);
+        socket.on(Event.END, this.onEnd);
+        socket.on(Event.DATA, this.onData);
+        socket.on(Event.ERROR, this.onError);
+        socket.on(Event.CLOSE, this.onClose);
 
         this.socket.setTimeout(IDLE_TIMEOUT, this.onIdleTimeout);
         this.readTimer = new Timer(events.READ_TIMEOUT, READ_TIMEOUT, this.onReadTimeout);
         this.writeTimer = new Timer(events.WRITE_TIMEOUT, WRITE_TIMEOUT, this.onWriteTimeout);
+        this.readTimer = new Timer(Event.READ_TIMEOUT, READ_TIMEOUT, this.handleTimeout);
+        this.writeTimer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
     }
 
     public get error(): Error | null {
@@ -180,5 +186,9 @@ export default class TCPConnection {
         this.socket.off(events.DATA, this.onData);
         this.socket.off(events.ERROR, this.onError);
         this.socket.off(events.CLOSE, this.onClose);
+        this.socket.off(Event.END, this.onEnd);
+        this.socket.off(Event.DATA, this.onData);
+        this.socket.off(Event.ERROR, this.onError);
+        this.socket.off(Event.CLOSE, this.onClose);
     }
 }
