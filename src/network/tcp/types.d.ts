@@ -6,7 +6,7 @@ export interface DataReader {
 }
 
 export interface DataWriter {
-    resolve(): void;
+    resolve(boolean): void;
     reject(reason: Error): void;
 }
 
