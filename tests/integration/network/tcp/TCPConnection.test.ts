@@ -8,6 +8,7 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
         ...actual,
         READ_TIMEOUT: 50,
         WRITE_TIMEOUT: 50,
+        MAX_WRITE_BUFFER_SIZE: 1024,
     };
 });
 
@@ -191,8 +192,6 @@ describe('TCPConnection', () => {
 
                 await floodWrites(conn, MAX_WRITE_BUFFER_SIZE);
 
-                await new Promise((r) => setTimeout(r, 100));
-
                 expect((conn as any).canWrite).toBe(false);
                 await expect(() => conn.write(Buffer.from('blocked')))
                     .rejects.toThrow("Can't write to connection, send buffer is filled!");
@@ -203,7 +202,7 @@ describe('TCPConnection', () => {
 
             test('should remain writable when no backpressure is triggered', async () => {
                 createWriteBackpressureData((conn as any).socket);
-                await floodWrites(conn, 16 * 1024);
+                await floodWrites(conn, MAX_WRITE_BUFFER_SIZE - 100);
                 expect((conn as any).canWrite).toBe(true);
             });
 
