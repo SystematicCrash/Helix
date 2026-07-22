@@ -1,6 +1,7 @@
 import {beforeEach, afterEach, expect, test, describe} from "vitest";
 import DynamicBuffer from "../../../../src/network/mem/DynamicBuffer.js";
 import {push} from "node:stream/iter";
+import {MAX_BUFFER_SIZE} from "../../../../src/network/mem/constants.js";
 
 describe("DynamicBuffer", () => {
     describe("push()", () => {
@@ -33,11 +34,11 @@ describe("DynamicBuffer", () => {
             buffer.push(first);
             expect(buffer.capacity).toEqual(32);
 
-            const second = Buffer.from('x'.repeat(buffer.capacity + 2));
+            const second = Buffer.alloc(buffer.capacity, 0x41);
             buffer.push(second);
             expect(buffer.capacity).toEqual(64);
 
-            const third = Buffer.from('x'.repeat(buffer.capacity + 2));
+            const third = Buffer.alloc(buffer.capacity, 0x41);
             buffer.push(third);
             expect(buffer.capacity).toEqual(128);
         });
@@ -49,7 +50,7 @@ describe("DynamicBuffer", () => {
             buffer.push(first);
             expect(buffer.capacity).toEqual(32);
 
-            const second = Buffer.from('x'.repeat(buffer.capacity - buffer.length));
+            const second = Buffer.alloc(buffer.capacity - buffer.length, 0x41);
             buffer.push(second);
             expect(buffer.capacity).toEqual(32);
         });
@@ -106,7 +107,7 @@ describe("DynamicBuffer", () => {
 
         test("should compact buffer when popped data is too large", () => {
             const buffer = new DynamicBuffer();
-            const data = Buffer.from("x".repeat(32));
+            const data = Buffer.alloc(32, 0x41);
             buffer.push(data);
 
             expect(buffer.capacity).toEqual(32);
