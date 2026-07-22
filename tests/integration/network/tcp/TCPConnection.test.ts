@@ -15,6 +15,7 @@ import TCPConnection from '../../../../src/network/tcp/TCPConnection';
 import { Socket } from 'net';
 import { createClient, getRandomPort } from './common/utils';
 import TCPListener from '../../../../src/network/tcp/TCPListener';
+import {MAX_WRITE_BUFFER_SIZE} from "../../../../src/network/tcp/constants.js";
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;
@@ -137,6 +138,96 @@ describe('TCPConnection', () => {
 
             await expect(conn.write(Buffer.from('hello')))
                 .rejects.toThrow(new Error('TCP Write timeout exceeded'));
+        });
+
+        describe('backpressure', () => {
+            function createWriteBackpressureData(socket: Socket) {
+                let buffered = 0;
+
+                Object.defineProperty(socket, 'writableLength', {
+                    configurable: true,
+                    get: () => buffered,
+                });
+
+                vi.spyOn(socket, 'write').mockImplementation(
+                    (data: Buffer, callback: (err?: Error | null) => void) => {
+                        setTimeout(() => callback?.(), 10);
+                        buffered += data.length;
+                        return buffered < MAX_WRITE_BUFFER_SIZE;
+                    }
+                );
+            }
+
+            async function floodWrites(connection: TCPConnection, totalBytes: number, chunkSize = 8 * 1024): Promise<void> {
+                await new Promise<void>((resolve) => {
+                    let remaining = totalBytes;
+                    const send = () => {
+                        const toWrite = Math.min(chunkSize, remaining);
+                        connection.write(Buffer.alloc(toWrite, 0x41)).then(() => {
+                            remaining -= toWrite;
+                            if (remaining > 0) setImmediate(send);
+                            else resolve();
+                        }).catch(() => resolve());
+                    };
+                    send();
+                });
+            }
+
+            test('should throw when canWrite is false (buffer full)', async () => {
+                (conn as any).canWrite = false;
+                expect(() => conn.write(Buffer.from('test')))
+                    .rejects.toThrow("Can't write to connection, send buffer is filled!");
+            });
+
+            test('should set canWrite to false when socket writableLength exceeds MAX_WRITE_BUFFER_SIZE', async () => {
+                createWriteBackpressureData((conn as any).socket);
+
+                await floodWrites(conn, MAX_WRITE_BUFFER_SIZE);
+
+                await new Promise((r) => setTimeout(r, 100));
+
+                expect((conn as any).canWrite).toBe(false);
+            });
+
+            test('should unblock writes when drain event fires', async () => {
+                const socket = (conn as any).socket;
+                createWriteBackpressureData(socket);
+
+                await floodWrites(conn, MAX_WRITE_BUFFER_SIZE);
+
+                await new Promise((r) => setTimeout(r, 100));
+
+                expect((conn as any).canWrite).toBe(false);
+                await expect(() => conn.write(Buffer.from('blocked')))
+                    .rejects.toThrow("Can't write to connection, send buffer is filled!");
+
+                socket.emit('drain');
+                expect((conn as any).canWrite).toBe(true);
+            });
+
+            test('should remain writable when no backpressure is triggered', async () => {
+                createWriteBackpressureData((conn as any).socket);
+
+                await floodWrites(conn, 16 * 1024);
+
+                await new Promise((r) => setTimeout(r, 50));
+
+                expect((conn as any).canWrite).toBe(true);
+            });
+
+            test('should recover canWrite after drain even if previous writes failed', async () => {
+                const socket = (conn as any).socket;
+                createWriteBackpressureData(socket);
+
+                await floodWrites(conn, MAX_WRITE_BUFFER_SIZE);
+
+                expect((conn as any).canWrite).toBe(false);
+
+                socket.emit('drain');
+                expect((conn as any).canWrite).toBe(true);
+
+                await conn.write(Buffer.from('after-drain'));
+            });
         });
     });
 });
