@@ -65,6 +65,13 @@ describe("DynamicBuffer", () => {
             buffer.push(second);
             expect(buffer.length).toEqual(first.length + second.length);
         });
+
+        test('should throw on push when buffer size exceeded the threshold', () => {
+            const buffer = new DynamicBuffer();
+            buffer.push(Buffer.alloc(MAX_BUFFER_SIZE - 1, 0x41));
+            expect(() => buffer.push(Buffer.from('more data')))
+                .toThrow(new Error('Buffer maximum size exceeded!'));
+        });
     });
 
     describe("pop()", () => {
