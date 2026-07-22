@@ -175,17 +175,13 @@ describe('TCPConnection', () => {
 
             test('should throw when canWrite is false (buffer full)', async () => {
                 (conn as any).canWrite = false;
-                expect(() => conn.write(Buffer.from('test')))
+                await expect(() => conn.write(Buffer.from('test')))
                     .rejects.toThrow("Can't write to connection, send buffer is filled!");
             });
 
             test('should set canWrite to false when socket writableLength exceeds MAX_WRITE_BUFFER_SIZE', async () => {
                 createWriteBackpressureData((conn as any).socket);
-
                 await floodWrites(conn, MAX_WRITE_BUFFER_SIZE);
-
-                await new Promise((r) => setTimeout(r, 100));
-
                 expect((conn as any).canWrite).toBe(false);
             });
 
@@ -207,11 +203,7 @@ describe('TCPConnection', () => {
 
             test('should remain writable when no backpressure is triggered', async () => {
                 createWriteBackpressureData((conn as any).socket);
-
                 await floodWrites(conn, 16 * 1024);
-
-                await new Promise((r) => setTimeout(r, 50));
-
                 expect((conn as any).canWrite).toBe(true);
             });
 
