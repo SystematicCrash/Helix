@@ -13,10 +13,13 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
         const msg: Buffer|null = buf.popMessage();
 
         if (!msg) {
-            const data = await conn.read();
-            if (data.length === 0) break; // EOF
-            buf.push(data);
-            continue;
+            try {
+                const data = await conn.read();
+                buf.push(data);
+                continue;
+            } catch (err) {
+                break;
+            }
         }
 
         await replyMessage(conn, msg);
@@ -33,7 +36,7 @@ async function replyMessage(conn: TCPConnection, msg: Buffer): Promise<void> {
 
     if (str === 'quit\n') {
         await conn.write(Buffer.from('Bye!'));
-        conn.socket.destroy();
+        conn.close();
     } else {
         await conn.write(Buffer.from(`Echo: ${str}`));
     }

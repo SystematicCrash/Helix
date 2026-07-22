@@ -4,14 +4,14 @@ export default class Timer {
     constructor(
         private event: string,
         private timeout: number,
-        private handler: () => void
+        private handler: (event: string) => void
     ) {}
 
     start(): void {
         if (!this.timer) {
             this.timer = setTimeout(() => {
                 this.timer = null;
-                this.handler();
+                this.handler(this.event);
             }, this.timeout);
         }
     }
