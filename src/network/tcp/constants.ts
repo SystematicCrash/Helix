@@ -1,9 +1,7 @@
-import {Buffer} from "node:buffer";
-
 export const IDLE_TIMEOUT = 10_000;
 export const READ_TIMEOUT = 10_000;
 export const WRITE_TIMEOUT = 10_000;
-export const MAX_WRITE_BUFFER_SIZE = 100 * 1024;
+export const MAX_WRITE_BUFFER_SIZE = 1024 * 1024;
 
 export enum Event {
     IDLE_TIMEOUT = 'idle-timeout',
