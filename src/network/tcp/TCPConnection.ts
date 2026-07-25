@@ -1,9 +1,8 @@
 import {Socket} from 'net';
+import TCPError from "./TCPError";
 import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
-import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT} from "./constants";
-import {TCPError, TCPCode} from "./TCPError";
-
+import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT, TCPCode} from "./constants";
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
  * Only one read can be in flight at a time — `reader` holds the active promise callbacks.

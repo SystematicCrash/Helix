@@ -12,12 +12,9 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
     };
 });
 
-import TCPConnection from '../../../../src/network/tcp/TCPConnection';
-import { TCPCode } from '../../../../src/network/tcp/TCPError';
+import { TCPConnection, TCPListener, TCPCode, MAX_WRITE_BUFFER_SIZE } from '../../../../src/network/tcp';
 import { Socket } from 'net';
 import { createClient, getRandomPort } from './common/utils';
-import TCPListener from '../../../../src/network/tcp/TCPListener';
-import { MAX_WRITE_BUFFER_SIZE } from '../../../../src/network/tcp/constants.js';
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;

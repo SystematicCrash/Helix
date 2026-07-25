@@ -11,10 +11,8 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
 
 import * as net from 'node:net';
 import { createClient, getRandomPort } from './common/utils';
-import TCPListener from '../../../../src/network/tcp/TCPListener.js';
-import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
+import {TCPListener, TCPConnection, TCPCode} from '../../../../src/network/tcp';
 import {delay} from "@vitest/utils/timers";
-import {TCPCode} from "../../../../src/network/tcp/TCPError.js";
 
 describe('TCPListener', () => {
 
