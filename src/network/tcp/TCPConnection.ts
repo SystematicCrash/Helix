@@ -41,7 +41,7 @@ export default class TCPConnection {
      */
     public async read(): Promise<Buffer> {
         if (this.reader) {
-            throw new TCPError(TCPCode.SIMULTANEOUS_READ);
+            throw TCPError.from(TCPCode.SIMULTANEOUS_READ);
         }
         try {
             this.readTimer.start();
@@ -54,10 +54,10 @@ export default class TCPConnection {
     /** Writes a buffer to the socket and returns a promise that resolves on success. */
     public async write(data: Buffer): Promise<void> {
         if (data.length === 0) {
-            throw new TCPError(TCPCode.EMPTY_DATA_BUFFER);
+            throw TCPError.from(TCPCode.EMPTY_DATA_BUFFER);
         }
         if (!this.canWrite) {
-            throw new TCPError(TCPCode.WRITE_BACKPRESSURE);
+            throw TCPError.from(TCPCode.WRITE_BACKPRESSURE);
         }
         try {
             this.writeTimer.start();
@@ -77,7 +77,7 @@ export default class TCPConnection {
                 return reject(this._error);
             }
             if (this.socket.writableEnded) {
-                return this._error = new TCPError(TCPCode.WRITE_TO_CLOSED_CONNECTION);
+                return this._error = TCPError.from(TCPCode.WRITE_TO_CLOSED_CONNECTION);
             }
             this.writer = {resolve, reject};
             const sentToKernel = this.socket.write(data, (err?: Error | null) => {
@@ -97,7 +97,7 @@ export default class TCPConnection {
                 return reject(this._error);
             }
             if (this.socket.readableEnded) {
-                return this._error = new TCPError(TCPCode.READ_FROM_CLOSED_CONNECTION);
+                return this._error = TCPError.from(TCPCode.READ_FROM_CLOSED_CONNECTION);
             }
             this.reader = {resolve, reject};
             this.socket.resume();
@@ -129,7 +129,7 @@ export default class TCPConnection {
      * Subsequent soRead calls will fail immediately via conn.error.
      */
     private onError = (err: Error): void => {
-        this._error = (err instanceof TCPError) ? err : new TCPError(TCPCode.UNEXPECTED_ERROR);
+        this._error = (err instanceof TCPError) ? err : TCPError.from(TCPCode.UNEXPECTED_ERROR);
         if (this.reader) {
             this.reader.reject(err);
             this.reader = null;
@@ -146,7 +146,7 @@ export default class TCPConnection {
      */
     private onClose = (): void => {
         if (!this._error && !this.socket.readableEnded) {
-            this._error = new TCPError(TCPCode.UNEXPECTED_CLOSE);
+            this._error = TCPError.from(TCPCode.UNEXPECTED_CLOSE);
         }
         this.cleanup();
     }
@@ -168,7 +168,7 @@ export default class TCPConnection {
             }
         })();
 
-        this._error = new TCPError(code);
+        this._error = TCPError.from(code);
         this.socket.destroy(this._error);
     }
 
