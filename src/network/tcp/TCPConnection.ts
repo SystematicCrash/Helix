@@ -58,7 +58,7 @@ export default class TCPConnection {
             throw new TCPError(TCPCode.EMPTY_DATA_BUFFER);
         }
         if (!this.canWrite) {
-            throw new TCPError(TCPCode.SEND_BACKPRESSURE);
+            throw new TCPError(TCPCode.WRITE_BACKPRESSURE);
         }
         try {
             this.writeTimer.start();

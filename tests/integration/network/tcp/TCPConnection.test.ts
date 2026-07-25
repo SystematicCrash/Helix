@@ -178,7 +178,7 @@ describe('TCPConnection', () => {
             test('should throw when canWrite is false (buffer full)', async () => {
                 (conn as any).canWrite = false;
                 await expect(() => conn.write(Buffer.from('test')))
-                    .rejects.toThrow(TCPCode.SEND_BACKPRESSURE);
+                    .rejects.toThrow(TCPCode.WRITE_BACKPRESSURE);
             });
 
             test('should set canWrite to false when socket writableLength exceeds MAX_WRITE_BUFFER_SIZE', async () => {
@@ -195,7 +195,7 @@ describe('TCPConnection', () => {
 
                 expect((conn as any).canWrite).toBe(false);
                 await expect(() => conn.write(Buffer.from('blocked')))
-                    .rejects.toThrow(TCPCode.SEND_BACKPRESSURE);
+                    .rejects.toThrow(TCPCode.WRITE_BACKPRESSURE);
 
                 socket.emit('drain');
                 expect((conn as any).canWrite).toBe(true);
