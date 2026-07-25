@@ -1,6 +1,6 @@
 export class TCPError extends Error {
     constructor(readonly code: TCPCode) {
-        super(code);
+        super(code.toString());
     }
 }
 
