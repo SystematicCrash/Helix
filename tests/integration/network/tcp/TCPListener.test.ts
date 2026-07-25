@@ -14,6 +14,7 @@ import { createClient, getRandomPort } from './common/utils';
 import TCPListener from '../../../../src/network/tcp/TCPListener.js';
 import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
 import {delay} from "@vitest/utils/timers";
+import {TCPCode} from "../../../../src/network/tcp/TCPError.js";
 
 describe('TCPListener', () => {
 
@@ -161,8 +162,7 @@ describe('TCPListener', () => {
             const conn = await acceptPromise;
             await delay(100); // Longer than IDLE_TIMEOUT
 
-            expect(conn.error).toEqual(new Error('TCP Connection lifetime exceeded'))
-
+            expect(conn.error?.code).toEqual(TCPCode.IDLE_TIMEOUT);
         });
     });
 });
