@@ -15,4 +15,5 @@ export enum TCPCode {
     SEND_BACKPRESSURE = 'Send buffer is full; cannot write to connection',
     EMPTY_DATA_BUFFER = 'Data length must be greater than zero',
     SIMULTANEOUS_READ = 'Another read is already in progress',
+    UNEXPECTED_ERROR = 'Unexpected error occurred',
 }
