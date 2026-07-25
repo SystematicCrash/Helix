@@ -10,7 +10,6 @@ export enum Event {
     ERROR = 'error',
     DATA = 'data',
     END = 'end',
-    write = 'write',
     CLOSE = 'close',
     DRAIN = 'drain',
 }
