@@ -77,6 +77,24 @@ export default class TCPConnection {
      * Further writes are rejected after this method is called.
      */
     public close(): void {
+        if (this.state === ConnectionState.READ_CLOSED) {
+            this.state = ConnectionState.CLOSED;
+        } else {
+            this.state = ConnectionState.WRITE_CLOSED;
+        }
+
+        this.socket.end();
+    }
+
+    /**
+     * Immediately terminates the TCP connection.
+     * Pending data may be discarded and the peer may receive a TCP reset.
+     */
+    public forceClose(): void {
+        if (this.state === ConnectionState.CLOSED) {
+            return;
+        }
+
         this.socket.destroy();
     }
 
@@ -85,10 +103,13 @@ export default class TCPConnection {
      * Only one read operation can be pending at a time.
      * Returns empty buffer when the remote peer performs a graceful shutdown.
      */
-    public async read(): Promise<Buffer> {
+    public async read(): Promise<Buffer | null> {
+        this.ensureReadable();
+
         if (this.reader) {
-            throw TCPError.from(TCPCode.SIMULTANEOUS_READ);
+            throw TCPError.from(TCPErrCode.SIMULTANEOUS_READ);
         }
+
         try {
             this.readTimer.start();
             return await this.readPromise();
@@ -102,23 +123,56 @@ export default class TCPConnection {
      * Backpressure is reported when the internal buffer is full.
      */
     public async write(data: Buffer): Promise<void> {
-        if (data.length === 0) {
-            throw TCPError.from(TCPCode.EMPTY_DATA_BUFFER);
-        }
-        if (!this.canWrite) {
-            throw TCPError.from(TCPCode.WRITE_BACKPRESSURE);
-        }
+        this.ensureWritable();
+
+        if (data.length === 0)
+            throw TCPError.from(TCPErrCode.EMPTY_DATA_BUFFER);
+
+        if (!this.canWrite)
+            throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
+
+        if (this.writer)
+            throw TCPError.from(TCPErrCode.SIMULTANEOUS_WRITE);
+
         try {
             this.writeTimer.start();
             const sentToKernel = await this.writePromise(data);
-            this.canWrite = sentToKernel || this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
+            this.canWrite = sentToKernel && this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
         } finally {
             this.writeTimer.stop();
         }
     }
 
     /**
-     * Wraps socket.write() in a promise.
+     * Validates that a read operation can be performed.
+     * Checks the socket current status.
+     */
+    private ensureReadable(): void {
+        if (this.state === ConnectionState.ERROR)
+            throw this._error;
+
+        if (this.state === ConnectionState.CLOSED)
+            throw TCPError.from(TCPErrCode.READ_AFTER_CLOSE);
+
+        if (this.state === ConnectionState.READ_CLOSED)
+            throw TCPError.from(TCPErrCode.READ_AFTER_EOF);
+    }
+
+    /**
+     * Validates that a write operation can be performed.
+     * Checks the current socket status.
+     */
+    private ensureWritable(): void {
+        if (this.state === ConnectionState.ERROR)
+            throw this._error;
+
+        if (this.state === ConnectionState.CLOSED)
+            throw TCPError.from(TCPErrCode.WRITE_AFTER_CLOSE);
+
+        if (this.state === ConnectionState.WRITE_CLOSED)
+            throw TCPError.from(TCPErrCode.WRITE_AFTER_EOF);
+    }
+
     /**
      * Wraps socket.write() into a promise.
      * Resolves with whether the data was fully accepted into the kernel buffer.
