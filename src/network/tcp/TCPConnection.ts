@@ -15,9 +15,11 @@ import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT,
  * This class does not provide message framing. TCP data is still a byte stream.
  */
 export default class TCPConnection {
-    private readTimer: Timer;
-    private writeTimer: Timer;
-    private canWrite: boolean = true;
+    private readonly readTimer: Timer;
+    private readonly writeTimer: Timer;
+
+    private state: ConnectionState = ConnectionState.OPEN;
+
     private _error: TCPError | null = null;
     private reader: DataReader | null = null;
     private writer: DataWriter | null = null;
