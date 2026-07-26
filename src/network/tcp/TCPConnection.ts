@@ -151,6 +151,9 @@ export default class TCPConnection {
         this.cleanup();
     }
 
+    /**
+     * Handles socket drain and signals more capacity for write.
+     */
     private onDrain = (): void => {
         this.canWrite = true;
     }
