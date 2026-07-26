@@ -4,8 +4,15 @@ import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
 import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT, TCPCode} from "./constants";
 /**
- * A TCP connection wrapping a Node.js socket with a promise-based read queue.
- * Only one read can be in flight at a time — `reader` holds the active promise callbacks.
+ * Provides a high-level promise-based wrapper around a Node.js TCP socket.
+ *
+ * Responsibilities:
+ * - Converts socket events into async read/write operations.
+ * - Handles connection lifecycle and failures.
+ * - Applies read/write/idle timeouts.
+ * - Manages write backpressure.
+ *
+ * This class does not provide message framing. TCP data is still a byte stream.
  */
 export default class TCPConnection {
     private readTimer: Timer;
@@ -27,17 +34,29 @@ export default class TCPConnection {
         this.writeTimer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
     }
 
+    /**
+     * Returns the last connection error.
+     *
+     * Returns null while the connection is healthy.
+     */
     public get error(): TCPError | null {
         return this._error;
     }
 
+    /**
+     * Performs a graceful TCP shutdown.
+     *
+     * Pending writes are flushed before the socket is closed.
+     * Further writes are rejected after this method is called.
+     */
     public close(): void {
         this.socket.destroy();
     }
 
     /**
-     * Resumes the socket and returns a promise that resolves with the next data chunk.
-     * Rejects immediately if the connection has a stored error.
+     * Reads the next available chunk from the TCP stream.
+     * Only one read operation can be pending at a time.
+     * Returns empty buffer when the remote peer performs a graceful shutdown.
      */
     public async read(): Promise<Buffer> {
         if (this.reader) {
@@ -51,7 +70,10 @@ export default class TCPConnection {
         }
     }
 
-    /** Writes a buffer to the socket and returns a promise that resolves on success. */
+    /**
+     * Writes data to the TCP socket.
+     * Backpressure is reported when the internal buffer is full.
+     */
     public async write(data: Buffer): Promise<void> {
         if (data.length === 0) {
             throw TCPError.from(TCPCode.EMPTY_DATA_BUFFER);
@@ -70,6 +92,9 @@ export default class TCPConnection {
 
     /**
      * Wraps socket.write() in a promise.
+    /**
+     * Wraps socket.write() into a promise.
+     * Resolves with whether the data was fully accepted into the kernel buffer.
      */
     private writePromise(data: Buffer): Promise<boolean> {
         return new Promise((resolve, reject) => {
@@ -89,7 +114,7 @@ export default class TCPConnection {
     }
 
     /**
-     * Creates a pending read operation waiting for incoming data.
+     * Creates a pending read promise and resumes socket consumption.
      */
     private readPromise(): Promise<Buffer> {
         return new Promise((resolve, reject) => {
@@ -125,8 +150,7 @@ export default class TCPConnection {
     }
 
     /**
-     * Stores the error on the connection and rejects any pending read.
-     * Subsequent soRead calls will fail immediately via conn.error.
+     * Handles socket errors and releases resources associated with this connection.
      */
     private onError = (err: Error): void => {
         this._error = (err instanceof TCPError) ? err : TCPError.from(TCPCode.UNEXPECTED_ERROR, err);
@@ -142,7 +166,8 @@ export default class TCPConnection {
     }
 
     /**
-     * Handles socket close events and performs cleanup.
+     * Handles final socket closure.
+     * The close event is emitted after the socket is fully closed.
      */
     private onClose = (): void => {
         if (!this._error && !this.socket.readableEnded) {
@@ -152,14 +177,16 @@ export default class TCPConnection {
     }
 
     /**
-     * Handles socket drain and signals more capacity for write.
+     * Handles socket drain notifications.
+     * Signals sending more data.
      */
     private onDrain = (): void => {
         this.canWrite = true;
     }
 
     /**
-     * Destroys the socket when a timeout is reached.
+     * Handles idle, read, and write timeout events.
+     * Closes the connection immediately.
      */
     private handleTimeout = (event: string): void => {
         const code: TCPCode = (() => {
@@ -176,7 +203,7 @@ export default class TCPConnection {
     }
 
     /**
-     * Stops timers and removes socket listeners.
+     * Releases resources owned by this connection.
      */
     private cleanup(): void {
         this.readTimer.stop();
