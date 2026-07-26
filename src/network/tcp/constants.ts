@@ -22,5 +22,12 @@ export enum TCPErrCode {
     WRITE_BACKPRESSURE = 'Send buffer is full; cannot write to connection',
     EMPTY_DATA_BUFFER = 'Data length must be greater than zero',
     SIMULTANEOUS_READ = 'Another read is already in progress',
+    SIMULTANEOUS_WRITE = 'Another write is already in progress',
+    IDLE_TIMEOUT = 'TCP connection lifetime exceeded',
+    WRITE_TIMEOUT = 'TCP write timeout exceeded',
+    READ_TIMEOUT = 'TCP read timeout exceeded',
+    UNKNOWN_TIMEOUT = 'Unexpected connection timeout',
+    UNEXPECTED_CLOSE = 'Connection closed unexpectedly',
     UNEXPECTED_ERROR = 'Unexpected error occurred',
+    GRACEFUL_CLOSE = 'Connection closed gracefully but between an async operation',
 }
