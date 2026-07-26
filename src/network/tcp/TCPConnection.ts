@@ -2,7 +2,16 @@ import {Socket} from 'net';
 import TCPError from "./TCPError";
 import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
-import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT, TCPCode} from "./constants";
+import {Event, IDLE_TIMEOUT, MAX_WRITE_BUFFER_SIZE, READ_TIMEOUT, TCPErrCode, WRITE_TIMEOUT,} from "./constants";
+
+enum ConnectionState {
+    OPEN,
+    CLOSED,
+    WRITE_CLOSED,
+    READ_CLOSED,
+    ERROR,
+}
+
 /**
  * Provides a high-level promise-based wrapper around a Node.js TCP socket.
  *
@@ -21,19 +30,35 @@ export default class TCPConnection {
     private state: ConnectionState = ConnectionState.OPEN;
 
     private _error: TCPError | null = null;
+
     private reader: DataReader | null = null;
     private writer: DataWriter | null = null;
 
-    constructor(private socket: Socket) {
+    private canWrite = true;
+
+    constructor(private readonly socket: Socket) {
         socket.on(Event.END, this.onEnd);
         socket.on(Event.DATA, this.onData);
         socket.on(Event.ERROR, this.onError);
         socket.on(Event.CLOSE, this.onClose);
         socket.on(Event.DRAIN, this.onDrain);
 
-        socket.setTimeout(IDLE_TIMEOUT, () => this.handleTimeout(Event.IDLE_TIMEOUT));
-        this.readTimer = new Timer(Event.READ_TIMEOUT, READ_TIMEOUT, this.handleTimeout);
-        this.writeTimer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
+        socket.setTimeout(
+            IDLE_TIMEOUT,
+            () => this.handleTimeout(Event.IDLE_TIMEOUT)
+        );
+
+        this.readTimer = new Timer(
+            Event.READ_TIMEOUT,
+            READ_TIMEOUT,
+            this.handleTimeout
+        );
+
+        this.writeTimer = new Timer(
+            Event.WRITE_TIMEOUT,
+            WRITE_TIMEOUT,
+            this.handleTimeout
+        );
     }
 
     /**
