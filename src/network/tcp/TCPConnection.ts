@@ -179,18 +179,19 @@ export default class TCPConnection {
      */
     private writePromise(data: Buffer): Promise<boolean> {
         return new Promise((resolve, reject) => {
-            if (this._error) {
-                return reject(this._error);
-            }
-            if (this.socket.writableEnded) {
-                return this._error = TCPError.from(TCPCode.WRITE_TO_CLOSED_CONNECTION);
-            }
             this.writer = {resolve, reject};
-            const sentToKernel = this.socket.write(data, (err?: Error | null) => {
+            try {
+
+                const sentToKernel = this.socket.write(data, (err?: Error | null) => {
+                    this.writer = null;
+                    if (err) reject(err);
+                    else resolve(sentToKernel);
+                });
+
+            } catch (err) {
                 this.writer = null;
-                if (err) reject(err);
-                else resolve(sentToKernel);
-            });
+                reject(err);
+            }
         });
     }
 
@@ -199,18 +200,32 @@ export default class TCPConnection {
      */
     private readPromise(): Promise<Buffer> {
         return new Promise((resolve, reject) => {
-            if (this._error) {
-                return reject(this._error);
-            }
-            if (this.socket.readableEnded) {
-                return this._error = TCPError.from(TCPCode.READ_FROM_CLOSED_CONNECTION);
-            }
             this.reader = {resolve, reject};
             this.socket.resume();
         });
     }
 
-    /** Fulfills the pending read promise with the received chunk and pauses the socket. */
+    /**
+     * Handles graceful remote shutdown.
+     */
+    private onEnd = (): void => {
+        if (this.state === ConnectionState.WRITE_CLOSED) {
+            this.state = ConnectionState.CLOSED;
+        } else {
+            this.state = ConnectionState.READ_CLOSED;
+        }
+
+        if (this.reader) {
+            this.reader.resolve(Buffer.alloc(0));
+            this.reader = null;
+        }
+    };
+
+    /**
+     * Handles incoming socket data.
+     * Pauses socket until the next read is called.
+     * sets reader to null to signal that the read is completed.
+     */
     private onData = (data: Buffer): void => {
         this.socket.pause();
 
@@ -220,42 +235,34 @@ export default class TCPConnection {
 
         this.reader.resolve(data);
         this.reader = null;
-    }
-
-    /** Resolves the pending read with an empty buffer to signal EOF. */
-    private onEnd = (): void => {
-        if (this.reader) {
-            this.reader.resolve(Buffer.alloc(0));
-            this.reader = null;
-        }
-    }
+    };
 
     /**
      * Handles socket errors and releases resources associated with this connection.
      */
     private onError = (err: Error): void => {
-        this._error = (err instanceof TCPError) ? err : TCPError.from(TCPCode.UNEXPECTED_ERROR, err);
-        if (this.reader) {
-            this.reader.reject(err);
-            this.reader = null;
-        }
-        if (this.writer) {
-            this.writer.reject(err);
-            this.writer = null;
-        }
-        this.cleanup();
-    }
+        this.state = ConnectionState.ERROR;
+        this._error = err instanceof TCPError ? err : TCPError.from(TCPErrCode.UNEXPECTED_ERROR, err);
+        this.failPending(this._error);
+        this.forceClose();
+    };
 
     /**
      * Handles final socket closure.
      * The close event is emitted after the socket is fully closed.
      */
-    private onClose = (): void => {
-        if (!this._error && !this.socket.readableEnded) {
-            this._error = TCPError.from(TCPCode.UNEXPECTED_CLOSE);
+    private onClose = (hadError: boolean): void => {
+        if (!this._error && hadError) {
+            this.state = ConnectionState.ERROR;
+            this._error = TCPError.from(TCPErrCode.UNEXPECTED_CLOSE);
+            this.failPending(this._error);
+        } else {
+            this.state = ConnectionState.CLOSED;
+            this.failPending(TCPError.from(TCPErrCode.GRACEFUL_CLOSE));
         }
+
         this.cleanup();
-    }
+    };
 
     /**
      * Handles socket drain notifications.
@@ -263,25 +270,42 @@ export default class TCPConnection {
      */
     private onDrain = (): void => {
         this.canWrite = true;
-    }
+    };
 
     /**
      * Handles idle, read, and write timeout events.
      * Closes the connection immediately.
      */
     private handleTimeout = (event: string): void => {
-        const code: TCPCode = (() => {
+        const code: TCPErrCode = (() => {
             switch (event) {
-                case Event.IDLE_TIMEOUT: return TCPCode.IDLE_TIMEOUT;
-                case Event.READ_TIMEOUT: return TCPCode.READ_TIMEOUT;
-                case Event.WRITE_TIMEOUT: return TCPCode.WRITE_TIMEOUT;
-                default: return TCPCode.UNKNOWN_TIMEOUT;
+                case Event.IDLE_TIMEOUT:
+                    return TCPErrCode.IDLE_TIMEOUT;
+                case Event.READ_TIMEOUT:
+                    return TCPErrCode.READ_TIMEOUT;
+                case Event.WRITE_TIMEOUT:
+                    return TCPErrCode.WRITE_TIMEOUT;
+                default:
+                    return TCPErrCode.UNKNOWN_TIMEOUT;
             }
         })();
+        this.socket.emit('error', TCPError.from(code));
+    };
 
-        this._error = TCPError.from(code);
-        this.socket.destroy(this._error);
-    }
+    /**
+     * Rejects all currently pending asynchronous operations.
+     */
+    private failPending(error: TCPError): void {
+        if (this.reader) {
+            this.reader.reject(error);
+            this.reader = null;
+        }
+
+        if (this.writer) {
+            this.writer.reject(error);
+            this.writer = null;
+        }
+    };
 
     /**
      * Releases resources owned by this connection.
@@ -289,6 +313,7 @@ export default class TCPConnection {
     private cleanup(): void {
         this.readTimer.stop();
         this.writeTimer.stop();
+        this.socket.setTimeout(0);
 
         this.socket.off(Event.END, this.onEnd);
         this.socket.off(Event.DATA, this.onData);
