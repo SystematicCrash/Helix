@@ -129,7 +129,7 @@ export default class TCPConnection {
      * Subsequent soRead calls will fail immediately via conn.error.
      */
     private onError = (err: Error): void => {
-        this._error = (err instanceof TCPError) ? err : TCPError.from(TCPCode.UNEXPECTED_ERROR);
+        this._error = (err instanceof TCPError) ? err : TCPError.from(TCPCode.UNEXPECTED_ERROR, err);
         if (this.reader) {
             this.reader.reject(err);
             this.reader = null;
