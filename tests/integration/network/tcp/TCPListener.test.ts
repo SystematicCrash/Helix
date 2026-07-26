@@ -11,7 +11,7 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
 
 import * as net from 'node:net';
 import { createClient, getRandomPort } from './common/utils';
-import {TCPListener, TCPConnection, TCPCode} from '../../../../src/network/tcp';
+import {TCPListener, TCPConnection, TCPErrCode} from '../../../../src/network/tcp';
 import {delay} from "@vitest/utils/timers";
 
 describe('TCPListener', () => {
@@ -160,7 +160,7 @@ describe('TCPListener', () => {
             const conn = await acceptPromise;
             await delay(100); // Longer than IDLE_TIMEOUT
 
-            expect(conn.error?.code).toEqual(TCPCode.IDLE_TIMEOUT);
+            expect(conn.error?.code).toEqual(TCPErrCode.IDLE_TIMEOUT);
         });
     });
 });
