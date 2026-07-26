@@ -1,8 +1,8 @@
 import {Socket} from 'net';
+import TCPError from "./TCPError";
 import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
-import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT} from "./constants";
-
+import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT, TCPCode} from "./constants";
 /**
  * A TCP connection wrapping a Node.js socket with a promise-based read queue.
  * Only one read can be in flight at a time — `reader` holds the active promise callbacks.
@@ -11,7 +11,7 @@ export default class TCPConnection {
     private readTimer: Timer;
     private writeTimer: Timer;
     private canWrite: boolean = true;
-    private _error: Error | null = null;
+    private _error: TCPError | null = null;
     private reader: DataReader | null = null;
     private writer: DataWriter | null = null;
 
@@ -27,7 +27,7 @@ export default class TCPConnection {
         this.writeTimer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
     }
 
-    public get error(): Error | null {
+    public get error(): TCPError | null {
         return this._error;
     }
 
@@ -41,7 +41,7 @@ export default class TCPConnection {
      */
     public async read(): Promise<Buffer> {
         if (this.reader) {
-            throw new Error("Another read is in progress!");
+            throw TCPError.from(TCPCode.SIMULTANEOUS_READ);
         }
         try {
             this.readTimer.start();
@@ -54,10 +54,10 @@ export default class TCPConnection {
     /** Writes a buffer to the socket and returns a promise that resolves on success. */
     public async write(data: Buffer): Promise<void> {
         if (data.length === 0) {
-            throw new Error("data length should be greater than 0!");
+            throw TCPError.from(TCPCode.EMPTY_DATA_BUFFER);
         }
         if (!this.canWrite) {
-            throw new Error("Can't write to connection, send buffer is filled!");
+            throw TCPError.from(TCPCode.WRITE_BACKPRESSURE);
         }
         try {
             this.writeTimer.start();
@@ -77,7 +77,7 @@ export default class TCPConnection {
                 return reject(this._error);
             }
             if (this.socket.writableEnded) {
-                return this._error = new Error('Cannot write to a closed connection!');
+                return this._error = TCPError.from(TCPCode.WRITE_TO_CLOSED_CONNECTION);
             }
             this.writer = {resolve, reject};
             const sentToKernel = this.socket.write(data, (err?: Error | null) => {
@@ -97,7 +97,7 @@ export default class TCPConnection {
                 return reject(this._error);
             }
             if (this.socket.readableEnded) {
-                return this._error = new Error('Cannot read from a closed connection!');
+                return this._error = TCPError.from(TCPCode.READ_FROM_CLOSED_CONNECTION);
             }
             this.reader = {resolve, reject};
             this.socket.resume();
@@ -129,7 +129,7 @@ export default class TCPConnection {
      * Subsequent soRead calls will fail immediately via conn.error.
      */
     private onError = (err: Error): void => {
-        this._error = err;
+        this._error = (err instanceof TCPError) ? err : TCPError.from(TCPCode.UNEXPECTED_ERROR, err);
         if (this.reader) {
             this.reader.reject(err);
             this.reader = null;
@@ -146,11 +146,14 @@ export default class TCPConnection {
      */
     private onClose = (): void => {
         if (!this._error && !this.socket.readableEnded) {
-            this._error = new Error('Connection closed unexpectedly!');
+            this._error = TCPError.from(TCPCode.UNEXPECTED_CLOSE);
         }
         this.cleanup();
     }
 
+    /**
+     * Handles socket drain and signals more capacity for write.
+     */
     private onDrain = (): void => {
         this.canWrite = true;
     }
@@ -159,16 +162,16 @@ export default class TCPConnection {
      * Destroys the socket when a timeout is reached.
      */
     private handleTimeout = (event: string): void => {
-        const message = (() => {
+        const code: TCPCode = (() => {
             switch (event) {
-                case Event.IDLE_TIMEOUT: return 'TCP Connection lifetime exceeded';
-                case Event.READ_TIMEOUT: return 'TCP Read timeout exceeded';
-                case Event.WRITE_TIMEOUT: return 'TCP Write timeout exceeded';
-                default: return 'Unexpected connection timeout';
+                case Event.IDLE_TIMEOUT: return TCPCode.IDLE_TIMEOUT;
+                case Event.READ_TIMEOUT: return TCPCode.READ_TIMEOUT;
+                case Event.WRITE_TIMEOUT: return TCPCode.WRITE_TIMEOUT;
+                default: return TCPCode.UNKNOWN_TIMEOUT;
             }
         })();
 
-        this._error = new Error(message);
+        this._error = TCPError.from(code);
         this.socket.destroy(this._error);
     }
 

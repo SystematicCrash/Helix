@@ -11,8 +11,7 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
 
 import * as net from 'node:net';
 import { createClient, getRandomPort } from './common/utils';
-import TCPListener from '../../../../src/network/tcp/TCPListener.js';
-import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
+import {TCPListener, TCPConnection, TCPCode} from '../../../../src/network/tcp';
 import {delay} from "@vitest/utils/timers";
 
 describe('TCPListener', () => {
@@ -161,8 +160,7 @@ describe('TCPListener', () => {
             const conn = await acceptPromise;
             await delay(100); // Longer than IDLE_TIMEOUT
 
-            expect(conn.error).toEqual(new Error('TCP Connection lifetime exceeded'))
-
+            expect(conn.error?.code).toEqual(TCPCode.IDLE_TIMEOUT);
         });
     });
 });

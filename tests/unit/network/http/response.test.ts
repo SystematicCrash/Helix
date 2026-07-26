@@ -5,7 +5,7 @@ import { HttpVersion } from '../../../../src/network/http/constants.js';
 import { HttpResponse } from '../../../../src/network/http/types.js';
 import { memoryReader } from '../../../../src/network/http/request.js';
 import { mockedTCPConnection } from '../common/utils.js';
-import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
+import {TCPConnection} from '../../../../src/network/tcp';
 
 describe('mapErrorToResponse()', () => {
 

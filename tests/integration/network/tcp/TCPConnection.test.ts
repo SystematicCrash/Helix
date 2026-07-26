@@ -12,11 +12,9 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
     };
 });
 
-import TCPConnection from '../../../../src/network/tcp/TCPConnection';
+import { TCPConnection, TCPListener, TCPCode, MAX_WRITE_BUFFER_SIZE } from '../../../../src/network/tcp';
 import { Socket } from 'net';
 import { createClient, getRandomPort } from './common/utils';
-import TCPListener from '../../../../src/network/tcp/TCPListener';
-import {MAX_WRITE_BUFFER_SIZE} from "../../../../src/network/tcp/constants.js";
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;
@@ -79,9 +77,9 @@ describe('TCPConnection', () => {
             expect(data).toEqual(Buffer.from(''));
         });
 
-        test('should reject immediately if a socket error exists', async () => {
+        test('should reject read immediately if a socket error exists', async () => {
             (conn as any).socket.emit('error', new Error('Broken pipe'));
-            await expect(conn.read()).rejects.toThrow('Broken pipe');
+            await expect(conn.read()).rejects.toThrow(TCPCode.UNEXPECTED_ERROR);
         });
 
         test('reader should be null after read() resolves', async () => {
@@ -93,25 +91,25 @@ describe('TCPConnection', () => {
         test('should reject on concurrent read() calls', async () => {
             conn.read().catch(() => {});
             await expect(() => conn.read())
-                .rejects.toThrow('Another read is in progress!');
+                .rejects.toThrow(TCPCode.SIMULTANEOUS_READ);
         });
 
         test('should fire timeout when no data is received after specific amount of time', async () => {
             await expect(() => conn.read())
-                .rejects.toThrow(new Error('TCP Read timeout exceeded'));
+                .rejects.toThrow(TCPCode.READ_TIMEOUT);
         });
     });
 
     describe('write()', () => {
         test('should throw if data buffer is empty', async () => {
             await expect(() => conn.write(Buffer.from('')))
-                .rejects.toThrow('data length should be greater than 0!');
+                .rejects.toThrow(TCPCode.EMPTY_DATA_BUFFER);
         });
 
-        test('should reject immediately if a socket error exists', async () => {
+        test('should reject write immediately if a socket error exists', async () => {
             (conn as any).socket.emit('error', new Error('Broken pipe'));
             await expect(() => conn.write(Buffer.from('hello')))
-                .rejects.toThrow(new Error('Broken pipe'));
+                .rejects.toThrow(TCPCode.UNEXPECTED_ERROR);
         });
 
         test('should reject when socket is destroyed', async () => {
@@ -138,7 +136,7 @@ describe('TCPConnection', () => {
             );
 
             await expect(conn.write(Buffer.from('hello')))
-                .rejects.toThrow(new Error('TCP Write timeout exceeded'));
+                .rejects.toThrow(TCPCode.WRITE_TIMEOUT);
         });
 
         describe('backpressure', () => {
@@ -177,7 +175,7 @@ describe('TCPConnection', () => {
             test('should throw when canWrite is false (buffer full)', async () => {
                 (conn as any).canWrite = false;
                 await expect(() => conn.write(Buffer.from('test')))
-                    .rejects.toThrow("Can't write to connection, send buffer is filled!");
+                    .rejects.toThrow(TCPCode.WRITE_BACKPRESSURE);
             });
 
             test('should set canWrite to false when socket writableLength exceeds MAX_WRITE_BUFFER_SIZE', async () => {
@@ -194,7 +192,7 @@ describe('TCPConnection', () => {
 
                 expect((conn as any).canWrite).toBe(false);
                 await expect(() => conn.write(Buffer.from('blocked')))
-                    .rejects.toThrow("Can't write to connection, send buffer is filled!");
+                    .rejects.toThrow(TCPCode.WRITE_BACKPRESSURE);
 
                 socket.emit('drain');
                 expect((conn as any).canWrite).toBe(true);
