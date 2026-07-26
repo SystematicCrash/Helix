@@ -1,17 +1,18 @@
-import {TCPCode} from "./constants.js";
+import {TCPErrCode} from "./constants.js";
 
 export default class TCPError extends Error {
     constructor(
-        readonly code: TCPCode,
-        readonly cause?: Error) {
-        super(cause?.message ?? code.toString());
+        readonly code: TCPErrCode,
+        readonly cause?: Error
+    ) {
+        super(code.toString() || cause?.message);
     }
 
-    static from(code: TCPCode, cause?: Error): TCPError {
+    static from(code: TCPErrCode, cause?: Error): TCPError {
         return new TCPError(code, cause);
     }
 
-    static is(err: Error, code: TCPCode): boolean {
+    static is(err: Error, code: TCPErrCode): boolean {
         return (err instanceof TCPError) && (err.code === code);
     }
 }
