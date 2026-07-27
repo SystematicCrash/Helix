@@ -190,7 +190,7 @@ export default class TCPConnection {
     /**
      * Creates a pending read promise and resumes socket consumption.
      */
-    private readPromise(): Promise<Buffer> {
+    private readPromise(): Promise<Buffer | null> {
         return new Promise((resolve, reject) => {
             this.reader = {resolve, reject};
             this.socket.resume();
@@ -204,7 +204,7 @@ export default class TCPConnection {
         this.readClosed = true;
 
         if (this.reader) {
-            this.reader.resolve(Buffer.alloc(0));
+            this.reader.resolve(null);
             this.reader = null;
         }
     };
