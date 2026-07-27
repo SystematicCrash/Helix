@@ -2,47 +2,106 @@ import {Socket} from 'net';
 import TCPError from "./TCPError";
 import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
-import {Event, IDLE_TIMEOUT, READ_TIMEOUT, MAX_WRITE_BUFFER_SIZE, WRITE_TIMEOUT, TCPCode} from "./constants";
+import {Event, IDLE_TIMEOUT, MAX_WRITE_BUFFER_SIZE, READ_TIMEOUT, TCPErrCode, WRITE_TIMEOUT,} from "./constants";
+
 /**
- * A TCP connection wrapping a Node.js socket with a promise-based read queue.
- * Only one read can be in flight at a time — `reader` holds the active promise callbacks.
+ * Provides a high-level promise-based wrapper around a Node.js TCP socket.
+ *
+ * Responsibilities:
+ * - Converts socket events into async read/write operations.
+ * - Handles connection lifecycle and failures.
+ * - Applies read/write/idle timeouts.
+ * - Manages write backpressure.
+ *
+ * This class does not provide message framing. TCP data is still a byte stream.
  */
 export default class TCPConnection {
-    private readTimer: Timer;
-    private writeTimer: Timer;
-    private canWrite: boolean = true;
+    private readonly readTimer: Timer;
+    private readonly writeTimer: Timer;
+
+    private canWrite = true;
+    private readClosed: boolean = false;
+    private writeClosed: boolean = false;
+
     private _error: TCPError | null = null;
+
     private reader: DataReader | null = null;
     private writer: DataWriter | null = null;
 
-    constructor(private socket: Socket) {
+    constructor(private readonly socket: Socket) {
         socket.on(Event.END, this.onEnd);
         socket.on(Event.DATA, this.onData);
+        socket.on(Event.DRAIN, this.onDrain);
         socket.on(Event.ERROR, this.onError);
         socket.on(Event.CLOSE, this.onClose);
-        socket.on(Event.DRAIN, this.onDrain);
 
-        socket.setTimeout(IDLE_TIMEOUT, () => this.handleTimeout(Event.IDLE_TIMEOUT));
-        this.readTimer = new Timer(Event.READ_TIMEOUT, READ_TIMEOUT, this.handleTimeout);
-        this.writeTimer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
+        socket.setTimeout(
+            IDLE_TIMEOUT,
+            () => this.handleTimeout(Event.IDLE_TIMEOUT)
+        );
+
+        this.readTimer = new Timer(
+            Event.READ_TIMEOUT,
+            READ_TIMEOUT,
+            this.handleTimeout
+        );
+
+        this.writeTimer = new Timer(
+            Event.WRITE_TIMEOUT,
+            WRITE_TIMEOUT,
+            this.handleTimeout
+        );
     }
 
+    /**
+     * Returns the last connection error.
+     *
+     * Returns null while the connection is healthy.
+     */
     public get error(): TCPError | null {
         return this._error;
     }
 
+    public get isFullyClosed(): boolean {
+        return this.readClosed && this.writeClosed;
+    }
+
+    /**
+     * Performs a graceful TCP shutdown.
+     *
+     * Pending writes are flushed before the socket is closed.
+     * Further writes are rejected after this method is called.
+     */
     public close(): void {
+        if (this.writeClosed) return;
+
+        this.writeClosed = true;
+        this.socket.end();
+    }
+
+    /**
+     * Immediately terminates the TCP connection.
+     * Pending data may be discarded and the peer may receive a TCP reset.
+     */
+    public forceClose(): void {
+        if (this.isFullyClosed) return;
+
+        this._error = this._error ?? TCPError.from(TCPErrCode.FORCED_CLOSE);
         this.socket.destroy();
     }
 
     /**
-     * Resumes the socket and returns a promise that resolves with the next data chunk.
-     * Rejects immediately if the connection has a stored error.
+     * Reads the next available chunk from the TCP stream.
+     * Only one read operation can be pending at a time.
+     * Returns empty buffer when the remote peer performs a graceful shutdown.
      */
-    public async read(): Promise<Buffer> {
+    public async read(): Promise<Buffer | null> {
+        this.ensureReadable();
+
         if (this.reader) {
-            throw TCPError.from(TCPCode.SIMULTANEOUS_READ);
+            throw TCPError.from(TCPErrCode.SIMULTANEOUS_READ);
         }
+
         try {
             this.readTimer.start();
             return await this.readPromise();
@@ -51,136 +110,192 @@ export default class TCPConnection {
         }
     }
 
-    /** Writes a buffer to the socket and returns a promise that resolves on success. */
+    /**
+     * Writes data to the TCP socket.
+     * Backpressure is reported when the internal buffer is full.
+     */
     public async write(data: Buffer): Promise<void> {
-        if (data.length === 0) {
-            throw TCPError.from(TCPCode.EMPTY_DATA_BUFFER);
-        }
-        if (!this.canWrite) {
-            throw TCPError.from(TCPCode.WRITE_BACKPRESSURE);
-        }
+        this.ensureWritable();
+
+        if (data.length === 0)
+            throw TCPError.from(TCPErrCode.EMPTY_DATA_BUFFER);
+
+        if (!this.canWrite)
+            throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
+
+        if (this.writer)
+            throw TCPError.from(TCPErrCode.SIMULTANEOUS_WRITE);
+
         try {
             this.writeTimer.start();
             const sentToKernel = await this.writePromise(data);
-            this.canWrite = sentToKernel || this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
+            this.canWrite = sentToKernel && this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
         } finally {
             this.writeTimer.stop();
         }
     }
 
     /**
-     * Wraps socket.write() in a promise.
+     * Validates that a read operation can be performed.
+     * Checks the socket current status.
+     */
+    private ensureReadable(): void {
+        if (this._error)
+            throw this._error;
+
+        if (this.isFullyClosed)
+            throw TCPError.from(TCPErrCode.READ_AFTER_CLOSE);
+
+        if (this.readClosed)
+            throw TCPError.from(TCPErrCode.READ_AFTER_EOF);
+    }
+
+    /**
+     * Validates that a write operation can be performed.
+     * Checks the current socket status.
+     */
+    private ensureWritable(): void {
+        if (this._error)
+            throw this._error;
+
+        if (this.isFullyClosed)
+            throw TCPError.from(TCPErrCode.WRITE_AFTER_CLOSE);
+
+        if (this.writeClosed)
+            throw TCPError.from(TCPErrCode.WRITE_AFTER_EOF);
+    }
+
+    /**
+     * Wraps socket.write() into a promise.
+     * Resolves with whether the data was fully accepted into the kernel buffer.
      */
     private writePromise(data: Buffer): Promise<boolean> {
         return new Promise((resolve, reject) => {
-            if (this._error) {
-                return reject(this._error);
-            }
-            if (this.socket.writableEnded) {
-                return this._error = TCPError.from(TCPCode.WRITE_TO_CLOSED_CONNECTION);
-            }
             this.writer = {resolve, reject};
-            const sentToKernel = this.socket.write(data, (err?: Error | null) => {
+            try {
+
+                const sentToKernel = this.socket.write(data, (err?: Error | null) => {
+                    this.writer = null;
+                    if (err) reject(err);
+                    else resolve(sentToKernel);
+                });
+
+            } catch (err) {
                 this.writer = null;
-                if (err) reject(err);
-                else resolve(sentToKernel);
-            });
+                reject(err);
+            }
         });
     }
 
     /**
-     * Creates a pending read operation waiting for incoming data.
+     * Creates a pending read promise and resumes socket consumption.
      */
-    private readPromise(): Promise<Buffer> {
+    private readPromise(): Promise<Buffer | null> {
         return new Promise((resolve, reject) => {
-            if (this._error) {
-                return reject(this._error);
-            }
-            if (this.socket.readableEnded) {
-                return this._error = TCPError.from(TCPCode.READ_FROM_CLOSED_CONNECTION);
-            }
             this.reader = {resolve, reject};
             this.socket.resume();
         });
     }
 
-    /** Fulfills the pending read promise with the received chunk and pauses the socket. */
+    /**
+     * Handles graceful remote shutdown.
+     */
+    private onEnd = (): void => {
+        this.readClosed = true;
+
+        if (this.reader) {
+            this.reader.resolve(null);
+            this.reader = null;
+        }
+    };
+
+    /**
+     * Handles incoming socket data.
+     * Pauses socket until the next read is called.
+     * sets reader to null to signal that the read is completed.
+     */
     private onData = (data: Buffer): void => {
         this.socket.pause();
 
-        if (!this.reader) {
-            return;
-        }
+        if (!this.reader) return;
 
         this.reader.resolve(data);
         this.reader = null;
-    }
-
-    /** Resolves the pending read with an empty buffer to signal EOF. */
-    private onEnd = (): void => {
-        if (this.reader) {
-            this.reader.resolve(Buffer.alloc(0));
-            this.reader = null;
-        }
-    }
+    };
 
     /**
-     * Stores the error on the connection and rejects any pending read.
-     * Subsequent soRead calls will fail immediately via conn.error.
+     * Handles socket errors and releases resources associated with this connection.
      */
     private onError = (err: Error): void => {
-        this._error = (err instanceof TCPError) ? err : TCPError.from(TCPCode.UNEXPECTED_ERROR, err);
-        if (this.reader) {
-            this.reader.reject(err);
-            this.reader = null;
-        }
-        if (this.writer) {
-            this.writer.reject(err);
-            this.writer = null;
-        }
-        this.cleanup();
-    }
+        this._error = err instanceof TCPError ? err : TCPError.from(TCPErrCode.UNEXPECTED_ERROR, err);
+        this.forceClose();
+    };
 
     /**
-     * Handles socket close events and performs cleanup.
+     * Handles final socket closure.
+     * The close event is emitted after the socket is fully closed.
      */
     private onClose = (): void => {
-        if (!this._error && !this.socket.readableEnded) {
-            this._error = TCPError.from(TCPCode.UNEXPECTED_CLOSE);
+        this.readClosed = true;
+        this.writeClosed = true;
+
+        if (this._error) {
+            this.failPending(this._error);
         }
+
         this.cleanup();
-    }
+    };
 
     /**
-     * Handles socket drain and signals more capacity for write.
+     * Handles socket drain notifications.
+     * Signals sending more data.
      */
     private onDrain = (): void => {
         this.canWrite = true;
-    }
+    };
 
     /**
-     * Destroys the socket when a timeout is reached.
+     * Handles idle, read, and write timeout events.
+     * Closes the connection immediately.
      */
     private handleTimeout = (event: string): void => {
-        const code: TCPCode = (() => {
+        const code: TCPErrCode = (() => {
             switch (event) {
-                case Event.IDLE_TIMEOUT: return TCPCode.IDLE_TIMEOUT;
-                case Event.READ_TIMEOUT: return TCPCode.READ_TIMEOUT;
-                case Event.WRITE_TIMEOUT: return TCPCode.WRITE_TIMEOUT;
-                default: return TCPCode.UNKNOWN_TIMEOUT;
+                case Event.IDLE_TIMEOUT:
+                    return TCPErrCode.IDLE_TIMEOUT;
+                case Event.READ_TIMEOUT:
+                    return TCPErrCode.READ_TIMEOUT;
+                case Event.WRITE_TIMEOUT:
+                    return TCPErrCode.WRITE_TIMEOUT;
+                default:
+                    return TCPErrCode.UNKNOWN_TIMEOUT;
             }
         })();
-
-        this._error = TCPError.from(code);
-        this.socket.destroy(this._error);
-    }
+        this.socket.emit('error', TCPError.from(code));
+    };
 
     /**
-     * Stops timers and removes socket listeners.
+     * Rejects all currently pending asynchronous operations.
+     */
+    private failPending(error: TCPError): void {
+        if (this.reader) {
+            this.reader.reject(error);
+            this.reader = null;
+        }
+
+        if (this.writer) {
+            this.writer.reject(error);
+            this.writer = null;
+        }
+    };
+
+    /**
+     * Releases resources owned by this connection.
      */
     private cleanup(): void {
         this.readTimer.stop();
         this.writeTimer.stop();
+        this.socket.setTimeout(0);
 
         this.socket.off(Event.END, this.onEnd);
         this.socket.off(Event.DATA, this.onData);

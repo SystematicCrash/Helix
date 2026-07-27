@@ -1,12 +1,12 @@
 import TCPConnection from "./TCPConnection";
 
 export interface DataReader {
-    resolve(value: Buffer): void;
+    resolve(value: Buffer | null): void;
     reject(reason: Error): void;
 }
 
 export interface DataWriter {
-    resolve(boolean): void;
+    resolve(success: boolean): void;
     reject(reason: Error): void;
 }
 
