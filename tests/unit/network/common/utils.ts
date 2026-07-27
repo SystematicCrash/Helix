@@ -1,4 +1,4 @@
-import TCPConnection from "../../../../src/network/tcp/TCPConnection.js";
+import {TCPConnection} from "../../../../src/network/tcp";
 import {vi} from "vitest";
 import {spyOn} from "@vitest/spy";
 

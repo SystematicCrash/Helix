@@ -1,8 +1,19 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+/** Mocks */
+vi.mock('../../../../src/network/tcp/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../src/network/tcp/constants')>('../../../../src/network/tcp/constants');
+
+    return {
+        ...actual,
+        IDLE_TIMEOUT: 50,
+        MAXIMUM_ALIVE_CONNECTIONS: 5,
+    };
+});
+
 import * as net from 'node:net';
 import { createClient, getRandomPort } from './common/utils';
-import TCPListener from '../../../../src/network/tcp/TCPListener.js';
-import TCPConnection from '../../../../src/network/tcp/TCPConnection.js';
+import {TCPListener, TCPConnection, TCPErrCode, MAXIMUM_ALIVE_CONNECTIONS} from '../../../../src/network/tcp';
+import {delay} from "@vitest/utils/timers";
 
 describe('TCPListener', () => {
 
@@ -141,6 +152,26 @@ describe('TCPListener', () => {
 
             const conn = await acceptPromise;
             expect((conn as any).socket.isPaused()).toBe(true);
+        });
+
+        test('should fire idle timeout when no activity is performed on connection', async () => {
+            const acceptPromise = listener.accept();
+            clients.push(await createClient(port));
+
+            const conn = await acceptPromise;
+            await delay(100); // Longer than IDLE_TIMEOUT
+
+            expect(conn.error?.code).toEqual(TCPErrCode.IDLE_TIMEOUT);
+        });
+
+        test('should throw on accepting new connection when the limit of alive connections in exceeded', async () => {
+            for (let i = 1; i <= MAXIMUM_ALIVE_CONNECTIONS; i++) {
+                const acceptPromise = listener.accept();
+                clients.push(await createClient(port));
+                await acceptPromise;
+            }
+
+            expect(() => listener.accept()).toThrow(TCPErrCode.MAXIMUM_CONNECTIONS_EXCEEDED);
         });
     });
 });

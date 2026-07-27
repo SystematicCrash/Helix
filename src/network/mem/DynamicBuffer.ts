@@ -1,3 +1,5 @@
+import {MAX_BUFFER_SIZE} from "./constants.js";
+
 /** A growable buffer with a sliding window to avoid redundant copies on consume. */
 export default class DynamicBuffer {
     private _length: number;
@@ -43,6 +45,10 @@ export default class DynamicBuffer {
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
     public push(data: Buffer): void {
         const newLen = this.length + data.length;
+
+        if (newLen >= MAX_BUFFER_SIZE) {
+            throw new Error('Buffer maximum size exceeded!');
+        }
 
         if (newLen > this._capacity) {
             let newCap = Math.max(this._capacity, 32);
