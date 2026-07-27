@@ -1,14 +1,14 @@
 import {Socket} from 'net';
-import TCPError from "./TCPError";
-import SocketReader from "./SocketReader";
-import SocketWriter from "./SocketWriter";
-import {Event, IDLE_TIMEOUT, MAX_WRITE_BUFFER_SIZE, READ_TIMEOUT, TCPErrCode, WRITE_TIMEOUT,} from "./constants";
+import TCPError from "../common/TCPError.js";
+import SocketReader from "./SocketReader.js";
+import SocketWriter from "./SocketWriter.js";
+import {Event, IDLE_TIMEOUT, MAX_WRITE_BUFFER_SIZE, READ_TIMEOUT, TCPErrCode, WRITE_TIMEOUT,} from "../common/constants.js";
 
 /**
- * Provides a high-level promise-based wrapper around a Node.js TCP socket.
+ * Provides a high-level promise-based wrapper around a Node.js TCP conn.
  *
  * Responsibilities:
- * - Converts socket events into async read/write operations.
+ * - Converts conn events into async read/write operations.
  * - Handles connection lifecycle and failures.
  * - Applies read/write/idle timeouts.
  * - Manages write backpressure.
@@ -77,7 +77,7 @@ export default class TCPConnection {
     /**
      * Performs a graceful TCP shutdown.
      *
-     * Pending writes are flushed before the socket is closed.
+     * Pending writes are flushed before the conn is closed.
      * Further writes are rejected after this method is called.
      */
     public close(): void {
@@ -94,7 +94,8 @@ export default class TCPConnection {
     public forceClose(): void {
         if (this.isFullyClosed) return;
 
-        this._error = this._error ?? TCPError.from(TCPErrCode.FORCED_CLOSE);
+        this.sockReader.finish(this._error);
+        this.sockWriter.finish(this._error);
         this.socket.destroy();
     }
 
@@ -107,7 +108,7 @@ export default class TCPConnection {
     }
 
     /**
-     * Handles socket errors and releases resources associated with this connection.
+     * Handles conn errors and releases resources associated with this connection.
      */
     private onError = (err: Error): void => {
         this._error = err instanceof TCPError ? err : TCPError.from(TCPErrCode.UNEXPECTED_ERROR, err);
@@ -115,8 +116,8 @@ export default class TCPConnection {
     };
 
     /**
-     * Handles final socket closure.
-     * The close event is emitted after the socket is fully closed.
+     * Handles final conn closure.
+     * The close event is emitted after the conn is fully closed.
      */
     private onClose = (): void => {
         this.sockReader.finish(this._error);

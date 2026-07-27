@@ -1,4 +1,4 @@
-import TCPListener from "./src/network/tcp/TCPListener";
+import TCPListener from "./src/network/tcp/server/TCPListener.js";
 import {serveClient} from "./src/network/http/server";
 
 async function main() {

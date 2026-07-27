@@ -1,8 +1,8 @@
 import {Socket} from 'net';
-import {DataReader} from "./types.js";
-import Timer from "../common/Timer.js";
-import {Event, READ_TIMEOUT, TCPErrCode} from "./constants.js";
-import TCPError from "./TCPError.js";
+import {DataReader} from "../common/types.js";
+import Timer from "../../common/Timer.js";
+import {Event, READ_TIMEOUT, TCPErrCode} from "../common/constants.js";
+import TCPError from "../common/TCPError.js";
 
 export default class SocketReader {
     private timer: Timer;
@@ -51,6 +51,8 @@ export default class SocketReader {
      * no more reads can be performed after this called.
      */
     public finish(err: TCPError | null): void {
+        if (this.finished) return;
+
         this.finished = true;
 
         if (this.reader) {
@@ -62,7 +64,7 @@ export default class SocketReader {
     }
 
     /**
-     * Creates a pending read promise and resumes socket consumption.
+     * Creates a pending read promise and resumes conn consumption.
      */
     private readPromise(): Promise<Buffer | null> {
         return new Promise((resolve, reject) => {
@@ -72,8 +74,8 @@ export default class SocketReader {
     }
 
     /**
-     * Handles incoming socket data.
-     * Pauses socket until the next read is called.
+     * Handles incoming conn data.
+     * Pauses conn until the next read is called.
      * sets reader to null to signal that the read is completed.
      */
     private onData = (data: Buffer): void => {

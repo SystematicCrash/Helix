@@ -1,8 +1,8 @@
-import {DataWriter} from "./types.js";
-import Timer from "../common/Timer.js";
+import {DataWriter} from "../common/types.js";
+import Timer from "../../common/Timer.js";
 import {Socket} from "net";
-import {Event, MAX_WRITE_BUFFER_SIZE, TCPErrCode, WRITE_TIMEOUT} from "./constants.js";
-import TCPError from "./TCPError.js";
+import {Event, MAX_WRITE_BUFFER_SIZE, TCPErrCode, WRITE_TIMEOUT} from "../common/constants.js";
+import TCPError from "../common/TCPError.js";
 
 export default class SocketWriter {
     private timer: Timer;
@@ -30,6 +30,8 @@ export default class SocketWriter {
      * no more writes can be performed after this called.
      */
     public finish(err: TCPError | null): void {
+        if (this.finished) return;
+
         this.finished = true;
 
         if (this.writer) {
@@ -40,7 +42,7 @@ export default class SocketWriter {
     }
 
     /**
-     * Writes data to the TCP socket.
+     * Writes data to the TCP conn.
      * Backpressure is reported when the internal buffer is full.
      */
     public async write(data: Buffer): Promise<void> {
@@ -70,7 +72,7 @@ export default class SocketWriter {
     }
 
     /**
-     * Wraps socket.write() into a promise.
+     * Wraps conn.write() into a promise.
      * Resolves with whether the data was fully accepted into the kernel buffer.
      */
     private writePromise(data: Buffer): Promise<boolean> {
