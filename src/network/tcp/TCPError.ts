@@ -5,7 +5,7 @@ export default class TCPError extends Error {
         readonly code: TCPErrCode,
         readonly cause?: Error
     ) {
-        super(code.toString() || cause?.message);
+        super(cause?.message || code.toString());
     }
 
     static from(code: TCPErrCode, cause?: Error): TCPError {
