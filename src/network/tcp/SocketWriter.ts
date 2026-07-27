@@ -17,9 +17,7 @@ export default class SocketWriter {
             () => this.writer?.reject(TCPError.from(TCPErrCode.WRITE_TIMEOUT))
         );
 
-        socket.on(Event.DRAIN, () => {
-            this.canWrite = true;
-        });
+        socket.on(Event.DRAIN, this.onDrain);
     }
 
     public get isFinished(): boolean {
@@ -33,9 +31,12 @@ export default class SocketWriter {
      */
     public finish(err: TCPError | null): void {
         this.finished = true;
+
         if (this.writer) {
             if (err) this.writer.reject(err);
         }
+
+        this.cleanup();
     }
 
     /**
@@ -88,5 +89,14 @@ export default class SocketWriter {
                 reject(err);
             }
         });
+    }
+
+    private onDrain = (): void => {
+        this.canWrite = true;
+    }
+
+    private cleanup(): void  {
+        this.timer.stop();
+        this.socket.off(Event.DRAIN, this.onDrain);
     }
 }
