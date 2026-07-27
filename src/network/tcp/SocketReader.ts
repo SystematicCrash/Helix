@@ -52,10 +52,13 @@ export default class SocketReader {
      */
     public finish(err: TCPError | null): void {
         this.finished = true;
+
         if (this.reader) {
             if (err) this.reader.reject(err);
             else this.reader.resolve(null);
         }
+
+        this.cleanup();
     }
 
     /**
@@ -81,4 +84,9 @@ export default class SocketReader {
         this.reader.resolve(data);
         this.reader = null;
     };
+
+    private cleanup(): void  {
+        this.timer.stop();
+        this.socket.off(Event.DATA, this.onData);
+    }
 }
