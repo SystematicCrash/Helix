@@ -4,14 +4,6 @@ import Timer from "../common/Timer";
 import {DataReader, DataWriter} from "./types";
 import {Event, IDLE_TIMEOUT, MAX_WRITE_BUFFER_SIZE, READ_TIMEOUT, TCPErrCode, WRITE_TIMEOUT,} from "./constants";
 
-enum ConnectionState {
-    OPEN,
-    CLOSED,
-    WRITE_CLOSED,
-    READ_CLOSED,
-    ERROR,
-}
-
 /**
  * Provides a high-level promise-based wrapper around a Node.js TCP socket.
  *
@@ -27,21 +19,21 @@ export default class TCPConnection {
     private readonly readTimer: Timer;
     private readonly writeTimer: Timer;
 
-    private state: ConnectionState = ConnectionState.OPEN;
+    private canWrite = true;
+    private readClosed: boolean = false;
+    private writeClosed: boolean = false;
 
     private _error: TCPError | null = null;
 
     private reader: DataReader | null = null;
     private writer: DataWriter | null = null;
 
-    private canWrite = true;
-
     constructor(private readonly socket: Socket) {
         socket.on(Event.END, this.onEnd);
         socket.on(Event.DATA, this.onData);
+        socket.on(Event.DRAIN, this.onDrain);
         socket.on(Event.ERROR, this.onError);
         socket.on(Event.CLOSE, this.onClose);
-        socket.on(Event.DRAIN, this.onDrain);
 
         socket.setTimeout(
             IDLE_TIMEOUT,
@@ -70,6 +62,10 @@ export default class TCPConnection {
         return this._error;
     }
 
+    public get isFullyClosed(): boolean {
+        return this.readClosed && this.writeClosed;
+    }
+
     /**
      * Performs a graceful TCP shutdown.
      *
@@ -77,12 +73,9 @@ export default class TCPConnection {
      * Further writes are rejected after this method is called.
      */
     public close(): void {
-        if (this.state === ConnectionState.READ_CLOSED) {
-            this.state = ConnectionState.CLOSED;
-        } else {
-            this.state = ConnectionState.WRITE_CLOSED;
-        }
+        if (this.writeClosed) return;
 
+        this.writeClosed = true;
         this.socket.end();
     }
 
@@ -91,10 +84,9 @@ export default class TCPConnection {
      * Pending data may be discarded and the peer may receive a TCP reset.
      */
     public forceClose(): void {
-        if (this.state === ConnectionState.CLOSED) {
-            return;
-        }
+        if (this.isFullyClosed) return;
 
+        this._error = this._error ?? TCPError.from(TCPErrCode.FORCED_CLOSE);
         this.socket.destroy();
     }
 
@@ -148,13 +140,13 @@ export default class TCPConnection {
      * Checks the socket current status.
      */
     private ensureReadable(): void {
-        if (this.state === ConnectionState.ERROR)
+        if (this._error)
             throw this._error;
 
-        if (this.state === ConnectionState.CLOSED)
+        if (this.isFullyClosed)
             throw TCPError.from(TCPErrCode.READ_AFTER_CLOSE);
 
-        if (this.state === ConnectionState.READ_CLOSED)
+        if (this.readClosed)
             throw TCPError.from(TCPErrCode.READ_AFTER_EOF);
     }
 
@@ -163,13 +155,13 @@ export default class TCPConnection {
      * Checks the current socket status.
      */
     private ensureWritable(): void {
-        if (this.state === ConnectionState.ERROR)
+        if (this._error)
             throw this._error;
 
-        if (this.state === ConnectionState.CLOSED)
+        if (this.isFullyClosed)
             throw TCPError.from(TCPErrCode.WRITE_AFTER_CLOSE);
 
-        if (this.state === ConnectionState.WRITE_CLOSED)
+        if (this.writeClosed)
             throw TCPError.from(TCPErrCode.WRITE_AFTER_EOF);
     }
 
@@ -209,11 +201,7 @@ export default class TCPConnection {
      * Handles graceful remote shutdown.
      */
     private onEnd = (): void => {
-        if (this.state === ConnectionState.WRITE_CLOSED) {
-            this.state = ConnectionState.CLOSED;
-        } else {
-            this.state = ConnectionState.READ_CLOSED;
-        }
+        this.readClosed = true;
 
         if (this.reader) {
             this.reader.resolve(Buffer.alloc(0));
@@ -229,9 +217,7 @@ export default class TCPConnection {
     private onData = (data: Buffer): void => {
         this.socket.pause();
 
-        if (!this.reader) {
-            return;
-        }
+        if (!this.reader) return;
 
         this.reader.resolve(data);
         this.reader = null;
@@ -241,9 +227,7 @@ export default class TCPConnection {
      * Handles socket errors and releases resources associated with this connection.
      */
     private onError = (err: Error): void => {
-        this.state = ConnectionState.ERROR;
         this._error = err instanceof TCPError ? err : TCPError.from(TCPErrCode.UNEXPECTED_ERROR, err);
-        this.failPending(this._error);
         this.forceClose();
     };
 
@@ -251,14 +235,12 @@ export default class TCPConnection {
      * Handles final socket closure.
      * The close event is emitted after the socket is fully closed.
      */
-    private onClose = (hadError: boolean): void => {
-        if (!this._error && hadError) {
-            this.state = ConnectionState.ERROR;
-            this._error = TCPError.from(TCPErrCode.UNEXPECTED_CLOSE);
+    private onClose = (): void => {
+        this.readClosed = true;
+        this.writeClosed = true;
+
+        if (this._error) {
             this.failPending(this._error);
-        } else {
-            this.state = ConnectionState.CLOSED;
-            this.failPending(TCPError.from(TCPErrCode.GRACEFUL_CLOSE));
         }
 
         this.cleanup();
