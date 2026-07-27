@@ -65,21 +65,24 @@ describe('TCPConnection', () => {
             expect(data).toEqual(Buffer.from('hello'));
         });
 
-        test('should resolve with empty buffer on EOF', async () => {
+        test('should resolve pending read with null on EOF', async () => {
+            const readPromise = conn.read();
             client.end();
-            const data = await conn.read();
-            expect(data).toEqual(Buffer.from(''));
+            await expect(readPromise).resolves.toBeNull();
         });
 
-        test('should resolve with empty buffer when client is destroyed', async () => {
+        test('should resolve with null when client is destroyed', async () => {
+            const readPromise = conn.read();
             client.destroy();
-            const data = await conn.read();
-            expect(data).toEqual(Buffer.from(''));
+            await expect(readPromise).resolves.toBeNull();
         });
 
         test('should reject read immediately if a socket error exists', async () => {
             (conn as any).socket.emit('error', new Error('Broken pipe'));
-            await expect(conn.read()).rejects.toThrow(TCPErrCode.UNEXPECTED_ERROR);
+            await expect(conn.read()).rejects.toMatchObject({
+                message: 'Broken pipe',
+                code: TCPErrCode.UNEXPECTED_ERROR
+            });
         });
 
         test('reader should be null after read() resolves', async () => {
@@ -109,7 +112,10 @@ describe('TCPConnection', () => {
         test('should reject write immediately if a socket error exists', async () => {
             (conn as any).socket.emit('error', new Error('Broken pipe'));
             await expect(() => conn.write(Buffer.from('hello')))
-                .rejects.toThrow(TCPErrCode.UNEXPECTED_ERROR);
+                .rejects.toMatchObject({
+                    message: 'Broken pipe',
+                    code: TCPErrCode.UNEXPECTED_ERROR
+                });
         });
 
         test('should reject when socket is destroyed', async () => {
