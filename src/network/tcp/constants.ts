@@ -27,7 +27,6 @@ export enum TCPErrCode {
     WRITE_TIMEOUT = 'TCP write timeout exceeded',
     READ_TIMEOUT = 'TCP read timeout exceeded',
     UNKNOWN_TIMEOUT = 'Unexpected connection timeout',
-    UNEXPECTED_CLOSE = 'Connection closed unexpectedly',
     UNEXPECTED_ERROR = 'Unexpected error occurred',
-    GRACEFUL_CLOSE = 'Connection closed gracefully but between an async operation',
+    FORCED_CLOSE = 'Connection force closed by the server',
 }
