@@ -1,15 +1,22 @@
 import * as net from "net";
 import TCPConnection from "./TCPConnection";
 import {ConnectionReader} from "./types";
+import {MAXIMUM_ALIVE_CONNECTIONS, TCPErrCode} from "./constants.js";
+import TCPError from "./TCPError";
 
 
 /** A TCP server with a single pending accept slot for the next incoming connection. */
 export default class TCPListener {
     private reader: null|ConnectionReader = null;
     private server: net.Server|null = null;
+    private aliveConnections: number = 0;
 
     /** Returns a promise that resolves with the next accepted connection. */
     public accept(): Promise<TCPConnection> {
+        if (this.aliveConnections >= MAXIMUM_ALIVE_CONNECTIONS) {
+            throw TCPError.from(TCPErrCode.MAXIMUM_CONNECTIONS_EXCEEDED);
+        }
+
         return new Promise((resolve, reject) => {
             this.reader = {resolve, reject};
         });
@@ -31,8 +38,12 @@ export default class TCPListener {
     private onConnection = (socket: net.Socket): void => {
         if (!this.reader) return;
 
+        socket.on('close', () => this.aliveConnections--);
+
         const conn = new TCPConnection(socket);
         this.reader.resolve(conn);
         this.reader = null;
+
+        this.aliveConnections++;
     }
 }
