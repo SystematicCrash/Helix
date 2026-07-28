@@ -35,7 +35,9 @@ export default class SocketWriter {
         this.finished = true;
 
         if (this.writer) {
-            if (err) this.writer.reject(err);
+            this.writer.reject(
+                err ?? TCPError.from(TCPErrCode.WRITE_AFTER_EOF)
+            );
         }
 
         this.cleanup();
