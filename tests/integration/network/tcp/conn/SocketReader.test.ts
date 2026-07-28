@@ -1,14 +1,13 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import {TCPConnection, TCPErrCode, TCPListener} from "../../../../../src/network/tcp/index.js";
-import {Socket} from "net";
+import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
+import {TCPErrCode, TCPError} from "../../../../../src/network/tcp/index.js";
+import net, {Socket} from "net";
 import {createClient, getRandomPort} from "../common/utils.js";
 import SocketReader from "../../../../../src/network/tcp/conn/SocketReader.js";
-import net from "net";
 import {Server} from "node:net";
 
 /** Mocks */
-vi.mock('../../../../src/network/tcp/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants.js')>('../../../../src/network/tcp/constants');
+vi.mock('../../../../../src/network/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
 
     return {
         ...actual,
@@ -26,14 +25,20 @@ describe('SocketReader', () => {
         const port = await getRandomPort();
 
         server = net.createServer();
-
         server.listen(port);
-        socket = await new Promise((resolve) => server.on('connection', resolve));
+
+        const socketPromise = new Promise<Socket>((resolve) => {
+            server.once('connection', resolve);
+        });
+
         client = await createClient(port);
+        socket = await socketPromise;
+        socket.pause();
+
         sockReader = new SocketReader(socket);
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         client.destroy();
         socket.destroy();
         server.close();
