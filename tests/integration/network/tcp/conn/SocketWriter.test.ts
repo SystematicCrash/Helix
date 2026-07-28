@@ -1,14 +1,8 @@
 import {describe, test, expect, beforeEach, afterEach, vi} from 'vitest';
-import {Socket} from "net";
-import {createClient, getRandomPort} from "../common/utils.js";
-import net from "net";
-import {Server} from "node:net";
-import SocketWriter from "../../../../../src/network/tcp/conn/SocketWriter.js";
-import {MAX_WRITE_BUFFER_SIZE, TCPErrCode} from "../../../../../src/network/tcp/index.js";
 
 /** Mocks */
-vi.mock('../../../../src/network/tcp/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants.js')>('../../../../src/network/tcp/constants');
+vi.mock('../../../../../src/network/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
 
     return {
         ...actual,
@@ -16,6 +10,12 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
         MAX_WRITE_BUFFER_SIZE: 1024,
     };
 });
+
+import net from "net";
+import {Socket, Server} from "node:net";
+import {createClient, getRandomPort} from "../common/utils.js";
+import SocketWriter from "../../../../../src/network/tcp/conn/SocketWriter.js";
+import {MAX_WRITE_BUFFER_SIZE, TCPErrCode, TCPError} from "../../../../../src/network/tcp/index.js";
 
 describe('SocketWriter', () => {
     let server: Server;
@@ -29,8 +29,12 @@ describe('SocketWriter', () => {
         server = net.createServer();
         server.listen(port);
 
-        socket = await new Promise((resolve) => server.on('connection', resolve));
+        const socketPromise = new Promise<Socket>((resolve) => server.on('connection', resolve));
         client = await createClient(port);
+
+        socket = await socketPromise;
+        socket.pause();
+
         sockWriter = new SocketWriter(socket);
     });
 
