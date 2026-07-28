@@ -45,6 +45,10 @@ export default class TCPConnection {
         return this._error;
     }
 
+    /**
+     * Indicates that the connection is fully closed or not.
+     * Checks that the write and read both are closed.
+     */
     public get isFullyClosed(): boolean {
         return this.sockReader.isFinished
             && this.sockWriter.isFinished;
