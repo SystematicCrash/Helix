@@ -144,5 +144,20 @@ describe('SocketWriter', () => {
                 expect((sockWriter as any).canWrite).toBe(true);
             });
         });
+
+        describe('finish()', () => {
+            test('should set the finished to true after finish', async () => {
+                expect(sockWriter.isFinished).toBe(false);
+                sockWriter.finish(null);
+                expect(sockWriter.isFinished).toBe(true);
+            });
+
+            test('should reject the pending write after finish', async () => {
+                const writePromise = sockWriter.write(Buffer.from('hello'));
+                sockWriter.finish(TCPError.from(TCPErrCode.UNEXPECTED_ERROR));
+                await expect(writePromise).rejects.toThrow(TCPErrCode.UNEXPECTED_ERROR);
+            });
+        });
+
     });
 });
