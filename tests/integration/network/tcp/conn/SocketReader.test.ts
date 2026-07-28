@@ -83,4 +83,24 @@ describe('SocketReader', () => {
                 .rejects.toThrow(TCPErrCode.READ_TIMEOUT);
         });
     });
+
+    describe('finish()', () => {
+        test('should set the finished to true after finish', async () => {
+            expect(sockReader.isFinished).toBe(false);
+            sockReader.finish(null);
+            expect(sockReader.isFinished).toBe(true);
+        });
+
+        test('should resolve pending read with null after finish', async () => {
+            const readPromise = sockReader.read();
+            sockReader.finish(null);
+            await expect(readPromise).resolves.toBeNull();
+        });
+
+        test('should reject the pending read after finish', async () => {
+           const readPromise = sockReader.read();
+           sockReader.finish(TCPError.from(TCPErrCode.UNEXPECTED_ERROR));
+            await expect(readPromise).rejects.toThrow(TCPErrCode.UNEXPECTED_ERROR);
+        });
+    });
 });
