@@ -1,20 +1,8 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 
-/** Mocks */
-vi.mock('../../../../src/network/tcp/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants.js')>('../../../../src/network/tcp/constants');
-
-    return {
-        ...actual,
-        READ_TIMEOUT: 50,
-        WRITE_TIMEOUT: 50,
-        MAX_WRITE_BUFFER_SIZE: 1024,
-    };
-});
-
-import { TCPConnection, TCPListener, TCPErrCode, MAX_WRITE_BUFFER_SIZE } from '../../../../../src/network/tcp/index.js';
 import { Socket } from 'net';
 import { createClient, getRandomPort } from '../common/utils.js';
+import { TCPConnection, TCPListener, TCPErrCode } from '../../../../../src/network/tcp';
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;
@@ -75,16 +63,37 @@ describe('TCPConnection', () => {
                 });
         });
 
-        test('should reject when conn is force closed', async () => {
-            conn.forceClose();
-            await expect(conn.write(Buffer.from('hello')))
-                .rejects.toThrow(TCPErrCode.WRITE_AFTER_CLOSE);
-        });
-
         test('should deliver written data to client', async () => {
             const dataPromise = new Promise<Buffer>((resolve) => client.once('data', resolve));
             await conn.write(Buffer.from('hello'));
             expect(await dataPromise).toEqual(Buffer.from('hello'));
         });
     });
+
+    describe('close()', () => {
+        test('should not effect pending read after local EOF', async () => {
+            const readPromise = conn.read();
+
+            conn.close(); // local EOF | Write is closed.
+
+            client.write(Buffer.from('hello'));
+            const data = await readPromise;
+            expect(data).toEqual(Buffer.from('hello'));
+        });
+    });
+
+    describe('forceClose()', () => {
+        test('should resolve pending read with null after force close', async () => {
+            const readPromise = conn.read();
+            conn.forceClose();
+            await expect(readPromise).resolves.toBeNull();
+        });
+
+        test('should reject when conn is force closed', async () => {
+            conn.forceClose();
+            await expect(conn.write(Buffer.from('hello')))
+                .rejects.toThrow(TCPErrCode.WRITE_AFTER_CLOSE);
+        });
+    });
+
 });
