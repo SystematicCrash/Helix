@@ -157,6 +157,12 @@ describe('SocketWriter', () => {
                 sockWriter.finish(TCPError.from(TCPErrCode.UNEXPECTED_ERROR));
                 await expect(writePromise).rejects.toThrow(TCPErrCode.UNEXPECTED_ERROR);
             });
+
+            test('should reject the pending write with custom error after finish', async () => {
+                const writePromise = sockWriter.write(Buffer.from('hello'));
+                sockWriter.finish(null);
+                await expect(writePromise).rejects.toThrow(TCPErrCode.WRITE_AFTER_EOF);
+            });
         });
 
     });
