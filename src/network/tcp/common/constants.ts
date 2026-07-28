@@ -30,6 +30,6 @@ export enum TCPErrCode {
     READ_TIMEOUT = 'TCP read timeout exceeded',
     UNKNOWN_TIMEOUT = 'Unexpected connection timeout',
     UNEXPECTED_ERROR = 'Unexpected error occurred',
-    FORCED_CLOSE = 'Connection force closed by the server',
+    FORCED_CLOSE = 'Connection force closed by between an operation',
     MAXIMUM_CONNECTIONS_EXCEEDED = 'Server reached the maximum number of alive connections',
 }
