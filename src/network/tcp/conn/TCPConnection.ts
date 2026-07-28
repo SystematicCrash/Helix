@@ -2,7 +2,14 @@ import {Socket} from 'net';
 import TCPError from "../common/TCPError.js";
 import SocketReader from "./SocketReader.js";
 import SocketWriter from "./SocketWriter.js";
-import {Event, IDLE_TIMEOUT, MAX_WRITE_BUFFER_SIZE, READ_TIMEOUT, TCPErrCode, WRITE_TIMEOUT,} from "../common/constants.js";
+import {
+    Event,
+    IDLE_TIMEOUT,
+    MAX_WRITE_BUFFER_SIZE,
+    READ_TIMEOUT,
+    TCPErrCode,
+    WRITE_TIMEOUT,
+} from "../common/constants.js";
 
 /**
  * Provides a high-level promise-based wrapper around a Node.js TCP conn.
@@ -54,6 +61,9 @@ export default class TCPConnection {
             && this.sockWriter.isFinished;
     }
 
+    /**
+     * Reads data from remote connection
+     */
     public async read(): Promise<Buffer | null> {
         if (this._error) {
             throw this._error;
@@ -66,6 +76,9 @@ export default class TCPConnection {
         return await this.sockReader.read();
     }
 
+    /**
+     * Writes data to the remote connection.
+     */
     public async write(data: Buffer): Promise<void> {
         if (this._error) {
             throw this._error;
