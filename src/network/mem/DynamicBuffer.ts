@@ -31,9 +31,9 @@ export default class DynamicBuffer {
     public get end(): number {
         return this._start + this._length;
     }
-
+    // TODO: return a view instead of copying data to another buffer.
     /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
-    public cutUntil(length: number): Buffer {
+    public copy(length = this._length): Buffer {
         if (length > this._length) {
             throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);
         }
@@ -70,7 +70,7 @@ export default class DynamicBuffer {
      * Compacts the buffer by shifting remaining data to the front.
      * Only triggers when consumed bytes exceed half the allocated capacity, to amortize copy cost.
      */
-    public pop(length: number): void {
+    public clear(length = this._length): void {
         if (length > this._length) {
             throw new Error(`Cannot pop ${length} bytes, only ${this._length} is available!`);
         }
@@ -89,12 +89,12 @@ export default class DynamicBuffer {
      * Returns null if no complete message is available yet.
      */
     public popMessage(): Buffer|null {
-        let idx = this.cutUntil(this._length).indexOf('\n');
+        let idx = this.copy(this._length).indexOf('\n');
 
         if (idx < 0) return null;
 
-        const msg = this.cutUntil(idx + 1)
-        this.pop(idx + 1);
+        const msg = this.copy(idx + 1)
+        this.clear(idx + 1);
         return msg;
     }
 }

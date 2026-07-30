@@ -92,7 +92,7 @@ describe('DynamicBuffer', () => {
             const data = Buffer.from('This is the data');
             buf.push(data);
 
-            buf.pop(10);
+            buf.clear(10);
 
             expect(buf.length).toBe(data.length - 10);
         });
@@ -101,7 +101,7 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer();
             buf.push(Buffer.from('This is the data'));
 
-            buf.pop(10);
+            buf.clear(10);
 
             expect(buf.start).toBe(10);
         });
@@ -111,7 +111,7 @@ describe('DynamicBuffer', () => {
             buf.push(Buffer.from('x'.repeat(32)));
             expect(buf.capacity).toBe(32);
 
-            buf.pop(30);
+            buf.clear(30);
 
             expect(buf.start).toBe(0);
             expect(buf.end).toBe(2);
@@ -121,14 +121,14 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer();
             buf.push(Buffer.from('This is the data'));
 
-            expect(() => buf.pop(buf.length + 1))
+            expect(() => buf.clear(buf.length + 1))
                 .toThrow(`Cannot pop ${buf.length + 1} bytes, only ${buf.length} is available!`);
         });
 
         test('should throw when popping from empty buffer', () => {
             const buf = new DynamicBuffer();
 
-            expect(() => buf.pop(1))
+            expect(() => buf.clear(1))
                 .toThrow();
         });
 
@@ -136,7 +136,7 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer();
             buf.push(Buffer.from('hello'));
 
-            buf.pop(5);
+            buf.clear(5);
 
             expect(buf.length).toBe(0);
         });
@@ -146,7 +146,7 @@ describe('DynamicBuffer', () => {
         test('should return requested number of bytes from start', () => {
             const buf = new DynamicBuffer(Buffer.from('This is the data'));
 
-            const data = buf.cutUntil(4);
+            const data = buf.copy(4);
 
             expect(data.toString()).toBe('This');
         });
@@ -155,8 +155,8 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer();
             buf.push(Buffer.from('This is the data'));
 
-            buf.pop(8);
-            const cut = buf.cutUntil(buf.length);
+            buf.clear(8);
+            const cut = buf.copy(buf.length);
 
             expect(cut.length).toBeLessThan(16);
             expect(cut.toString()).toBe('the data');
@@ -166,7 +166,7 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer(Buffer.from('Hello world'));
             const lengthBefore = buf.length;
 
-            buf.cutUntil(5);
+            buf.copy(5);
 
             expect(buf.length).toBe(lengthBefore);
         });
@@ -175,14 +175,14 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer();
             buf.push(Buffer.from('This is the data'));
 
-            expect(() => buf.cutUntil(buf.length + 1))
+            expect(() => buf.copy(buf.length + 1))
                 .toThrow(`Cannot cut ${buf.length + 1} bytes, only ${buf.length} is available!`);
         });
 
         test('should throw when cutting from empty buffer', () => {
             const buf = new DynamicBuffer();
 
-            expect(() => buf.cutUntil(1))
+            expect(() => buf.copy(1))
                 .toThrow();
         });
     });
