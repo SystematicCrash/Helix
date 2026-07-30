@@ -1,16 +1,27 @@
 import {DataWriter} from "../common/types.js";
 import Timer from "../../common/Timer.js";
 import {Socket} from "net";
-import {Event, MAX_WRITE_BUFFER_SIZE, TCPErrCode, WRITE_TIMEOUT} from "../common/constants.js";
+import {
+    Event,
+    MAX_WRITE_BUFFER_SIZE,
+    TCPErrCode,
+    WRITE_BUFFER_FLUSH_THRESHOLD,
+    WRITE_TIMEOUT
+} from "../common/constants.js";
 import TCPError from "../common/TCPError.js";
+import DynamicBuffer from "../../mem/DynamicBuffer.js";
 
 export default class SocketWriter {
     private timer: Timer;
+    private outputBuff: DynamicBuffer;
+
     private canWrite: boolean = true;
     private finished: boolean = false;
+
     private writer: DataWriter | null = null;
 
     constructor(readonly socket: Socket) {
+        this.outputBuff = new DynamicBuffer();
         this.timer = new Timer(
             Event.WRITE_TIMEOUT,
             WRITE_TIMEOUT,
@@ -47,10 +58,40 @@ export default class SocketWriter {
     }
 
     /**
-     * Writes data to the TCP conn.
-     * Backpressure is reported when the internal buffer is full.
+     * Writes data to output buffer so prevent small writes.
      */
     public async write(data: Buffer): Promise<void> {
+        this.ensureWritable(data);
+
+        if (this.outputBuff.length >= WRITE_BUFFER_FLUSH_THRESHOLD) {
+            await this.immediateWrite(this.outputBuff.copy());
+            this.outputBuff.clear();
+        }
+    }
+
+    /**
+     * Calls socket.write() and hands data immediately to the kernel send buffer.
+     */
+    public async immediateWrite(data: Buffer): Promise<void> {
+        this.ensureWritable(data);
+
+        try {
+            this.timer.start();
+            const sentToKernel = await this.writePromise(data);
+            this.canWrite = sentToKernel && this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
+        } finally {
+            this.timer.stop();
+        }
+    }
+
+    /**
+     * Ensures that the socket is writable otherwise throws.
+     * Checks if socket write is closed.
+     * Checks if backpressure is enabled.
+     * Checks if data length is zero.
+     * Checks if another write is in progress.
+     */
+    private ensureWritable(data: Buffer): void {
         if (this.finished) {
             throw TCPError.from(TCPErrCode.WRITE_AFTER_EOF);
         }
@@ -65,14 +106,6 @@ export default class SocketWriter {
 
         if (this.writer) {
             throw TCPError.from(TCPErrCode.SIMULTANEOUS_WRITE);
-        }
-
-        try {
-            this.timer.start();
-            const sentToKernel = await this.writePromise(data);
-            this.canWrite = sentToKernel && this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
-        } finally {
-            this.timer.stop();
         }
     }
 
