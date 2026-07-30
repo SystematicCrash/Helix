@@ -9,6 +9,7 @@ import {
     TCPError,
     WRITE_BUFFER_FLUSH_THRESHOLD,
 } from "../../../../../src/network/tcp/index.js";
+import {spyOn} from "@vitest/spy";
 
 /** Mocks */
 vi.mock('../../../../../src/network/tcp/common/constants', async () => {
@@ -92,6 +93,29 @@ describe('SocketWriter', () => {
         test('should write given data when flush threshold is exceeded', async () => {
             const spy = vi.spyOn(SocketWriter.prototype, 'immediateWrite');
             await sockWriter.write(Buffer.alloc(WRITE_BUFFER_FLUSH_THRESHOLD, 0x41));
+            expect(spy).toHaveBeenCalled();
+        });
+
+        test('should deliver all the buffered data after the threshold is exceeded', async () => {
+            const len = WRITE_BUFFER_FLUSH_THRESHOLD;
+            const dataPromise = new Promise<Buffer>((resolve) => client.on('data', resolve));
+
+            for (let i = 0; i < len; i++) {
+                await sockWriter.write(Buffer.from('a'));
+            }
+            await expect(dataPromise).resolves.toEqual(Buffer.from('a'.repeat(len)));
+        });
+
+        test('should not hand the data to kernel before threshold is exceeded', async () => {
+            const len = WRITE_BUFFER_FLUSH_THRESHOLD;
+            const spy = spyOn(SocketWriter.prototype, 'immediateWrite');
+
+            for (let i = 0; i < len - 1; i++) {
+                await sockWriter.write(Buffer.from('a'));
+            }
+
+            expect(spy).not.toHaveBeenCalled();
+            await sockWriter.write(Buffer.from('a'));
             expect(spy).toHaveBeenCalled();
         });
     });
