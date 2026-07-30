@@ -50,7 +50,7 @@ export default class SocketWriter {
 
         if (this.writer) {
             this.writer.reject(
-                err ?? TCPError.from(TCPErrCode.WRITE_AFTER_EOF)
+                err || TCPError.from(TCPErrCode.CLOSED_WHILE_WRITE)
             );
         }
 

@@ -32,5 +32,6 @@ export enum TCPErrCode {
     UNKNOWN_TIMEOUT = 'Unexpected connection timeout',
     UNEXPECTED_ERROR = 'Unexpected error occurred',
     FORCED_CLOSE = 'Connection force closed by between an operation',
+    CLOSED_WHILE_WRITE = 'Connection closed between the write operation',
     MAXIMUM_CONNECTIONS_EXCEEDED = 'Server reached the maximum number of alive connections',
 }
