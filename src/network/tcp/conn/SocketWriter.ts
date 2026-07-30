@@ -20,6 +20,9 @@ export default class SocketWriter {
         socket.on(Event.DRAIN, this.onDrain);
     }
 
+    /**
+     * Indicates that write is finished and no more data can be sent.
+     */
     public get isFinished(): boolean {
         return this.finished;
     }
@@ -95,10 +98,16 @@ export default class SocketWriter {
         });
     }
 
+    /**
+     * Fires after `drain` event and makes the socket writable again.
+     */
     private onDrain = (): void => {
         this.canWrite = true;
     }
 
+    /**
+     * Called after finish to clean up timers and event listeners.
+     */
     private cleanup(): void  {
         this.timer.stop();
         this.socket.off(Event.DRAIN, this.onDrain);
