@@ -1,6 +1,6 @@
 import HttpError from "./HttpError";
 import DynamicBuffer from "../mem/DynamicBuffer";
-import TCPConnection from "../tcp/TCPConnection";
+import TCPConnection from "../tcp/conn/TCPConnection.js";
 import {BodyReader, HttpRequest, HttpResponse} from "./types";
 import {handleRequest, parseRequest, getReader} from "./request";
 import {mapErrorToResponse, writeResponse} from "./response";

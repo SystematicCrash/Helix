@@ -1,4 +1,4 @@
-import TCPConnection from "./TCPConnection";
+import TCPConnection from "../conn/TCPConnection.js";
 
 export interface DataReader {
     resolve(value: Buffer | null): void;

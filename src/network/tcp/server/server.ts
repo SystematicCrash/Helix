@@ -1,5 +1,5 @@
-import DynamicBuffer from "../mem/DynamicBuffer";
-import TCPConnection from "./TCPConnection";
+import DynamicBuffer from "../../mem/DynamicBuffer.js";
+import TCPConnection from "../conn/TCPConnection.js";
 
 /**
  * TODO: This is just a toy and should be removed from the main product
@@ -29,7 +29,7 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
 /**
  * TODO: This is just a toy demo and should be removed from the main product
  * Parses a single framed message and writes the appropriate response.
- * Destroys the socket on a quit command.
+ * Destroys the conn on a quit command.
  */
 async function replyMessage(conn: TCPConnection, msg: Buffer): Promise<void> {
     const str = msg.toString();

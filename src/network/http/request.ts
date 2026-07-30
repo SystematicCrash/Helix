@@ -5,7 +5,7 @@ import {splitBuffer, stripBuffer} from "../mem/bytes";
 import {parseHeaders} from "./header";
 import {HttpHeader, HttpMethod, SUPPORTED_VERSIONS, VALID_METHODS} from "./constants";
 import HttpError from "./HttpError";
-import TCPConnection from "../tcp/TCPConnection";
+import TCPConnection from "../tcp/conn/TCPConnection.js";
 
 
 /**

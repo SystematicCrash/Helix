@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /** Mocks */
-vi.mock('../../../../src/network/tcp/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../src/network/tcp/constants')>('../../../../src/network/tcp/constants');
+vi.mock('../../../../../src/network/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
 
     return {
         ...actual,
@@ -11,8 +11,8 @@ vi.mock('../../../../src/network/tcp/constants', async () => {
 });
 
 import * as net from 'node:net';
-import { createClient, getRandomPort } from './common/utils';
-import {TCPListener, TCPConnection, TCPErrCode, MAXIMUM_ALIVE_CONNECTIONS} from '../../../../src/network/tcp';
+import { createClient, getRandomPort } from '../common/utils.js';
+import {TCPListener, TCPConnection, TCPErrCode, MAXIMUM_ALIVE_CONNECTIONS} from '../../../../../src/network/tcp/index.js';
 import {delay} from "@vitest/utils/timers";
 
 describe('TCPListener', () => {
@@ -146,7 +146,7 @@ describe('TCPListener', () => {
             expect(conn1).not.toBe(conn2);
         });
 
-        test('accepted socket should be paused on connect', async () => {
+        test('accepted conn should be paused on connect', async () => {
             const acceptPromise = listener.accept();
             clients.push(await createClient(port));
 

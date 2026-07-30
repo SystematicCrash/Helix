@@ -1,8 +1,8 @@
 import * as net from "net";
-import TCPConnection from "./TCPConnection";
-import {ConnectionReader} from "./types";
-import {MAXIMUM_ALIVE_CONNECTIONS, TCPErrCode} from "./constants.js";
-import TCPError from "./TCPError";
+import TCPConnection from "../conn/TCPConnection.js";
+import {ConnectionReader} from "../common/types.js";
+import {MAXIMUM_ALIVE_CONNECTIONS, TCPErrCode} from "../common/constants.js";
+import TCPError from "../common/TCPError.js";
 
 
 /** A TCP server with a single pending accept slot for the next incoming connection. */
@@ -35,7 +35,7 @@ export default class TCPListener {
         this.server.listen(port);
     }
 
-    /** Wraps the incoming socket into a TCPConnection and fulfills the pending accept promise. */
+    /** Wraps the incoming conn into a TCPConnection and fulfills the pending accept promise. */
     private onConnection = (socket: net.Socket): void => {
         if (!this.reader) return;
 

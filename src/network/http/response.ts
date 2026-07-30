@@ -1,5 +1,5 @@
 import {BodyReader, HttpResponse} from "./types";
-import TCPConnection from "../tcp/TCPConnection";
+import TCPConnection from "../tcp/conn/TCPConnection.js";
 import HttpError from "./HttpError";
 import {HTTP_STATUS, HttpHeader, HttpVersion, SUPPORTED_VERSIONS} from "./constants";
 import {memoryReader} from "./request";
