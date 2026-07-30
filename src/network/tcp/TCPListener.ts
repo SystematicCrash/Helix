@@ -29,6 +29,7 @@ export default class TCPListener {
     public listen(port: Number): void {
         this.server = net.createServer({
             pauseOnConnect: true,
+            noDelay: true,
         });
         this.server.on('connection', this.onConnection);
         this.server.listen(port);
