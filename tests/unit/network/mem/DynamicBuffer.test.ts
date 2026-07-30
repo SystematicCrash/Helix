@@ -10,10 +10,10 @@ describe("DynamicBuffer", () => {
             const initialData = Buffer.from('Hello world!');
             const buffer = new DynamicBuffer(initialData);
 
-           expect(buffer.length).toEqual(initialData.length);
-           expect(buffer.capacity).toEqual(initialData.length);
-           expect(buffer.start).toEqual(0);
-           expect(buffer.end).toEqual(initialData.length);
+            expect(buffer.length).toEqual(initialData.length);
+            expect(buffer.capacity).toEqual(initialData.length);
+            expect(buffer.start).toEqual(0);
+            expect(buffer.end).toEqual(initialData.length);
         });
 
         test("should correctly push new data to the buffer", () => {
@@ -75,15 +75,15 @@ describe("DynamicBuffer", () => {
         });
     });
 
-    describe("pop()", () => {
+    describe("clear()", () => {
 
         test("should throw when requested length is more that the current buffer length", () => {
-             const buffer = new DynamicBuffer();
-             const data = Buffer.from('This is the data');
-             buffer.push(data);
+            const buffer = new DynamicBuffer();
+            const data = Buffer.from('This is the data');
+            buffer.push(data);
 
-             expect(() => buffer.clear(data.length + 1))
-                 .toThrow(new Error(`Cannot pop ${buffer.length + 1} bytes, only ${buffer.length} is available!`));
+            expect(() => buffer.clear(data.length + 1))
+                .toThrow(new Error(`Cannot pop ${buffer.length + 1} bytes, only ${buffer.length} is available!`));
         });
 
         test("should pop the requests data length from buffer", () => {
@@ -115,9 +115,19 @@ describe("DynamicBuffer", () => {
             expect(buffer.start).toEqual(0);
             expect(buffer.end).toEqual(2);
         });
+
+        test('should compact whole buffer when no length is given', async () => {
+            const buffer = new DynamicBuffer();
+            const data = Buffer.alloc(32, 0x41);
+            buffer.push(data);
+
+            buffer.clear();
+            expect(buffer.start).toEqual(0);
+            expect(buffer.end).toEqual(0);
+        });
     });
 
-    describe("cutUntil()", () => {
+    describe("copy()", () => {
 
         test("should cut requested data length", () => {
             const buffer = new DynamicBuffer(Buffer.from('This is the data'));
@@ -144,5 +154,14 @@ describe("DynamicBuffer", () => {
             const cut = buffer.copy(buffer.length);
             expect(cut.length).lessThan(data.length);
         });
+
+        test('should copy whole data when no length is given', async () => {
+            const buffer = new DynamicBuffer();
+            const data = Buffer.from('This is the data');
+            buffer.push(data);
+
+            const copied = buffer.copy();
+            expect(copied).toEqual(data);
+        })
     });
 });
