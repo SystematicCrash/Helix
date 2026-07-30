@@ -62,6 +62,7 @@ export default class SocketWriter {
      */
     public async write(data: Buffer): Promise<void> {
         this.ensureWritable(data);
+        this.outputBuff.push(data);
 
         if (this.outputBuff.length >= WRITE_BUFFER_FLUSH_THRESHOLD) {
             await this.immediateWrite(this.outputBuff.copy());
