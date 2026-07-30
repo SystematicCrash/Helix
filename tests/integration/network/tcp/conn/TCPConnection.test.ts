@@ -1,8 +1,18 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import {describe, test, expect, beforeEach, afterEach, vi} from 'vitest';
+
+/** Mocks */
+vi.mock('../../../../../src/network/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
+
+    return {
+        ...actual,
+        WRITE_BUFFER_FLUSH_THRESHOLD: 10,
+    };
+});
 
 import { Socket } from 'net';
 import { createClient, getRandomPort } from '../common/utils.js';
-import { TCPConnection, TCPListener, TCPErrCode } from '../../../../../src/network/tcp';
+import {TCPConnection, TCPListener, TCPErrCode, WRITE_BUFFER_FLUSH_THRESHOLD} from '../../../../../src/network/tcp';
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;
@@ -63,10 +73,13 @@ describe('TCPConnection', () => {
                 });
         });
 
-        test('should deliver written data to client', async () => {
+        test("should deliver written data to client when flush threshold exceeded", async () => {
             const dataPromise = new Promise<Buffer>((resolve) => client.once('data', resolve));
-            await conn.write(Buffer.from('hello'));
-            expect(await dataPromise).toEqual(Buffer.from('hello'));
+
+            const data = Buffer.alloc(WRITE_BUFFER_FLUSH_THRESHOLD, 0x41); // threshold exceeded
+
+            await conn.write(data);
+            expect(await dataPromise).toEqual(data);
         });
     });
 
