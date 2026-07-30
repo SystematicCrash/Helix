@@ -15,6 +15,9 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
         if (!msg) {
             try {
                 const data = await conn.read();
+
+                if (data === null) return;
+
                 buf.push(data);
                 continue;
             } catch (err) {
