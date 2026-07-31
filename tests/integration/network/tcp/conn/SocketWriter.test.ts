@@ -48,6 +48,7 @@ describe('SocketWriter', () => {
         client.destroy();
         socket.destroy();
         server.close();
+        vi.restoreAllMocks();
     });
 
     describe('immediateWrite()', () => {
