@@ -37,9 +37,7 @@ export default class DynamicBuffer {
         if (length > this._length) {
             throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);
         }
-        return Buffer.from(
-            this._data.subarray(this._start, this._start + length)
-        );
+        return this._data.subarray(this._start, this._start + length);
     }
 
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */

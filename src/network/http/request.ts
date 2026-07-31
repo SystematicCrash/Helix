@@ -103,7 +103,7 @@ function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): B
 
             if (buf.length === 0) {
                 const data = await conn.read();
-                if (data.length === 0) {
+                if (data === null) {
                     throw new Error('Unexpected EOF from http body');
                 }
                 buf.push(data);
