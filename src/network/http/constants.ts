@@ -9,6 +9,10 @@ export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]*$/;
 export const MANDATORY_HEADERS = ['host'] as const;
 export const SUPPORTED_VERSIONS = ['HTTP/1.1'];
 
+export enum TransferEncoding {
+    CHUNKED = 'chunked',
+}
+
 export enum HttpVersion {
     HTTP_1_0 = 'HTTP/1.0',
     HTTP_1_1 = 'HTTP/1.1',

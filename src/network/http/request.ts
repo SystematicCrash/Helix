@@ -7,6 +7,30 @@ import {HttpHeader, HttpMethod, SUPPORTED_VERSIONS, VALID_METHODS} from "./const
 import HttpError from "./HttpError";
 import TCPConnection from "../tcp/conn/TCPConnection.js";
 
+type BufferGenerator = AsyncGenerator<Buffer, void, void>;
+// count to 99
+async function *countSheep(): BufferGenerator {
+    for (let i = 0; i < 100; i++) {
+// sleep 1s, then output the counter
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        yield Buffer.from(`${i}\n`);
+    }
+}
+
+function readerFromGenerator(gen: BufferGenerator): BodyReader {
+    return {
+        length: -1,
+        read: async (): Promise<Buffer> => {
+            const r = await gen.next();
+            if (r.done) {
+                return Buffer.from(''); // EOF
+            } else {
+                console.assert(r.value.length > 0);
+                return r.value;
+            }
+        },
+    };
+}
 
 /**
  * TODO: This is just a toy and should be changed in the real product
@@ -18,6 +42,9 @@ export async function handleRequest(request: HttpRequest, body: BodyReader): Pro
     switch (request.url) {
         case '/echo':
             payload = body;
+            break;
+        case '/sheep':
+            payload = readerFromGenerator(countSheep());
             break;
         default:
             payload = memoryReader(Buffer.from('Hello world!'));

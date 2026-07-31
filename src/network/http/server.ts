@@ -27,7 +27,7 @@ export async function serveClient(conn: TCPConnection) {
             const response: HttpResponse = await handleRequest(request, body);
             await writeResponse(conn, response);
 
-            while ((await body.read()).length > 0);
+            while ((await body.read()) !== null);
         }
     } catch (error: unknown) {
         const response = mapErrorToResponse(error);
