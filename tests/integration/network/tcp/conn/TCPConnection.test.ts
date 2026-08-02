@@ -13,6 +13,8 @@ vi.mock('../../../../../src/network/tcp/common/constants', async () => {
 import { Socket } from 'net';
 import { createClient, getRandomPort } from '../common/utils.js';
 import {TCPConnection, TCPListener, TCPErrCode, WRITE_BUFFER_FLUSH_THRESHOLD} from '../../../../../src/network/tcp';
+import {spyOn} from "@vitest/spy";
+import SocketWriter from "../../../../../src/network/tcp/conn/SocketWriter.js";
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;
@@ -87,11 +89,18 @@ describe('TCPConnection', () => {
         test('should not effect pending read after local EOF', async () => {
             const readPromise = conn.read();
 
-            conn.close(); // local EOF | Write is closed.
+            await conn.close(); // local EOF | Write is closed.
 
             client.write(Buffer.from('hello'));
             const data = await readPromise;
             expect(data).toEqual(Buffer.from('hello'));
+        });
+
+        test('should flush write buffer before close', async () => {
+            await conn.write(Buffer.from('hello'));
+            const flushSpy = spyOn(SocketWriter.prototype, 'flush');
+            await conn.close();
+            expect(flushSpy).toHaveBeenCalled();
         });
     });
 
