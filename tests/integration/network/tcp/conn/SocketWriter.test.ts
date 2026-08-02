@@ -226,4 +226,29 @@ describe('SocketWriter', () => {
             await expect(writePromise).rejects.toThrow(TCPErrCode.WRITE_AFTER_EOF);
         });
     });
+
+    describe('flush()', () => {
+        test('should immediate write buffered data when buffer is filled', async () => {
+            await sockWriter.write(Buffer.from('hello'));
+            const writeSpy = spyOn(SocketWriter.prototype, 'immediateWrite');
+            await sockWriter.flush();
+            expect(writeSpy).toHaveBeenCalled();
+        });
+
+        test('should not write when write buffer is empty', async () => {
+            await sockWriter.write(Buffer.alloc(WRITE_BUFFER_FLUSH_THRESHOLD, 0x41));
+            const writeSpy = spyOn(SocketWriter.prototype, 'immediateWrite');
+            await sockWriter.flush();
+            expect(writeSpy).not.toHaveBeenCalled();
+        });
+
+        test('should wait until the write is completed', async () => {
+            const writePromise = sockWriter.write(Buffer.alloc(WRITE_BUFFER_FLUSH_THRESHOLD, 0x41));
+            const writeSpy = spyOn(SocketWriter.prototype, 'immediateWrite');
+            await sockWriter.flush();
+            expect(writeSpy).toHaveBeenCalled();
+        });
+
+        test.todo('should retry to flush after backpressure is disabled'); // TODO
+    })
 });
