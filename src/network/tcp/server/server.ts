@@ -39,7 +39,7 @@ async function replyMessage(conn: TCPConnection, msg: Buffer): Promise<void> {
 
     if (str === 'quit\n') {
         await conn.write(Buffer.from('Bye!'));
-        conn.close();
+        await conn.close();
     } else {
         await conn.write(Buffer.from(`Echo: ${str}`));
     }

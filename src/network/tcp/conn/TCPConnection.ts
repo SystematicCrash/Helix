@@ -97,9 +97,10 @@ export default class TCPConnection {
      * Pending writes are flushed before the conn is closed.
      * Further writes are rejected after this method is called.
      */
-    public close(): void {
+    public async close(): Promise<void> {
         if (this.sockWriter.isFinished) return;
 
+        await this.sockWriter.flush();
         this.sockWriter.finish(this._error);
         this.socket.end();
     }

@@ -58,6 +58,22 @@ export default class SocketWriter {
     }
 
     /**
+     * Drains write buffer and sends all the remaining data.
+     */
+    public async flush(): Promise<void> {
+        if (this.writer) {
+            await this.writer.promise;
+        }
+
+        if (this.outputBuff.length === 0) {
+            return;
+        }
+
+        await this.immediateWrite(this.outputBuff.getView());
+        this.outputBuff.clear();
+    }
+
+    /**
      * Writes data to output buffer so prevent small writes.
      */
     public async write(data: Buffer): Promise<void> {
@@ -65,8 +81,7 @@ export default class SocketWriter {
         this.outputBuff.push(data);
 
         if (this.outputBuff.length >= WRITE_BUFFER_FLUSH_THRESHOLD) {
-            await this.immediateWrite(this.outputBuff.copy());
-            this.outputBuff.clear();
+            await this.flush();
         }
     }
 
@@ -115,8 +130,8 @@ export default class SocketWriter {
      * Resolves with whether the data was fully accepted into the kernel buffer.
      */
     private writePromise(data: Buffer): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this.writer = {resolve, reject};
+        const promise = new Promise<boolean>((resolve, reject) => {
+            this.writer = {resolve, reject, promise};
             try {
 
                 const sentToKernel = this.socket.write(data, (err?: Error | null) => {
@@ -130,6 +145,7 @@ export default class SocketWriter {
                 reject(err);
             }
         });
+        return promise;
     }
 
     /**

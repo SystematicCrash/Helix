@@ -17,7 +17,7 @@ export async function serveClient(conn: TCPConnection) {
             if (!request) {
                 const data = await conn.read();
 
-                if (data === null && buf.length === 0) conn.close(); // EOF
+                if (data === null && buf.length === 0) await conn.close(); // EOF
                 if (data === null) throw new HttpError(400, 'Unexpected EOF');
 
                 buf.push(data);
