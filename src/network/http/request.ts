@@ -137,7 +137,7 @@ function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): B
             }
             const consume = Math.min(buf.length, remain);
             remain -= consume;
-            const data = buf.copy(consume);
+            const data = buf.getView(consume);
             buf.clear(consume);
             return data;
         }

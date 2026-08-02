@@ -132,7 +132,7 @@ describe("DynamicBuffer", () => {
         test("should cut requested data length", () => {
             const buffer = new DynamicBuffer(Buffer.from('This is the data'));
 
-            const data = buffer.copy(4);
+            const data = buffer.getView(4);
             expect(data.toString()).toEqual('This');
         });
 
@@ -141,7 +141,7 @@ describe("DynamicBuffer", () => {
             const data = Buffer.from('This is the data');
             buffer.push(data);
 
-            expect(() => buffer.copy(data.length + 1))
+            expect(() => buffer.getView(data.length + 1))
                 .toThrow(new Error(`Cannot cut ${data.length + 1} bytes, only ${data.length} is available!`));
         });
 
@@ -151,7 +151,7 @@ describe("DynamicBuffer", () => {
             buffer.push(data);
 
             buffer.clear(10);
-            const cut = buffer.copy(buffer.length);
+            const cut = buffer.getView(buffer.length);
             expect(cut.length).lessThan(data.length);
         });
 
@@ -160,7 +160,7 @@ describe("DynamicBuffer", () => {
             const data = Buffer.from('This is the data');
             buffer.push(data);
 
-            const copied = buffer.copy();
+            const copied = buffer.getView();
             expect(copied).toEqual(data);
         })
     });

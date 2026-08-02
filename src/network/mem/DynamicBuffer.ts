@@ -33,7 +33,7 @@ export default class DynamicBuffer {
     }
     // TODO: return a view instead of copying data to another buffer.
     /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
-    public copy(length = this._length): Buffer {
+    public getView(length = this._length): Buffer<ArrayBufferLike> {
         if (length > this._length) {
             throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);
         }
@@ -87,11 +87,11 @@ export default class DynamicBuffer {
      * Returns null if no complete message is available yet.
      */
     public popMessage(): Buffer|null {
-        let idx = this.copy(this._length).indexOf('\n');
+        let idx = this.getView(this._length).indexOf('\n');
 
         if (idx < 0) return null;
 
-        const msg = this.copy(idx + 1)
+        const msg = this.getView(idx + 1)
         this.clear(idx + 1);
         return msg;
     }
