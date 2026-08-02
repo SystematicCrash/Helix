@@ -19,6 +19,7 @@ export default class SocketWriter {
     private finished: boolean = false;
 
     private writer: DataWriter | null = null;
+    private currentPromise: Promise<boolean> | null = null;
 
     constructor(readonly socket: Socket) {
         this.outputBuff = new DynamicBuffer();
@@ -62,7 +63,7 @@ export default class SocketWriter {
      */
     public async flush(): Promise<void> {
         if (this.writer) {
-            await this.writer.promise;
+            await this.currentPromise;
         }
 
         if (this.outputBuff.length === 0) {
@@ -130,22 +131,22 @@ export default class SocketWriter {
      * Resolves with whether the data was fully accepted into the kernel buffer.
      */
     private writePromise(data: Buffer): Promise<boolean> {
-        const promise = new Promise<boolean>((resolve, reject) => {
-            this.writer = {resolve, reject, promise};
+        this.currentPromise = new Promise<boolean>((resolve, reject) => {
+            this.writer = {resolve, reject};
             try {
 
                 const sentToKernel = this.socket.write(data, (err?: Error | null) => {
-                    this.writer = null;
+                    this.writer = this.currentPromise = null;
                     if (err) reject(err);
                     else resolve(sentToKernel);
                 });
 
             } catch (err) {
-                this.writer = null;
+                this.writer = this.currentPromise = null;
                 reject(err);
             }
         });
-        return promise;
+        return this.currentPromise;
     }
 
     /**

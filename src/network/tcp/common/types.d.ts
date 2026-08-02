@@ -8,7 +8,6 @@ export interface DataReader {
 export interface DataWriter {
     resolve(success: boolean): void;
     reject(reason: Error): void;
-    promise: Promise<boolean>;
 }
 
 export interface ConnectionReader {
