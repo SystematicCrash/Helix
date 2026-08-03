@@ -75,54 +75,6 @@ export default class SocketWriter {
     }
 
     /**
-     * Retries writing the buffered data up to MAX_FLUSH_RETRIES times,
-     * waiting for drain events between backpressure failures.
-     */
-    private async drainBuffer(): Promise<void> {
-        let retries = 0;
-        const MAX_FLUSH_RETRIES = 10;
-
-        while (this.outputBuff.length > 0 && retries < MAX_FLUSH_RETRIES) {
-            try {
-                await this.immediateWrite(this.outputBuff.getView());
-                this.outputBuff.clear();
-                return;
-            } catch (err) {
-                if (err instanceof TCPError && err.code === TCPErrCode.WRITE_BACKPRESSURE) {
-                    retries++;
-                    await this.waitForDrain();
-                    continue;
-                }
-                throw err;
-            }
-        }
-
-        if (this.outputBuff.length > 0) {
-            throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
-        }
-    }
-
-    /**
-     * Waits for the socket drain event, or fails immediately on socket error.
-     */
-    private waitForDrain(): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            const onDrain = () => {
-                this.socket.off(Event.DRAIN, onDrain);
-                this.socket.off(Event.ERROR, onError);
-                resolve();
-            };
-            const onError = (e: Error) => {
-                this.socket.off(Event.DRAIN, onDrain);
-                this.socket.off(Event.ERROR, onError);
-                reject(e);
-            };
-            this.socket.once(Event.DRAIN, onDrain);
-            this.socket.once(Event.ERROR, onError);
-        });
-    }
-
-    /**
      * Writes data to output buffer so prevent small writes.
      */
     public async write(data: Buffer): Promise<void> {
@@ -196,6 +148,54 @@ export default class SocketWriter {
             }
         });
         return this.currentPromise;
+    }
+
+    /**
+     * Retries writing the buffered data up to MAX_FLUSH_RETRIES times,
+     * waiting for drain events between backpressure failures.
+     */
+    private async drainBuffer(): Promise<void> {
+        let retries = 0;
+        const MAX_FLUSH_RETRIES = 10;
+
+        while (this.outputBuff.length > 0 && retries < MAX_FLUSH_RETRIES) {
+            try {
+                await this.immediateWrite(this.outputBuff.getView());
+                this.outputBuff.clear();
+                return;
+            } catch (err) {
+                if (err instanceof TCPError && err.code === TCPErrCode.WRITE_BACKPRESSURE) {
+                    retries++;
+                    await this.waitForDrain();
+                    continue;
+                }
+                throw err;
+            }
+        }
+
+        if (this.outputBuff.length > 0) {
+            throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
+        }
+    }
+
+    /**
+     * Waits for the socket drain event, or fails immediately on socket error.
+     */
+    private waitForDrain(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const onDrain = () => {
+                this.socket.off(Event.DRAIN, onDrain);
+                this.socket.off(Event.ERROR, onError);
+                resolve();
+            };
+            const onError = (e: Error) => {
+                this.socket.off(Event.DRAIN, onDrain);
+                this.socket.off(Event.ERROR, onError);
+                reject(e);
+            };
+            this.socket.once(Event.DRAIN, onDrain);
+            this.socket.once(Event.ERROR, onError);
+        });
     }
 
     /**
