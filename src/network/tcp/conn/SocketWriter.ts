@@ -23,12 +23,7 @@ export default class SocketWriter {
 
     constructor(readonly socket: Socket) {
         this.outputBuff = new DynamicBuffer();
-        this.timer = new Timer(
-            Event.WRITE_TIMEOUT,
-            WRITE_TIMEOUT,
-            () => this.writer?.reject(TCPError.from(TCPErrCode.WRITE_TIMEOUT))
-        );
-
+        this.timer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
         socket.on(Event.DRAIN, this.onDrain);
     }
 
@@ -178,6 +173,17 @@ export default class SocketWriter {
 
         if (this.outputBuff.length > 0) {
             throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
+        }
+    }
+
+    /**
+     * Handles write timeout and rejects pending write
+     */
+    private handleTimeout(): void {
+        if (this.writer) {
+            this.writer.reject(TCPError.from(TCPErrCode.WRITE_TIMEOUT));
+            this.writer = null;
+            this.currentPromise = null;
         }
     }
 
