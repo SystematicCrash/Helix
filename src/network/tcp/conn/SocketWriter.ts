@@ -159,15 +159,10 @@ export default class SocketWriter {
                 this.outputBuff.clear();
                 return;
             } catch (err) {
-                if (err instanceof TCPError && err.code === TCPErrCode.WRITE_BACKPRESSURE) {
-                    retries++;
-                    await new Promise((resolve, reject) => {
-                        this.socket.on(Event.DRAIN, resolve);
-                        this.socket.on(Event.ERROR, reject);
-                    });
-                    continue;
-                }
-                throw err;
+                retries++;
+                if (err instanceof TCPError && err.code === TCPErrCode.WRITE_BACKPRESSURE)
+                    await this.waitForDrainOrError();
+                else throw err;
             }
         }
 
@@ -219,7 +214,7 @@ export default class SocketWriter {
     /**
      * Called after finish to clean up timers and event listeners.
      */
-    private cleanup(): void  {
+    private cleanup(): void {
         this.timer.stop();
         this.socket.off(Event.DRAIN, this.onDrain);
     }
