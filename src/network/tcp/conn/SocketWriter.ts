@@ -71,7 +71,7 @@ export default class SocketWriter {
             return;
         }
 
-        await this.drainBuffer();
+        await this.tryToFlush();
     }
 
     /**
@@ -154,7 +154,7 @@ export default class SocketWriter {
      * Retries writing the buffered data up to MAX_FLUSH_RETRIES times,
      * waiting for drain events between backpressure failures.
      */
-    private async drainBuffer(): Promise<void> {
+    private async tryToFlush(): Promise<void> {
         let retries = 0;
         const MAX_FLUSH_RETRIES = 10;
 
