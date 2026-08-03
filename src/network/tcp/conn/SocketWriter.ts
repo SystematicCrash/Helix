@@ -60,18 +60,66 @@ export default class SocketWriter {
 
     /**
      * Drains write buffer and sends all the remaining data.
+     * Retries on backpressure by waiting for the drain event.
      */
     public async flush(): Promise<void> {
         if (this.writer) {
             await this.currentPromise;
         }
 
-        if (this.outputBuff.length === 0) {
+        if (!this.outputBuff.length) {
             return;
         }
 
-        await this.immediateWrite(this.outputBuff.getView());
-        this.outputBuff.clear();
+        await this.drainBuffer();
+    }
+
+    /**
+     * Retries writing the buffered data up to MAX_FLUSH_RETRIES times,
+     * waiting for drain events between backpressure failures.
+     */
+    private async drainBuffer(): Promise<void> {
+        let retries = 0;
+        const MAX_FLUSH_RETRIES = 10;
+
+        while (this.outputBuff.length > 0 && retries < MAX_FLUSH_RETRIES) {
+            try {
+                await this.immediateWrite(this.outputBuff.getView());
+                this.outputBuff.clear();
+                return;
+            } catch (err) {
+                if (err instanceof TCPError && err.code === TCPErrCode.WRITE_BACKPRESSURE) {
+                    retries++;
+                    await this.waitForDrain();
+                    continue;
+                }
+                throw err;
+            }
+        }
+
+        if (this.outputBuff.length > 0) {
+            throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
+        }
+    }
+
+    /**
+     * Waits for the socket drain event, or fails immediately on socket error.
+     */
+    private waitForDrain(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const onDrain = () => {
+                this.socket.off(Event.DRAIN, onDrain);
+                this.socket.off(Event.ERROR, onError);
+                resolve();
+            };
+            const onError = (e: Error) => {
+                this.socket.off(Event.DRAIN, onDrain);
+                this.socket.off(Event.ERROR, onError);
+                reject(e);
+            };
+            this.socket.once(Event.DRAIN, onDrain);
+            this.socket.once(Event.ERROR, onError);
+        });
     }
 
     /**
@@ -82,7 +130,8 @@ export default class SocketWriter {
         this.outputBuff.push(data);
 
         if (this.outputBuff.length >= WRITE_BUFFER_FLUSH_THRESHOLD) {
-            await this.flush();
+            await this.immediateWrite(this.outputBuff.getView());
+            this.outputBuff.clear();
         }
     }
 
