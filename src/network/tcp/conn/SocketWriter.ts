@@ -166,7 +166,10 @@ export default class SocketWriter {
             } catch (err) {
                 if (err instanceof TCPError && err.code === TCPErrCode.WRITE_BACKPRESSURE) {
                     retries++;
-                    await this.waitForDrain();
+                    await new Promise((resolve, reject) => {
+                        this.socket.on(Event.DRAIN, resolve);
+                        this.socket.on(Event.ERROR, reject);
+                    });
                     continue;
                 }
                 throw err;
@@ -176,26 +179,6 @@ export default class SocketWriter {
         if (this.outputBuff.length > 0) {
             throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
         }
-    }
-
-    /**
-     * Waits for the socket drain event, or fails immediately on socket error.
-     */
-    private waitForDrain(): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            const onDrain = () => {
-                this.socket.off(Event.DRAIN, onDrain);
-                this.socket.off(Event.ERROR, onError);
-                resolve();
-            };
-            const onError = (e: Error) => {
-                this.socket.off(Event.DRAIN, onDrain);
-                this.socket.off(Event.ERROR, onError);
-                reject(e);
-            };
-            this.socket.once(Event.DRAIN, onDrain);
-            this.socket.once(Event.ERROR, onError);
-        });
     }
 
     /**
