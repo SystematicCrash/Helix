@@ -91,7 +91,7 @@ export default class SocketWriter {
         try {
             this.timer.start();
             const sentToKernel = await this.writePromise(data);
-            this.canWrite = sentToKernel && this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
+            this.canWrite = sentToKernel || this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
         } finally {
             this.timer.stop();
         }
@@ -174,6 +174,28 @@ export default class SocketWriter {
         if (this.outputBuff.length > 0) {
             throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
         }
+    }
+
+    private waitForDrainOrError(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const onDrain = () => {
+                cleanup();
+                resolve();
+            };
+
+            const onError = (err: Error) => {
+                cleanup();
+                reject(err);
+            };
+
+            const cleanup = () => {
+                this.socket.off(Event.DRAIN, onDrain);
+                this.socket.off(Event.ERROR, onError);
+            };
+
+            this.socket.once(Event.DRAIN, onDrain);
+            this.socket.once(Event.ERROR, onError);
+        });
     }
 
     /**
