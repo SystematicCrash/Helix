@@ -171,6 +171,10 @@ export default class SocketWriter {
         }
     }
 
+    /**
+     * Resolves when the socket drains or rejects on error, safely
+     * cleaning up one-time listeners to prevent memory leaks.
+     */
     private waitForDrainOrError(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             const onDrain = () => {
