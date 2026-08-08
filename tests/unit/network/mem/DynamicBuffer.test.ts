@@ -73,7 +73,13 @@ describe("DynamicBuffer", () => {
             const buffer = new DynamicBuffer();
             buffer.push(Buffer.alloc(MAX_BUFFER_SIZE - 1, 0x41));
             expect(() => buffer.push(Buffer.from('more data')))
-                .toThrow(new Error('Buffer maximum size exceeded!'));
+                .toThrow(new BufferError(BufferErrCode.MAX_SIZE_EXCEEDED));
+            
+            try {
+                buffer.push(Buffer.from('more data'));
+            } catch (err) {
+                expect(BufferError.is(err as Error, BufferErrCode.MAX_SIZE_EXCEEDED)).toBe(true);
+            }
         });
     });
 
@@ -85,7 +91,13 @@ describe("DynamicBuffer", () => {
             buffer.push(data);
 
             expect(() => buffer.clear(data.length + 1))
-                .toThrow(new Error(`Cannot pop ${buffer.length + 1} bytes, only ${buffer.length} is available!`));
+                .toThrow(new BufferError(BufferErrCode.CLEAR_EXCEEDED, `Cannot clear ${buffer.length + 1} bytes, only ${buffer.length} is available!`));
+
+            try {
+                buffer.clear(data.length + 1);
+            } catch (err) {
+                expect(BufferError.is(err as Error, BufferErrCode.CLEAR_EXCEEDED)).toBe(true);
+            }
         });
 
         test("should pop the requests data length from buffer", () => {
@@ -144,7 +156,13 @@ describe("DynamicBuffer", () => {
             buffer.push(data);
 
             expect(() => buffer.getView(data.length + 1))
-                .toThrow(new Error(`Cannot cut ${data.length + 1} bytes, only ${data.length} is available!`));
+                .toThrow(new BufferError(BufferErrCode.VIEW_EXCEEDED, `Cannot cut ${data.length + 1} bytes, only ${data.length} is available!`));
+
+            try {
+                buffer.getView(data.length + 1);
+            } catch (err) {
+                expect(BufferError.is(err as Error, BufferErrCode.VIEW_EXCEEDED)).toBe(true);
+            }
         });
 
         test("should cut just the unconsumed data", () => {
