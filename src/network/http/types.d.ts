@@ -14,5 +14,5 @@ export interface HttpResponse {
 
 export interface BodyReader {
     length: number;
-    read: () => Promise<Buffer>;
+    read: () => Promise<Buffer | null>;
 }
