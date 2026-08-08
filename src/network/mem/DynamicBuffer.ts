@@ -41,7 +41,8 @@ export default class DynamicBuffer {
     }
 
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
-    public push(data: Buffer): void {
+    public push(data: Buffer | null): void {
+        if (!data) return;
         const newLen = this.length + data.length;
 
         if (newLen >= MAX_BUFFER_SIZE) {
