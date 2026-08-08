@@ -62,6 +62,14 @@ export default class TCPConnection {
     }
 
     /**
+     * Drains write buffer and sends all the remaining data.
+     * Retries on backpressure by waiting for the drain event.
+     */
+    public async flush(): Promise<void> {
+        await this.sockWriter.flush();
+    }
+
+    /**
      * Reads data from remote connection
      */
     public async read(): Promise<Buffer | null> {
