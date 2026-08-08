@@ -82,4 +82,7 @@ async function chunkedWriter(conn: TCPConnection, body: BodyReader): Promise<voi
 
         await conn.write(chunk);
     }
+
+    const chunk = Buffer.from(0 + Delimiter.CRLF + Delimiter.CRLF);
+    await conn.write(chunk);
 }
