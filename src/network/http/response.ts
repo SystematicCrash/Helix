@@ -63,7 +63,7 @@ function encodeHeaders(response: HttpResponse): Buffer {
 async function fixedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
     while (true) {
         const data = await body.read();
-        if (data.length === 0) break;
+        if (!data) break;
         await conn.write(data);
     }
 }
@@ -71,7 +71,7 @@ async function fixedWriter(conn: TCPConnection, body: BodyReader): Promise<void>
 async function chunkedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
     while (true) {
         const data = await body.read();
-        if (data.length === 0) break;
+        if (!data) break;
 
         const chunk = Buffer.from(
             data.length.toString(16) +
