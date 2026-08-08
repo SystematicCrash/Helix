@@ -200,7 +200,7 @@ export default class SocketWriter {
     /**
      * Handles write timeout and rejects pending write
      */
-    private handleTimeout(): void {
+    private handleTimeout = (): void => {
         if (this.writer) {
             this.writer.reject(TCPError.from(TCPErrCode.WRITE_TIMEOUT));
             this.writer = null;
