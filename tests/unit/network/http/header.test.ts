@@ -122,7 +122,7 @@ describe('DynamicBuffer', () => {
             buf.push(Buffer.from('This is the data'));
 
             expect(() => buf.clear(buf.length + 1))
-                .toThrow(`Cannot pop ${buf.length + 1} bytes, only ${buf.length} is available!`);
+                .toThrow(`Cannot clear ${buf.length + 1} bytes, only ${buf.length} is available!`);
         });
 
         test('should throw when popping from empty buffer', () => {
