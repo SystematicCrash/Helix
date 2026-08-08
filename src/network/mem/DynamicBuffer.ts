@@ -71,7 +71,7 @@ export default class DynamicBuffer {
      */
     public clear(length = this._length): void {
         if (length > this._length) {
-            throw new Error(`Cannot pop ${length} bytes, only ${this._length} is available!`);
+            throw new Error(`Cannot clear ${length} bytes, only ${this._length} is available!`);
         }
         this._start += length;
         this._length -= length;
