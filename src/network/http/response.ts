@@ -20,7 +20,7 @@ export async function writeResponse(conn: TCPConnection, response: HttpResponse)
     } else {
         await fixedWriter(conn, response.body)
     }
-
+    await conn.flush();
 }
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
