@@ -17,8 +17,11 @@ export async function serveClient(conn: TCPConnection) {
             if (!request) {
                 const data = await conn.read();
 
-                if (data === null && buf.length === 0) await conn.close(); // EOF
-                if (data === null) throw new HttpError(400, 'Unexpected EOF');
+                if (!data) {
+                    if (!buf.length) await conn.close(); // EOF
+                    else throw new HttpError(400, 'Unexpected EOF');
+                    break;
+                }
 
                 buf.push(data);
                 continue;
@@ -33,7 +36,6 @@ export async function serveClient(conn: TCPConnection) {
         const response = mapErrorToResponse(error);
         await writeResponse(conn, response);
     }
-
 }
 
 /** Scans the buffer for a complete HTTP header block (CRLFCRLF) and returns a parsed request. */
