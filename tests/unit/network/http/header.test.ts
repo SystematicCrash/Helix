@@ -122,7 +122,7 @@ describe('DynamicBuffer', () => {
             buf.push(Buffer.from('This is the data'));
 
             expect(() => buf.clear(buf.length + 1))
-                .toThrow(`Cannot pop ${buf.length + 1} bytes, only ${buf.length} is available!`);
+                .toThrow(`Cannot clear ${buf.length + 1} bytes, only ${buf.length} is available!`);
         });
 
         test('should throw when popping from empty buffer', () => {
@@ -146,7 +146,7 @@ describe('DynamicBuffer', () => {
         test('should return requested number of bytes from start', () => {
             const buf = new DynamicBuffer(Buffer.from('This is the data'));
 
-            const data = buf.copy(4);
+            const data = buf.getView(4);
 
             expect(data.toString()).toBe('This');
         });
@@ -156,7 +156,7 @@ describe('DynamicBuffer', () => {
             buf.push(Buffer.from('This is the data'));
 
             buf.clear(8);
-            const cut = buf.copy(buf.length);
+            const cut = buf.getView(buf.length);
 
             expect(cut.length).toBeLessThan(16);
             expect(cut.toString()).toBe('the data');
@@ -166,7 +166,7 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer(Buffer.from('Hello world'));
             const lengthBefore = buf.length;
 
-            buf.copy(5);
+            buf.getView(5);
 
             expect(buf.length).toBe(lengthBefore);
         });
@@ -175,14 +175,14 @@ describe('DynamicBuffer', () => {
             const buf = new DynamicBuffer();
             buf.push(Buffer.from('This is the data'));
 
-            expect(() => buf.copy(buf.length + 1))
+            expect(() => buf.getView(buf.length + 1))
                 .toThrow(`Cannot cut ${buf.length + 1} bytes, only ${buf.length} is available!`);
         });
 
         test('should throw when cutting from empty buffer', () => {
             const buf = new DynamicBuffer();
 
-            expect(() => buf.copy(1))
+            expect(() => buf.getView(1))
                 .toThrow();
         });
     });

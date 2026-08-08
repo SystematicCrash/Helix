@@ -4,6 +4,7 @@ import {Server, Socket} from "node:net";
 import {createClient, getRandomPort} from "../common/utils.js";
 import SocketWriter from "../../../../../src/network/tcp/conn/SocketWriter.js";
 import {
+    MAX_FLUSH_RETIES,
     MAX_WRITE_BUFFER_SIZE,
     TCPErrCode,
     TCPError,
@@ -50,6 +51,38 @@ describe('SocketWriter', () => {
         server.close();
         vi.restoreAllMocks();
     });
+
+    function createWriteBackpressureData(socket: Socket) {
+        let buffered = 0;
+
+        Object.defineProperty(socket, 'writableLength', {
+            configurable: true,
+            get: () => buffered,
+        });
+
+        vi.spyOn(socket, 'write').mockImplementation(
+            (data: Buffer, callback: (err?: Error | null) => void) => {
+                setTimeout(() => callback?.(), 10);
+                buffered += data.length;
+                return buffered < MAX_WRITE_BUFFER_SIZE;
+            }
+        );
+    }
+
+    async function floodWrites(writer: SocketWriter, totalBytes: number, chunkSize = 8 * 1024): Promise<void> {
+        await new Promise<void>((resolve) => {
+            let remaining = totalBytes;
+            const send = () => {
+                const toWrite = Math.min(chunkSize, remaining);
+                writer.immediateWrite(Buffer.alloc(toWrite, 0x41)).then(() => {
+                    remaining -= toWrite;
+                    if (remaining > 0) setImmediate(send);
+                    else resolve();
+                }).catch(() => resolve());
+            };
+            send();
+        });
+    }
 
     describe('immediateWrite()', () => {
         test('should throw if data buffer is empty', async () => {
@@ -122,38 +155,6 @@ describe('SocketWriter', () => {
     });
 
     describe('backpressure', () => {
-        function createWriteBackpressureData(socket: Socket) {
-            let buffered = 0;
-
-            Object.defineProperty(socket, 'writableLength', {
-                configurable: true,
-                get: () => buffered,
-            });
-
-            vi.spyOn(socket, 'write').mockImplementation(
-                (data: Buffer, callback: (err?: Error | null) => void) => {
-                    setTimeout(() => callback?.(), 10);
-                    buffered += data.length;
-                    return buffered < MAX_WRITE_BUFFER_SIZE;
-                }
-            );
-        }
-
-        async function floodWrites(writer: SocketWriter, totalBytes: number, chunkSize = 8 * 1024): Promise<void> {
-            await new Promise<void>((resolve) => {
-                let remaining = totalBytes;
-                const send = () => {
-                    const toWrite = Math.min(chunkSize, remaining);
-                    writer.immediateWrite(Buffer.alloc(toWrite, 0x41)).then(() => {
-                        remaining -= toWrite;
-                        if (remaining > 0) setImmediate(send);
-                        else resolve();
-                    }).catch(() => resolve());
-                };
-                send();
-            });
-        }
-
         test('should throw when canWrite is false (buffer full)', async () => {
             (sockWriter as any).canWrite = false;
             await expect(() => sockWriter.write(Buffer.from('test')))
@@ -161,19 +162,18 @@ describe('SocketWriter', () => {
         });
 
         test('should set canWrite to false when conn writableLength exceeds MAX_WRITE_BUFFER_SIZE', async () => {
-            createWriteBackpressureData((sockWriter as any).socket);
+            createWriteBackpressureData(socket);
             await floodWrites(sockWriter, MAX_WRITE_BUFFER_SIZE);
             expect((sockWriter as any).canWrite).toBe(false);
         });
 
         test('should remain writable when no backpressure is triggered', async () => {
-            createWriteBackpressureData((sockWriter as any).socket);
+            createWriteBackpressureData(socket);
             await floodWrites(sockWriter, MAX_WRITE_BUFFER_SIZE - 100);
             expect((sockWriter as any).canWrite).toBe(true);
         });
 
         test('should recover canWrite after drain even if previous writes failed', async () => {
-            const socket = (sockWriter as any).socket;
             createWriteBackpressureData(socket);
 
             await floodWrites(sockWriter, MAX_WRITE_BUFFER_SIZE);
@@ -187,8 +187,7 @@ describe('SocketWriter', () => {
         });
 
         test('should unblock writes when drain event fires', async () => {
-            const socket = (sockWriter as any).socket;
-            createWriteBackpressureData(socket); // SocketWriter test
+            createWriteBackpressureData(socket);
 
             await floodWrites(sockWriter, MAX_WRITE_BUFFER_SIZE);
 
@@ -226,4 +225,56 @@ describe('SocketWriter', () => {
             await expect(writePromise).rejects.toThrow(TCPErrCode.WRITE_AFTER_EOF);
         });
     });
+
+    describe('flush()', () => {
+        test('should immediate write buffered data when buffer is filled', async () => {
+            await sockWriter.write(Buffer.from('hello'));
+            const writeSpy = spyOn(SocketWriter.prototype, 'immediateWrite');
+            await sockWriter.flush();
+            expect(writeSpy).toHaveBeenCalled();
+        });
+
+        test('should not write when write buffer is empty', async () => {
+            await sockWriter.write(Buffer.alloc(WRITE_BUFFER_FLUSH_THRESHOLD, 0x41));
+            const writeSpy = spyOn(SocketWriter.prototype, 'immediateWrite');
+            await sockWriter.flush();
+            expect(writeSpy).not.toHaveBeenCalled();
+        });
+
+        test('should wait until the write is completed', async () => {
+            const writePromise = sockWriter.write(Buffer.alloc(WRITE_BUFFER_FLUSH_THRESHOLD, 0x41));
+            const writeSpy = spyOn(SocketWriter.prototype, 'immediateWrite');
+            await sockWriter.flush();
+            expect(writeSpy).toHaveBeenCalled();
+        });
+
+        test('flush retry should success after drain event', async () => {
+            await sockWriter.write(Buffer.from('hello'));
+            createWriteBackpressureData((sockWriter as any).socket);
+            await floodWrites(sockWriter, MAX_WRITE_BUFFER_SIZE);
+
+            const flushPromise = sockWriter.flush();
+            await new Promise(r => process.nextTick(r));
+
+            socket.emit('drain');
+            await expect(flushPromise).resolves.toBeUndefined();
+        });
+
+        test('flush retry should throw when it reaches the maximum retries', async () => {
+            await sockWriter.write(Buffer.from('hello'));
+
+            const writeSpy = vi.spyOn(sockWriter, 'immediateWrite')
+                .mockRejectedValue(TCPError.from(TCPErrCode.WRITE_BACKPRESSURE));
+
+            const flushPromise = sockWriter.flush();
+
+            for (let i = 0; i < MAX_FLUSH_RETIES; i++) {
+                await new Promise((resolve) => process.nextTick(resolve));
+                socket.emit('drain');
+            }
+
+            await expect(flushPromise).rejects.toThrow(TCPErrCode.WRITE_BACKPRESSURE);
+            expect(writeSpy).toHaveBeenCalledTimes(MAX_FLUSH_RETIES);
+        });
+    })
 });

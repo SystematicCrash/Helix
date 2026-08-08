@@ -7,6 +7,28 @@ import {HttpHeader, HttpMethod, SUPPORTED_VERSIONS, VALID_METHODS} from "./const
 import HttpError from "./HttpError";
 import TCPConnection from "../tcp/conn/TCPConnection.js";
 
+type BufferGenerator = AsyncGenerator<Buffer, void, void>;
+
+async function* countSheep(): BufferGenerator {
+    for (let i = 1; i <= 10; i++) {
+// sleep 1s, then output the counter
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        yield Buffer.from(`count: ${i}\n`);
+    }
+}
+
+function readerFromGenerator(gen: BufferGenerator): BodyReader {
+    return {
+        length: -1,
+        read: async (): Promise<Buffer | null> => {
+            const r = await gen.next();
+            if (r.done) {
+                return null; // EOF
+            }
+            return r.value;
+        },
+    };
+}
 
 /**
  * TODO: This is just a toy and should be changed in the real product
@@ -18,6 +40,9 @@ export async function handleRequest(request: HttpRequest, body: BodyReader): Pro
     switch (request.url) {
         case '/echo':
             payload = body;
+            break;
+        case '/sheep':
+            payload = readerFromGenerator(countSheep());
             break;
         default:
             payload = memoryReader(Buffer.from('Hello world!'));
@@ -36,6 +61,7 @@ export async function handleRequest(request: HttpRequest, body: BodyReader): Pro
 export function parseRequest(data: Buffer): HttpRequest {
     data = stripBuffer(data, Delimiter.CRLF);
 
+    // TODO: should check if the lines is not empty and lines are parsed correctly
     const lines = splitBuffer(data, Delimiter.CRLF);
     const [method, url, version] = splitBuffer(lines[0], Delimiter.SP);
     const headers = parseHeaders(lines.slice(1, lines.length));
@@ -64,8 +90,8 @@ export function getReader(conn: TCPConnection, buf: DynamicBuffer, request: Http
     if (!bodyAllowed && (bodyLen > 0 || chunked))
         throw new HttpError(400, 'Http body not allowed');
 
-    if(bodyLen) return fixedReader(conn, buf, bodyLen);
-    else if (chunked) return chunkedReader(conn, buf);
+    if (bodyLen > 0) return fixedReader(conn, buf, bodyLen);
+    else if (chunked) return readerFromGenerator(readChunks(conn, buf));
     else return untilEOFReader(conn, buf);
 }
 
@@ -84,7 +110,7 @@ function getBodyLength(request: HttpRequest): number {
 }
 
 /** Returns the Transfer-Encoding header value, or null if not present. */
-function getTransferEncoding(request: HttpRequest): string|null {
+function getTransferEncoding(request: HttpRequest): string | null {
     const transferEn = request.headers.get(HttpHeader.TransferEncoding);
     return transferEn ? transferEn : null;
 }
@@ -98,8 +124,8 @@ function isBodyAllowed(request: HttpRequest): boolean {
 function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): BodyReader {
     return {
         length: remain,
-        read: async (): Promise<Buffer> => {
-            if (remain === 0) return Buffer.from(''); // EOF
+        read: async (): Promise<Buffer | null> => {
+            if (remain === 0) return null; // EOF
 
             if (buf.length === 0) {
                 const data = await conn.read();
@@ -110,22 +136,46 @@ function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): B
             }
             const consume = Math.min(buf.length, remain);
             remain -= consume;
-            const data = buf.copy(consume);
+            const data = buf.getView(consume);
             buf.clear(consume);
             return data;
         }
     }
 }
 
-/** Reads a Transfer-Encoding: chunked body. Not yet implemented. */
-function chunkedReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
-    // TODO: Implement chuck read
-    throw new HttpError(501, 'Chunk read is not implemented');
+/** Reads a Transfer-Encoding: chunked body. */
+async function* readChunks(conn: TCPConnection, buff: DynamicBuffer): BufferGenerator {
+    for (let last = false; !last; ) {
+        const idx = buff.getView().indexOf('\r\n');
+
+        if (idx < 0) {
+            buff.push(await conn.read());
+            continue;
+        }
+
+        let remain = parseInt(buff.getView(idx + 1).toString(), 16);
+        buff.clear(idx + 2);
+        last = remain === 0;
+
+        while (remain > 0) {
+            if (!buff.length) {
+                buff.push(await conn.read());
+            }
+
+            const consume = Math.min(remain, buff.length);
+            const data = buff.getView(consume);
+            buff.clear(consume);
+            remain -= consume;
+            yield data;
+        }
+        buff.clear(2);
+    }
 }
 
 /** Reads until the connection closes. Not yet implemented. */
 function untilEOFReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
     // TODO: Read the rest of connection
+    return { length: 0, read: async (): Promise<Buffer | null> => { return null }};
     throw new HttpError(501, 'Cannot read the rest of connection');
 }
 
@@ -134,8 +184,8 @@ export function memoryReader(data: Buffer): BodyReader {
     let done = false;
     return {
         length: data.length,
-        read: async (): Promise<Buffer> => {
-            if (done) return Buffer.from(''); // EOF
+        read: async (): Promise<Buffer | null> => {
+            if (done) return null; // EOF
             done = true;
             return data;
         }

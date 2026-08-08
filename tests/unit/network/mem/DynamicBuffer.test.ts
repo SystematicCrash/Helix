@@ -1,7 +1,9 @@
 import {beforeEach, afterEach, expect, test, describe} from "vitest";
 import DynamicBuffer from "../../../../src/network/mem/DynamicBuffer.js";
 import {push} from "node:stream/iter";
-import {MAX_BUFFER_SIZE} from "../../../../src/network/mem/constants.js";
+import {MAX_BUFFER_SIZE, BufferErrCode} from "../../../../src/network/mem/constants.js";
+import BufferError from "../../../../src/network/mem/BufferError.js";
+import Delimiter from "../../../../src/network/common/constants.js";
 
 describe("DynamicBuffer", () => {
     describe("push()", () => {
@@ -71,7 +73,13 @@ describe("DynamicBuffer", () => {
             const buffer = new DynamicBuffer();
             buffer.push(Buffer.alloc(MAX_BUFFER_SIZE - 1, 0x41));
             expect(() => buffer.push(Buffer.from('more data')))
-                .toThrow(new Error('Buffer maximum size exceeded!'));
+                .toThrow(new BufferError(BufferErrCode.MAX_SIZE_EXCEEDED));
+            
+            try {
+                buffer.push(Buffer.from('more data'));
+            } catch (err) {
+                expect(BufferError.is(err as Error, BufferErrCode.MAX_SIZE_EXCEEDED)).toBe(true);
+            }
         });
     });
 
@@ -83,7 +91,13 @@ describe("DynamicBuffer", () => {
             buffer.push(data);
 
             expect(() => buffer.clear(data.length + 1))
-                .toThrow(new Error(`Cannot pop ${buffer.length + 1} bytes, only ${buffer.length} is available!`));
+                .toThrow(new BufferError(BufferErrCode.CLEAR_EXCEEDED, `Cannot clear ${buffer.length + 1} bytes, only ${buffer.length} is available!`));
+
+            try {
+                buffer.clear(data.length + 1);
+            } catch (err) {
+                expect(BufferError.is(err as Error, BufferErrCode.CLEAR_EXCEEDED)).toBe(true);
+            }
         });
 
         test("should pop the requests data length from buffer", () => {
@@ -132,7 +146,7 @@ describe("DynamicBuffer", () => {
         test("should cut requested data length", () => {
             const buffer = new DynamicBuffer(Buffer.from('This is the data'));
 
-            const data = buffer.copy(4);
+            const data = buffer.getView(4);
             expect(data.toString()).toEqual('This');
         });
 
@@ -141,8 +155,14 @@ describe("DynamicBuffer", () => {
             const data = Buffer.from('This is the data');
             buffer.push(data);
 
-            expect(() => buffer.copy(data.length + 1))
-                .toThrow(new Error(`Cannot cut ${data.length + 1} bytes, only ${data.length} is available!`));
+            expect(() => buffer.getView(data.length + 1))
+                .toThrow(new BufferError(BufferErrCode.VIEW_EXCEEDED, `Cannot cut ${data.length + 1} bytes, only ${data.length} is available!`));
+
+            try {
+                buffer.getView(data.length + 1);
+            } catch (err) {
+                expect(BufferError.is(err as Error, BufferErrCode.VIEW_EXCEEDED)).toBe(true);
+            }
         });
 
         test("should cut just the unconsumed data", () => {
@@ -151,7 +171,7 @@ describe("DynamicBuffer", () => {
             buffer.push(data);
 
             buffer.clear(10);
-            const cut = buffer.copy(buffer.length);
+            const cut = buffer.getView(buffer.length);
             expect(cut.length).lessThan(data.length);
         });
 
@@ -160,8 +180,48 @@ describe("DynamicBuffer", () => {
             const data = Buffer.from('This is the data');
             buffer.push(data);
 
-            const copied = buffer.copy();
+            const copied = buffer.getView();
             expect(copied).toEqual(data);
         })
+    });
+
+    describe("consume()", () => {
+        test("should consume message until default newline delimiter", () => {
+            const buffer = new DynamicBuffer();
+            buffer.push(Buffer.from("hello\nworld\n"));
+
+            const msg1 = buffer.consume(Delimiter.LF);
+            expect(msg1?.toString()).toEqual("hello\n");
+            expect(buffer.length).toEqual(6);
+
+            const msg2 = buffer.consume(Delimiter.LF);
+            expect(msg2?.toString()).toEqual("world\n");
+            expect(buffer.length).toEqual(0);
+        });
+
+        test("should return null when delimiter is not found", () => {
+            const buffer = new DynamicBuffer();
+            buffer.push(Buffer.from("hello"));
+
+            expect(buffer.consume(Delimiter.LF)).toBeNull();
+        });
+
+        test("should consume message until custom string delimiter", () => {
+            const buffer = new DynamicBuffer();
+            buffer.push(Buffer.from("foo|bar|baz"));
+
+            const msg1 = buffer.consume('|');
+            expect(msg1?.toString()).toEqual("foo|");
+            expect(buffer.length).toEqual(7);
+        });
+
+        test("should consume message until custom numeric char code delimiter", () => {
+            const buffer = new DynamicBuffer();
+            buffer.push(Buffer.from("foo|bar|baz"));
+
+            const msg1 = buffer.consume('|'.charCodeAt(0));
+            expect(msg1?.toString()).toEqual("foo|");
+            expect(buffer.length).toEqual(7);
+        });
     });
 });

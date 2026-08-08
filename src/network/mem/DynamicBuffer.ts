@@ -1,4 +1,5 @@
-import {MAX_BUFFER_SIZE} from "./constants.js";
+import {MAX_BUFFER_SIZE, BufferErrCode} from "./constants.js";
+import BufferError from "./BufferError.js";
 
 /** A growable buffer with a sliding window to avoid redundant copies on consume. */
 export default class DynamicBuffer {
@@ -33,19 +34,23 @@ export default class DynamicBuffer {
     }
     // TODO: return a view instead of copying data to another buffer.
     /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
-    public copy(length = this._length): Buffer {
+    public getView(length = this._length): Buffer<ArrayBufferLike> {
         if (length > this._length) {
-            throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);
+            throw new BufferError(
+                BufferErrCode.VIEW_EXCEEDED,
+                `Cannot cut ${length} bytes, only ${this._length} is available!`
+            );
         }
         return this._data.subarray(this._start, this._start + length);
     }
 
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
-    public push(data: Buffer): void {
+    public push(data: Buffer | null): void {
+        if (!data) return;
         const newLen = this.length + data.length;
 
         if (newLen >= MAX_BUFFER_SIZE) {
-            throw new Error('Buffer maximum size exceeded!');
+            throw new BufferError(BufferErrCode.MAX_SIZE_EXCEEDED);
         }
 
         if (newLen > this._capacity) {
@@ -70,7 +75,10 @@ export default class DynamicBuffer {
      */
     public clear(length = this._length): void {
         if (length > this._length) {
-            throw new Error(`Cannot pop ${length} bytes, only ${this._length} is available!`);
+            throw new BufferError(
+                BufferErrCode.CLEAR_EXCEEDED,
+                `Cannot clear ${length} bytes, only ${this._length} is available!`
+            );
         }
         this._start += length;
         this._length -= length;
@@ -82,16 +90,16 @@ export default class DynamicBuffer {
     }
 
     /**
-     * TODO: This is just a toy and should be removed from the main product
-     * Scans for the next newline-delimited message and returns it, advancing the start pointer.
+     * Scans for the next delimiter-delimited message (defaulting to '\n') and returns it, advancing the start pointer.
      * Returns null if no complete message is available yet.
      */
-    public popMessage(): Buffer|null {
-        let idx = this.copy(this._length).indexOf('\n');
+    public consume(delimiter: string | number): Buffer | null {
+        const delim = typeof delimiter === 'string' ? delimiter.charCodeAt(0) : delimiter;
+        let idx = this.getView(this._length).indexOf(delim);
 
         if (idx < 0) return null;
 
-        const msg = this.copy(idx + 1)
+        const msg = this.getView(idx + 1);
         this.clear(idx + 1);
         return msg;
     }

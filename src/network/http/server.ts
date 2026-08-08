@@ -17,8 +17,11 @@ export async function serveClient(conn: TCPConnection) {
             if (!request) {
                 const data = await conn.read();
 
-                if (data === null && buf.length === 0) conn.close(); // EOF
-                if (data === null) throw new HttpError(400, 'Unexpected EOF');
+                if (!data) {
+                    if (!buf.length) await conn.close(); // EOF
+                    else throw new HttpError(400, 'Unexpected EOF');
+                    break;
+                }
 
                 buf.push(data);
                 continue;
@@ -27,18 +30,17 @@ export async function serveClient(conn: TCPConnection) {
             const response: HttpResponse = await handleRequest(request, body);
             await writeResponse(conn, response);
 
-            while ((await body.read()).length > 0);
+            while ((await body.read()) !== null);
         }
     } catch (error: unknown) {
         const response = mapErrorToResponse(error);
         await writeResponse(conn, response);
     }
-
 }
 
 /** Scans the buffer for a complete HTTP header block (CRLFCRLF) and returns a parsed request. */
 function cutMessage(buf: DynamicBuffer): null|HttpRequest {
-    const idx = buf.copy(buf.length)
+    const idx = buf.getView(buf.length)
         .indexOf('\r\n\r\n');
 
     if (idx < 0) {
@@ -47,7 +49,7 @@ function cutMessage(buf: DynamicBuffer): null|HttpRequest {
         }
         return null;
     }
-    const msg: HttpRequest = parseRequest(buf.copy(idx));
+    const msg: HttpRequest = parseRequest(buf.getView(idx));
     buf.clear(idx + 4);
     return msg;
 }

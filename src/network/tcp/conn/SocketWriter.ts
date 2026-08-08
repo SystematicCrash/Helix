@@ -19,15 +19,11 @@ export default class SocketWriter {
     private finished: boolean = false;
 
     private writer: DataWriter | null = null;
+    private currentPromise: Promise<boolean> | null = null;
 
     constructor(readonly socket: Socket) {
         this.outputBuff = new DynamicBuffer();
-        this.timer = new Timer(
-            Event.WRITE_TIMEOUT,
-            WRITE_TIMEOUT,
-            () => this.writer?.reject(TCPError.from(TCPErrCode.WRITE_TIMEOUT))
-        );
-
+        this.timer = new Timer(Event.WRITE_TIMEOUT, WRITE_TIMEOUT, this.handleTimeout);
         socket.on(Event.DRAIN, this.onDrain);
     }
 
@@ -58,6 +54,22 @@ export default class SocketWriter {
     }
 
     /**
+     * Drains write buffer and sends all the remaining data.
+     * Retries on backpressure by waiting for the drain event.
+     */
+    public async flush(): Promise<void> {
+        if (this.writer) {
+            await this.currentPromise;
+        }
+
+        if (!this.outputBuff.length) {
+            return;
+        }
+
+        await this.tryToFlush();
+    }
+
+    /**
      * Writes data to output buffer so prevent small writes.
      */
     public async write(data: Buffer): Promise<void> {
@@ -65,7 +77,7 @@ export default class SocketWriter {
         this.outputBuff.push(data);
 
         if (this.outputBuff.length >= WRITE_BUFFER_FLUSH_THRESHOLD) {
-            await this.immediateWrite(this.outputBuff.copy());
+            await this.immediateWrite(this.outputBuff.getView());
             this.outputBuff.clear();
         }
     }
@@ -79,7 +91,7 @@ export default class SocketWriter {
         try {
             this.timer.start();
             const sentToKernel = await this.writePromise(data);
-            this.canWrite = sentToKernel && this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
+            this.canWrite = sentToKernel || this.socket.writableLength < MAX_WRITE_BUFFER_SIZE;
         } finally {
             this.timer.stop();
         }
@@ -115,21 +127,85 @@ export default class SocketWriter {
      * Resolves with whether the data was fully accepted into the kernel buffer.
      */
     private writePromise(data: Buffer): Promise<boolean> {
-        return new Promise((resolve, reject) => {
+        this.currentPromise = new Promise<boolean>((resolve, reject) => {
             this.writer = {resolve, reject};
             try {
 
                 const sentToKernel = this.socket.write(data, (err?: Error | null) => {
-                    this.writer = null;
+                    this.writer = this.currentPromise = null;
                     if (err) reject(err);
                     else resolve(sentToKernel);
                 });
 
             } catch (err) {
-                this.writer = null;
+                this.writer = this.currentPromise = null;
                 reject(err);
             }
         });
+        return this.currentPromise;
+    }
+
+    /**
+     * Retries writing the buffered data up to MAX_FLUSH_RETRIES times,
+     * waiting for drain events between backpressure failures.
+     */
+    private async tryToFlush(): Promise<void> {
+        let retries = 0;
+        const MAX_FLUSH_RETRIES = 10;
+
+        while (this.outputBuff.length > 0 && retries < MAX_FLUSH_RETRIES) {
+            try {
+                await this.immediateWrite(this.outputBuff.getView());
+                this.outputBuff.clear();
+                return;
+            } catch (err) {
+                retries++;
+                if (err instanceof TCPError && err.code === TCPErrCode.WRITE_BACKPRESSURE)
+                    await this.waitForDrainOrError();
+                else throw err;
+            }
+        }
+
+        if (this.outputBuff.length > 0) {
+            throw TCPError.from(TCPErrCode.WRITE_BACKPRESSURE);
+        }
+    }
+
+    /**
+     * Resolves when the socket drains or rejects on error, safely
+     * cleaning up one-time listeners to prevent memory leaks.
+     */
+    private waitForDrainOrError(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const onDrain = () => {
+                cleanup();
+                resolve();
+            };
+
+            const onError = (err: Error) => {
+                cleanup();
+                reject(err);
+            };
+
+            const cleanup = () => {
+                this.socket.off(Event.DRAIN, onDrain);
+                this.socket.off(Event.ERROR, onError);
+            };
+
+            this.socket.once(Event.DRAIN, onDrain);
+            this.socket.once(Event.ERROR, onError);
+        });
+    }
+
+    /**
+     * Handles write timeout and rejects pending write
+     */
+    private handleTimeout = (): void => {
+        if (this.writer) {
+            this.writer.reject(TCPError.from(TCPErrCode.WRITE_TIMEOUT));
+            this.writer = null;
+            this.currentPromise = null;
+        }
     }
 
     /**
@@ -142,7 +218,7 @@ export default class SocketWriter {
     /**
      * Called after finish to clean up timers and event listeners.
      */
-    private cleanup(): void  {
+    private cleanup(): void {
         this.timer.stop();
         this.socket.off(Event.DRAIN, this.onDrain);
     }

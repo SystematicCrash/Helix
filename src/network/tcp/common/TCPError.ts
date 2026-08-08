@@ -3,12 +3,16 @@ import {TCPErrCode} from "./constants.js";
 export default class TCPError extends Error {
     constructor(
         readonly code: TCPErrCode,
-        readonly cause?: Error
+        readonly cause?: Error | string
     ) {
-        super(cause?.message || code.toString());
+        let message = code.toString();
+        if (cause) {
+            message = typeof cause === 'string' ? cause : (cause.message || message);
+        }
+        super(message);
     }
 
-    static from(code: TCPErrCode, cause?: Error): TCPError {
+    static from(code: TCPErrCode, cause?: Error | string): TCPError {
         return new TCPError(code, cause);
     }
 

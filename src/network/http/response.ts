@@ -1,24 +1,26 @@
 import {BodyReader, HttpResponse} from "./types";
 import TCPConnection from "../tcp/conn/TCPConnection.js";
 import HttpError from "./HttpError";
-import {HTTP_STATUS, HttpHeader, HttpVersion, SUPPORTED_VERSIONS} from "./constants";
+import {HTTP_STATUS, HttpHeader, HttpVersion, SUPPORTED_VERSIONS, TransferEncoding} from "./constants";
 import {memoryReader} from "./request";
+import Delimiter from "../common/constants.js";
 
 
 /** Writes the response headers and streams the body to the connection. */
 export async function writeResponse(conn: TCPConnection, response: HttpResponse): Promise<void> {
-    if (response.body.length < 0) {
-        throw new Error("Chunked encoding not implemented.");
+    if (response.body.length === -1) {
+        response.headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
+    } else {
+        response.headers.set(HttpHeader.ContentLength, response.body.length.toString());
     }
+    await conn.write(encodeHeaders(response));
 
-    response.headers.set(HttpHeader.ContentLength, response.body.length.toString());
-    await conn.write(encodeResponse(response));
-
-    while (true) {
-        const data = await response.body.read();
-        if (data.length === 0) break;
-        await conn.write(data);
+    if (response.headers.get(HttpHeader.TransferEncoding) === TransferEncoding.CHUNKED) {
+        await chunkedWriter(conn, response.body);
+    } else {
+        await fixedWriter(conn, response.body)
     }
+    await conn.flush();
 }
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
@@ -46,7 +48,7 @@ export function mapErrorToResponse(error: unknown): HttpResponse {
 }
 
 /** Serializes the response status line and headers into a buffer. */
-function encodeResponse(response: HttpResponse): Buffer {
+function encodeHeaders(response: HttpResponse): Buffer {
     const parts: string[] = [];
     parts.push(`${response.version} ${response.code} ${HTTP_STATUS[response.code]}`);
 
@@ -56,4 +58,31 @@ function encodeResponse(response: HttpResponse): Buffer {
 
     parts.push('\r\n');
     return Buffer.from(parts.join("\r\n"));
+}
+
+async function fixedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
+    while (true) {
+        const data = await body.read();
+        if (!data) break;
+        await conn.write(data);
+    }
+}
+
+async function chunkedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
+    while (true) {
+        const data = await body.read();
+        if (!data) break;
+
+        const chunk = Buffer.from(
+            data.length.toString(16) +
+            Delimiter.CRLF +
+            data +
+            Delimiter.CRLF
+        );
+
+        await conn.write(chunk);
+    }
+
+    const chunk = Buffer.from(0 + Delimiter.CRLF + Delimiter.CRLF);
+    await conn.write(chunk);
 }

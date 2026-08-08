@@ -10,12 +10,7 @@ export default class SocketReader {
     private reader: DataReader | null = null;
 
     constructor(readonly socket: Socket) {
-        this.timer = new Timer(
-            Event.READ_TIMEOUT,
-            READ_TIMEOUT,
-            () => this.reader?.reject(TCPError.from(TCPErrCode.READ_TIMEOUT))
-        );
-
+        this.timer = new Timer(Event.READ_TIMEOUT, READ_TIMEOUT, this.handleTimeout);
         this.socket.on(Event.DATA, this.onData);
     }
 
@@ -86,6 +81,16 @@ export default class SocketReader {
         this.reader.resolve(data);
         this.reader = null;
     };
+
+    /**
+     * Handles write timeout and rejects pending write
+     */
+    private handleTimeout = (): void => {
+        if (this.reader) {
+            this.reader.reject(TCPError.from(TCPErrCode.READ_TIMEOUT));
+            this.reader = null;
+        }
+    }
 
     private cleanup(): void  {
         this.timer.stop();
