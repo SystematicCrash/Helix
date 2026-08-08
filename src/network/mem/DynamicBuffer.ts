@@ -1,4 +1,5 @@
-import {MAX_BUFFER_SIZE} from "./constants.js";
+import {MAX_BUFFER_SIZE, BufferErrCode} from "./constants.js";
+import BufferError from "./BufferError.js";
 
 /** A growable buffer with a sliding window to avoid redundant copies on consume. */
 export default class DynamicBuffer {
@@ -35,7 +36,10 @@ export default class DynamicBuffer {
     /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
     public getView(length = this._length): Buffer<ArrayBufferLike> {
         if (length > this._length) {
-            throw new Error(`Cannot cut ${length} bytes, only ${this._length} is available!`);
+            throw new BufferError(
+                BufferErrCode.VIEW_EXCEEDED,
+                `Cannot cut ${length} bytes, only ${this._length} is available!`
+            );
         }
         return this._data.subarray(this._start, this._start + length);
     }
@@ -46,7 +50,7 @@ export default class DynamicBuffer {
         const newLen = this.length + data.length;
 
         if (newLen >= MAX_BUFFER_SIZE) {
-            throw new Error('Buffer maximum size exceeded!');
+            throw new BufferError(BufferErrCode.MAX_SIZE_EXCEEDED);
         }
 
         if (newLen > this._capacity) {
@@ -71,7 +75,10 @@ export default class DynamicBuffer {
      */
     public clear(length = this._length): void {
         if (length > this._length) {
-            throw new Error(`Cannot clear ${length} bytes, only ${this._length} is available!`);
+            throw new BufferError(
+                BufferErrCode.CLEAR_EXCEEDED,
+                `Cannot clear ${length} bytes, only ${this._length} is available!`
+            );
         }
         this._start += length;
         this._length -= length;
