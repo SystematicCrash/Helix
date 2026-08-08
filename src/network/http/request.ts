@@ -144,10 +144,33 @@ function fixedReader(conn: TCPConnection, buf: DynamicBuffer, remain: number): B
     }
 }
 
-/** Reads a Transfer-Encoding: chunked body. Not yet implemented. */
-function chunkedReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
-    // TODO: Implement chuck read
-    throw new HttpError(501, 'Chunk read is not implemented');
+/** Reads a Transfer-Encoding: chunked body. */
+async function* readChunks(conn: TCPConnection, buff: DynamicBuffer): BufferGenerator {
+    for (let last = false; !last; ) {
+        const idx = buff.getView().indexOf('\r\n');
+
+        if (idx < 0) {
+            buff.push(await conn.read());
+            continue;
+        }
+
+        let remain = parseInt(buff.getView(idx + 1).toString(), 16);
+        buff.clear(idx + 2);
+        last = remain === 0;
+
+        while (remain > 0) {
+            if (!buff.length) {
+                buff.push(await conn.read());
+            }
+
+            const consume = Math.min(remain, buff.length);
+            const data = buff.getView(consume);
+            buff.clear(consume);
+            remain -= consume;
+            yield data;
+        }
+        buff.clear(2);
+    }
 }
 
 /** Reads until the connection closes. Not yet implemented. */
