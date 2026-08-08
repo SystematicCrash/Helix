@@ -1,5 +1,6 @@
 import DynamicBuffer from "../../mem/DynamicBuffer.js";
 import TCPConnection from "../conn/TCPConnection.js";
+import Delimiter from "../../common/constants.js";
 
 /**
  * TODO: This is just a toy and should be removed from the main product
@@ -10,7 +11,7 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
     const buf = new DynamicBuffer(Buffer.alloc(0));
 
     while (true) {
-        const msg: Buffer|null = buf.popMessage();
+        const msg: Buffer|null = buf.consume(Delimiter.LF);
 
         if (!msg) {
             try {

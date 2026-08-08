@@ -90,16 +90,16 @@ export default class DynamicBuffer {
     }
 
     /**
-     * TODO: This is just a toy and should be removed from the main product
-     * Scans for the next newline-delimited message and returns it, advancing the start pointer.
+     * Scans for the next delimiter-delimited message (defaulting to '\n') and returns it, advancing the start pointer.
      * Returns null if no complete message is available yet.
      */
-    public popMessage(): Buffer|null {
-        let idx = this.getView(this._length).indexOf('\n');
+    public consume(delimiter: string | number): Buffer | null {
+        const delim = typeof delimiter === 'string' ? delimiter.charCodeAt(0) : delimiter;
+        let idx = this.getView(this._length).indexOf(delim);
 
         if (idx < 0) return null;
 
-        const msg = this.getView(idx + 1)
+        const msg = this.getView(idx + 1);
         this.clear(idx + 1);
         return msg;
     }
