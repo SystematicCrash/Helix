@@ -8,7 +8,7 @@ import Delimiter from "../common/constants.js";
 
 /** Writes the response headers and streams the body to the connection. */
 export async function writeResponse(conn: TCPConnection, response: HttpResponse): Promise<void> {
-    if (response.body.length < 0) {
+    if (response.body.length === -1) {
         response.headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
     } else {
         response.headers.set(HttpHeader.ContentLength, response.body.length.toString());
