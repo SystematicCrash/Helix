@@ -187,7 +187,7 @@ describe('SocketWriter', () => {
         });
 
         test('should unblock writes when drain event fires', async () => {
-            createWriteBackpressureData(socket); // SocketWriter test
+            createWriteBackpressureData(socket);
 
             await floodWrites(sockWriter, MAX_WRITE_BUFFER_SIZE);
 
