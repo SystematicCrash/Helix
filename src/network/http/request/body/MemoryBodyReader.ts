@@ -15,8 +15,3 @@ export default class MemoryBodyReader implements BodyReader {
         return this.data;
     }
 }
-
-/** Convenience factory mirroring the previous `memoryReader` helper. */
-export function memoryReader(data: Buffer): BodyReader {
-    return new MemoryBodyReader(data);
-}
