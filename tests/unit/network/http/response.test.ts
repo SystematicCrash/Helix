@@ -1,9 +1,10 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import HttpError from '../../../../src/network/http/HttpError.js';
-import { mapErrorToResponse, writeResponse } from '../../../../src/network/http/response.js';
-import { HttpVersion } from '../../../../src/network/http/constants.js';
-import { HttpResponse } from '../../../../src/network/http/types.js';
-import { memoryReader } from '../../../../src/network/http/request.js';
+import HttpError from '../../../../src/network/http/common/HttpError.js';
+import { mapErrorToResponse } from '../../../../src/network/http/response/mapErrorToResponse.js';
+import { ResponseWriter } from '../../../../src/network/http/response/ResponseWriter.js';
+import { HttpVersion } from '../../../../src/network/http/common/constants.js';
+import { HttpResponse } from '../../../../src/network/http/common/types.js';
+import { memoryReader } from '../../../../src/network/http/request/body/MemoryBodyReader.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import {TCPConnection} from '../../../../src/network/tcp';
 
@@ -78,7 +79,7 @@ describe('mapErrorToResponse()', () => {
     });
 });
 
-describe('writeResponse()', () => {
+describe('ResponseWriter.write()', () => {
     let conn: TCPConnection;
 
     beforeEach(() => {
@@ -94,7 +95,7 @@ describe('writeResponse()', () => {
                 headers: new Map(),
             };
 
-            await writeResponse(conn, response);
+            await ResponseWriter.write(conn, response);
             expect(conn.write).toHaveBeenCalled();
         });
 
@@ -106,7 +107,7 @@ describe('writeResponse()', () => {
                 headers: new Map(),
             };
 
-            await writeResponse(conn, response);
+            await ResponseWriter.write(conn, response);
             expect(response.headers.get('content-length')).toBe('5');
         });
 
@@ -118,24 +119,25 @@ describe('writeResponse()', () => {
                 headers: new Map(),
             };
 
-            await writeResponse(conn, response);
+            await ResponseWriter.write(conn, response);
             expect(conn.write).toHaveBeenCalledTimes(2); // headers + body
         });
     });
 
-    describe('invalid response', () => {
-        test('should throw when body length is negative (chunked not supported)', async () => {
+    describe('chunked response', () => {
+        test('should use chunked transfer-encoding when body length is unknown', async () => {
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
                 headers: new Map(),
                 body: {
                     length: -1,
-                    read: async () => Buffer.from('hello'),
+                    read: async () => null,
                 },
             };
 
-            await expect(writeResponse(conn, response)).rejects.toThrow();
+            await expect(ResponseWriter.write(conn, response)).resolves.toBeUndefined();
+            expect(response.headers.get('transfer-encoding')).toBe('chunked');
         });
     });
 });
