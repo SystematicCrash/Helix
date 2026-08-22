@@ -1,16 +1,17 @@
 import { describe, test, expect } from 'vitest';
-import { getReader, parseRequest } from '../../../../src/network/http/request.js';
-import HttpError from '../../../../src/network/http/HttpError.js';
+import { getReader } from '../../../../src/network/http/request/body/bodyReaderFactory.js';
+import HttpError from '../../../../src/network/http/common/HttpError.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import DynamicBuffer from '../../../../src/network/mem/DynamicBuffer.js';
-import { HttpRequest } from '../../../../src/network/http/types.js';
+import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
+import type { HttpRequest as HttpRequestData } from '../../../../src/network/http/common/types.js';
 
-describe('parseRequest()', () => {
+describe('new HttpRequest()', () => {
 
     describe('valid requests', () => {
         test('should parse raw bytes into an HttpRequest object', () => {
             const raw = Buffer.from('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nCustom: something');
-            const parsed = parseRequest(raw);
+            const parsed = new HttpRequest(raw);
 
             expect(parsed).toMatchObject({
                 method: 'POST',
@@ -25,7 +26,7 @@ describe('parseRequest()', () => {
 
         test('should parse GET request', () => {
             const raw = Buffer.from('GET /api/users HTTP/1.1\r\nHost: example.com');
-            const parsed = parseRequest(raw);
+            const parsed = new HttpRequest(raw);
 
             expect(parsed).toMatchObject({
                 method: 'GET',
@@ -39,14 +40,14 @@ describe('parseRequest()', () => {
         test('should throw 405 when method is not allowed', () => {
             const raw = Buffer.from('INVALID /user/messages HTTP/1.1\r\nHost: example.com');
 
-            expect(() => parseRequest(raw))
+            expect(() => new HttpRequest(raw))
                 .toThrow(new HttpError(405, 'Method not allowed'));
         });
 
         test('should throw 405 when method is lowercase', () => {
             const raw = Buffer.from('get /user/messages HTTP/1.1\r\nHost: example.com');
 
-            expect(() => parseRequest(raw))
+            expect(() => new HttpRequest(raw))
                 .toThrow(new HttpError(405, 'Method not allowed'));
         });
     });
@@ -55,14 +56,14 @@ describe('parseRequest()', () => {
         test('should throw 501 when HTTP version is not supported', () => {
             const raw = Buffer.from('POST /user/messages HTTP/3\r\nHost: example.com');
 
-            expect(() => parseRequest(raw))
+            expect(() => new HttpRequest(raw))
                 .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
         });
 
         test('should throw 501 when HTTP version is malformed', () => {
             const raw = Buffer.from('POST /user/messages INVALID\r\nHost: example.com');
 
-            expect(() => parseRequest(raw))
+            expect(() => new HttpRequest(raw))
                 .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
         });
     });
@@ -72,7 +73,7 @@ describe('getReader()', () => {
 
     describe('content-length body', () => {
         test('should return fixed reader with correct length', () => {
-            const request: HttpRequest = {
+            const request: HttpRequestData = {
                 method: 'POST',
                 url: '/user/messages',
                 version: 'HTTP/1.1',
@@ -84,7 +85,7 @@ describe('getReader()', () => {
         });
 
         test.todo('should return fixed reader with zero length when content-length is 0', () => {
-            const request: HttpRequest = {
+            const request: HttpRequestData = {
                 method: 'POST',
                 url: '/user/messages',
                 version: 'HTTP/1.1',
