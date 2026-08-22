@@ -21,7 +21,8 @@ export default class SocketReader {
     /**
      * Reads the next available chunk from the TCP stream.
      * Only one read operation can be pending at a time.
-     * Returns empty buffer when the remote peer performs a graceful shutdown.
+     * Returns the next non-empty chunk, or null when the peer closes the connection.
+     * Zero-length chunks are consumed and skipped internally so callers never see them.
      */
     public async read(): Promise<Buffer | null> {
         if (this.finished) {
@@ -34,7 +35,11 @@ export default class SocketReader {
 
         try {
             this.timer.start();
-            return await this.readPromise();
+            let data: Buffer | null;
+            do {
+                data = await this.readPromise();
+            } while (data !== null && data.length === 0);
+            return data;
         } finally {
             this.timer.stop();
         }
