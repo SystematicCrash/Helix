@@ -116,7 +116,7 @@ describe('getReader()', () => {
             const chunks: Buffer[] = [];
             let chunk;
             while ((chunk = await reader.read()) !== null) {
-                chunks.push(chunk);
+                chunks.push(Buffer.from(chunk));
             }
 
             expect(Buffer.concat(chunks).toString()).toBe('Wikipedia');
