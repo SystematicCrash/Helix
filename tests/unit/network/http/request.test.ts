@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { getReader } from '../../../../src/network/http/request/body/bodyReaderFactory.js';
 import HttpError from '../../../../src/network/http/common/HttpError.js';
 import { mockedTCPConnection } from '../common/utils.js';
@@ -98,7 +98,63 @@ describe('getReader()', () => {
     });
 
     describe('chunked body', () => {
-        test.todo('should return chunked reader when transfer-encoding is chunked');
+        test('should read chunked body correctly', async () => {
+            const conn = {
+                read: vi.fn()
+                    .mockResolvedValueOnce(Buffer.from('4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n'))
+            } as any;
+
+            const buf = new DynamicBuffer();
+            const request: HttpRequestData = {
+                method: 'POST',
+                url: '/',
+                version: 'HTTP/1.1',
+                headers: new Map([['transfer-encoding', 'chunked']]),
+            };
+
+            const reader = getReader(conn, buf, request);
+            const chunks: Buffer[] = [];
+            let chunk;
+            while ((chunk = await reader.read()) !== null) {
+                chunks.push(chunk);
+            }
+
+            expect(Buffer.concat(chunks).toString()).toBe('Wikipedia');
+        });
+
+        test('should throw on unexpected EOF while reading chunk size', async () => {
+            const conn = {
+                read: vi.fn().mockResolvedValue(null)
+            } as any;
+
+            const buf = new DynamicBuffer();
+            const request: HttpRequestData = {
+                method: 'POST',
+                url: '/',
+                version: 'HTTP/1.1',
+                headers: new Map([['transfer-encoding', 'chunked']]),
+            };
+
+            const reader = getReader(conn, buf, request);
+            await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading chunk size');
+        });
+
+        test('should throw on invalid chunk size hex', async () => {
+            const conn = {
+                read: vi.fn().mockResolvedValue(Buffer.from('XYZ\r\n'))
+            } as any;
+
+            const buf = new DynamicBuffer();
+            const request: HttpRequestData = {
+                method: 'POST',
+                url: '/',
+                version: 'HTTP/1.1',
+                headers: new Map([['transfer-encoding', 'chunked']]),
+            };
+
+            const reader = getReader(conn, buf, request);
+            await expect(reader.read()).rejects.toThrow('Invalid chunk size');
+        });
     });
 
     describe('no body', () => {
