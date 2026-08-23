@@ -26,7 +26,9 @@ export default class HttpRequest implements HttpRequestType {
         return new HttpRequest(requestData);
     }
 
-    /** Parses a raw HTTP request buffer into this request, validating method and version. */
+    /**
+     * Parses a raw HTTP request buffer into this request, validating method and version.
+     */
     private parse(data: Buffer): void {
         data = stripBuffer(data, Delimiter.CRLF);
         const lines = splitBuffer(data, Delimiter.CRLF);
