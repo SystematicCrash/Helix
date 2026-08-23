@@ -14,11 +14,13 @@ export default class ChunkedBodyReader implements BodyReader {
         this.gen = this.readChunks();
     }
 
+    /** Reads the next chunk payload buffer. */
     async read(): Promise<Buffer | null> {
         const r = await this.gen.next();
         return r.done ? null : r.value;
     }
 
+    /** Generator that reads all chunks sequentially until the terminal zero chunk. */
     private async *readChunks(): BufferGenerator {
         for (let last = false; !last;) {
             const remain = await this.readChunkSize();
@@ -32,6 +34,7 @@ export default class ChunkedBodyReader implements BodyReader {
         }
     }
 
+    /** Reads and parses the hexadecimal chunk size line. */
     private async readChunkSize(): Promise<number> {
         while (true) {
             const idx = this.buff.getView().indexOf('\r\n');
@@ -56,6 +59,7 @@ export default class ChunkedBodyReader implements BodyReader {
         }
     }
 
+    /** Yields the payload bytes for the current chunk. */
     private async *readChunkData(remain: number): BufferGenerator {
         while (remain > 0) {
             if (!this.buff.length) {
