@@ -24,21 +24,34 @@ export default class ChunkedBodyReader implements BodyReader {
             const idx = this.buff.getView().indexOf('\r\n');
 
             if (idx < 0) {
-                this.buff.push(await this.conn.read());
+                const chunk = await this.conn.read();
+                if (chunk === null) {
+                    throw new Error('Unexpected EOF while reading chunk size');
+                }
+                this.buff.push(chunk);
                 continue;
             }
 
-            let remain = parseInt(this.buff.getView(idx + 1).toString(), 16);
+            const sizeLine = this.buff.getView(idx).toString().trim();
+            let remain = parseInt(sizeLine, 16);
+            if (isNaN(remain)) {
+                throw new Error(`Invalid chunk size: "${sizeLine}"`);
+            }
+
             this.buff.clear(idx + 2);
             last = remain === 0;
 
             while (remain > 0) {
                 if (!this.buff.length) {
-                    this.buff.push(await this.conn.read());
+                    const chunk = await this.conn.read();
+                    if (chunk === null) {
+                        throw new Error('Unexpected EOF while reading chunk data');
+                    }
+                    this.buff.push(chunk);
                 }
 
                 const consume = Math.min(remain, this.buff.length);
-                const data = this.buff.getView(consume);
+                const data = Buffer.from(this.buff.getView(consume));
                 this.buff.clear(consume);
                 remain -= consume;
                 yield data;
