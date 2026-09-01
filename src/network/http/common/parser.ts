@@ -1,4 +1,5 @@
 import {HEADER_NAME_REGEX} from "./constants.js";
+import Delimiter from "../../common/constants.js";
 
 /**
  * RFC 7230 generic parser primitives. Not tied to any single message part —
@@ -8,7 +9,7 @@ import {HEADER_NAME_REGEX} from "./constants.js";
 /** Consumes optional whitespace (SP/HTAB) and returns the remainder. */
 export function consumeBWS(s: string): string {
     let i = 0;
-    while (i < s.length && (s[i] === ' ' || s[i] === '\t')) i++;
+    while (i < s.length && (s[i] === Delimiter.SP || s[i] === Delimiter.HTAB)) i++;
     return s.slice(i);
 }
 

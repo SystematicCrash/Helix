@@ -3,6 +3,7 @@ enum Delimiter {
     CR = '\r',
     CRLF = '\r\n',
     SP = ' ',
+    HTAB = '\t',
 }
 
 export default Delimiter;
