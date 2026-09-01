@@ -27,7 +27,7 @@ export default class ChunkedBodyReader implements BodyReader {
             last = remain === 0;
 
             if (remain > 0) {
-                yield* this.readChunkData(remain);
+                yield* this.consumeChunk(remain);
             }
 
             this.buff.clear(2);
@@ -40,18 +40,14 @@ export default class ChunkedBodyReader implements BodyReader {
             const idx = this.buff.getView().indexOf('\r\n');
 
             if (idx < 0) {
-                const chunk = await this.conn.read();
-                if (chunk === null) {
-                    throw new Error('Unexpected EOF while reading chunk size');
-                }
-                this.buff.push(chunk);
+                await this.readData();
                 continue;
             }
 
-            const sizeLine = this.buff.getView(idx).toString().trim();
-            const remain = parseInt(sizeLine, 16);
+            const chunkSize = this.buff.getView(idx).toString().trim();
+            const remain = parseInt(chunkSize, 16);
             if (isNaN(remain)) {
-                throw new Error(`Invalid chunk size: "${sizeLine}"`);
+                throw new Error(`Invalid chunk size: "${chunkSize}"`);
             }
 
             this.buff.clear(idx + 2);
@@ -60,14 +56,10 @@ export default class ChunkedBodyReader implements BodyReader {
     }
 
     /** Yields the payload bytes for the current chunk. */
-    private async *readChunkData(remain: number): BufferGenerator {
+    private async *consumeChunk(remain: number): BufferGenerator {
         while (remain > 0) {
             if (!this.buff.length) {
-                const chunk = await this.conn.read();
-                if (chunk === null) {
-                    throw new Error('Unexpected EOF while reading chunk data');
-                }
-                this.buff.push(chunk);
+                await this.readData();
             }
 
             const consume = Math.min(remain, this.buff.length);
@@ -76,5 +68,14 @@ export default class ChunkedBodyReader implements BodyReader {
             remain -= consume;
             yield data;
         }
+    }
+
+    /** Reads chunk data from socket and pushes it into the buffer */
+    private async readData(): Promise<void> {
+        const chunk = await this.conn.read();
+        if (chunk === null) {
+            throw new Error('Unexpected EOF while reading chunk data');
+        }
+        this.buff.push(chunk);
     }
 }
