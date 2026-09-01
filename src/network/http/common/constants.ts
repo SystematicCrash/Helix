@@ -7,6 +7,9 @@ export const MAX_CHUNK_SIZE = 64 * 1024 * 1000;
 export const HEADER_NAME_REGEX = /^[-a-zA-Z0-9!#$%&'*+.^_`|~]+$/;
 export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]*$/;
 
+/** RFC 7230 §4.1.1 — chunk-size grammar: 1*HEXDIG */
+export const HEX_DIGITS = /^[0-9A-Fa-f]+$/;
+
 export const MANDATORY_HEADERS = ['host'] as const;
 export const SUPPORTED_VERSIONS = ['HTTP/1.1'];
 
