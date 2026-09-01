@@ -1,6 +1,8 @@
 import DynamicBuffer from "../../../mem/DynamicBuffer.js";
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
 import {BodyReader, BufferGenerator} from "../../common/types.js";
+import {MAX_CHUNK_SIZE} from "../../common/constants.js";
+import HttpError from "../../common/HttpError.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
 export default class ChunkedBodyReader implements BodyReader {
@@ -47,7 +49,10 @@ export default class ChunkedBodyReader implements BodyReader {
             const chunkSize = this.buff.getView(idx).toString().trim();
             const remain = parseInt(chunkSize, 16);
             if (isNaN(remain)) {
-                throw new Error(`Invalid chunk size: "${chunkSize}"`);
+                throw new HttpError(400, `Invalid chunk size: "${chunkSize}"`);
+            }
+            if (remain > MAX_CHUNK_SIZE) {
+                throw new HttpError(400, `Exceeded chunk size: "${chunkSize}"`);
             }
 
             this.buff.clear(idx + 2);
@@ -74,7 +79,7 @@ export default class ChunkedBodyReader implements BodyReader {
     private async readData(): Promise<void> {
         const chunk = await this.conn.read();
         if (chunk === null) {
-            throw new Error('Unexpected EOF while reading chunk data');
+            throw new HttpError(410, 'Unexpected EOF while reading chunk data');
         }
         this.buff.push(chunk);
     }
