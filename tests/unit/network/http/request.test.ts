@@ -136,7 +136,7 @@ describe('getReader()', () => {
             };
 
             const reader = getReader(conn, buf, request);
-            await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading chunk size');
+            await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading chunk data');
         });
 
         test('should throw on invalid chunk size hex', async () => {
