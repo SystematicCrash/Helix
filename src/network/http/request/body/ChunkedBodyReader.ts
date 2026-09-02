@@ -82,7 +82,8 @@ export default class ChunkedBodyReader implements BodyReader {
             yield data;
         }
     }
-
+    // TODO: Maybe it's better to rename this method to something more descriptive like (readFromSocket).
+    // TODO: Also rename chunk to something else, because that read does not exactly read the whole chunk data.
     /** Reads chunk data from socket and pushes it into the buffer */
     private async readData(): Promise<void> {
         const chunk = await this.conn.read();
