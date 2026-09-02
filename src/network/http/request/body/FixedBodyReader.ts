@@ -27,8 +27,6 @@ export default class FixedBodyReader implements BodyReader {
 
         const consume = Math.min(this.buf.length, this.length);
         this.length -= consume;
-        const data = this.buf.getView(consume);
-        this.buf.clear(consume);
-        return data;
+        return this.buf.pop(consume);
     }
 }

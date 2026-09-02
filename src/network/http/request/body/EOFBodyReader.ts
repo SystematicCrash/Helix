@@ -33,9 +33,6 @@ export default class EOFBodyReader implements BodyReader {
             this.buf.push(data);
         }
 
-        const view = this.buf.getView();
-        const data = Buffer.from(view);
-        this.buf.clear();
-        return data;
+        return this.buf.pop();
     }
 }

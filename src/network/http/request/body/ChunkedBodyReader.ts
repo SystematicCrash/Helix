@@ -76,8 +76,7 @@ export default class ChunkedBodyReader implements BodyReader {
             }
 
             const consume = Math.min(remain, this.buff.length);
-            const data = Buffer.from(this.buff.getView(consume));
-            this.buff.clear(consume);
+            const data = this.buff.pop(consume);
             remain -= consume;
             yield data;
         }
