@@ -15,17 +15,17 @@ const HTAB = 0x09;     // Delimiter.HTAB
 const DQ = 0x22;       // "
 const BS = 0x5C;       // \
 
-/** Consumes optional whitespace (SP/HTAB) and returns the remainder. */
+/** Consumes optional beginning whitespace (SP/HTAB/Bad White Space) and returns the remainder. */
 export function consumeBWS(s: string): string {
     let i = 0;
-    while (i < s.length) {
+    while (i < s.length) { // TODO: replace this with for-loop for more readability
         const code = s.charCodeAt(i);
         if (code !== SP && code !== HTAB) break;
         i++;
     }
     return s.slice(i);
 }
-
+// TODO: choose a better and more descriptive name for this function (findToken or findFirstToken or whatever sounds better to you)
 /** Returns the length of the leading token run, or 0 if the first char isn't a token char. */
 export function scanToken(s: string): number {
     let i = 0;
