@@ -3,7 +3,7 @@ import TCPConnection from "../../../tcp/conn/TCPConnection.js";
 import {BodyReader, BufferGenerator, ChunkExtension} from "../../common/types.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
 import {consumeBWS, consumeQuotedString, scanToken} from "../../common/parser.js";
-import HttpError from "../../common/HttpError.js";
+import Delimiter from "../../../common/constants.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
 export default class ChunkedBodyReader implements BodyReader {
@@ -58,7 +58,7 @@ export default class ChunkedBodyReader implements BodyReader {
             const ext = ChunkedBodyReader.parseChunkExtensions(line);
 
             if (size > MAX_CHUNK_SIZE) {
-                throw new HttpError(400, `Exceeded chunk size: "${size}"`);
+                throw new Error(`Exceeded chunk size: "${size}"`);
             }
 
             this._extensions = ext;
@@ -69,14 +69,14 @@ export default class ChunkedBodyReader implements BodyReader {
     }
 
     /** Yields the payload bytes for the current chunk. */
-    private async *consumeChunk(remain: number): BufferGenerator {
+    private async* consumeChunk(remain: number): BufferGenerator {
         while (remain > 0) {
             if (!this.buff.length) {
                 await this.readData();
             }
 
             const consume = Math.min(remain, this.buff.length);
-            const data = this.buff.getView(consume);
+            const data = Buffer.from(this.buff.getView(consume));
             this.buff.clear(consume);
             remain -= consume;
             yield data;
@@ -87,7 +87,7 @@ export default class ChunkedBodyReader implements BodyReader {
     private async readData(): Promise<void> {
         const chunk = await this.conn.read();
         if (chunk === null) {
-            throw new HttpError(410, 'Unexpected EOF while reading chunk data');
+            throw new Error('Unexpected EOF while reading chunk data');
         }
         this.buff.push(chunk);
     }
@@ -119,12 +119,12 @@ export default class ChunkedBodyReader implements BodyReader {
         const sizePart = (semi < 0 ? line : line.slice(0, semi)).trim();
 
         if (sizePart.length === 0 || !HEX_DIGITS.test(sizePart)) {
-            throw new HttpError(400, `Invalid chunk size: "${line}"`);
+            throw new Error(`Invalid chunk size: "${line}"`);
         }
 
         const size = parseInt(sizePart, 16);
         if (!Number.isFinite(size) || size < 0) {
-            throw new HttpError(400, `Invalid chunk size: "${line}"`);
+            throw new Error(`Invalid chunk size: "${line}"`);
         }
         return size;
     }
@@ -132,7 +132,7 @@ export default class ChunkedBodyReader implements BodyReader {
     /**
      * Parses chunk extensions from a chunk-size line (no trailing CRLF).
      * Returns an empty array if no extensions are present.
-     *
+     * // TODO: Extract this method into separate methods if possible for more clarity (Only if it's reasonable to do so)
      * RFC 7230 §4.1.1:
      *   chunk-ext  = *( BWS ";" BWS chunk-ext-name [ BWS "=" BWS chunk-ext-val ] )
      *   chunk-ext-name = token
@@ -147,13 +147,13 @@ export default class ChunkedBodyReader implements BodyReader {
 
         while (rest.length > 0) {
             if (rest[0] !== ';') {
-                throw new HttpError(400, `Invalid chunk extension: "${line}"`);
+                throw new Error(`Invalid chunk extension: "${line}"`);
             }
             rest = consumeBWS(rest.slice(1));
 
             const nameEnd = scanToken(rest);
             if (nameEnd === 0) {
-                throw new HttpError(400, `Invalid chunk extension name: "${line}"`);
+                throw new Error(`Invalid chunk extension name: "${line}"`);
             }
             const name = rest.slice(0, nameEnd);
             rest = consumeBWS(rest.slice(nameEnd));
@@ -170,12 +170,12 @@ export default class ChunkedBodyReader implements BodyReader {
                     ext.push({name, value: q.value});
                     rest = rest.slice(q.consumed);
                 } catch {
-                    throw new HttpError(400, `Unterminated quoted-string in chunk extension: "${line}"`);
+                    throw new Error(`Unterminated quoted-string in chunk extension: "${line}"`);
                 }
             } else {
                 const valEnd = scanToken(rest);
                 if (valEnd === 0) {
-                    throw new HttpError(400, `Invalid chunk extension value: "${line}"`);
+                    throw new Error(`Invalid chunk extension value: "${line}"`);
                 }
                 ext.push({name, value: rest.slice(0, valEnd)});
                 rest = rest.slice(valEnd);
