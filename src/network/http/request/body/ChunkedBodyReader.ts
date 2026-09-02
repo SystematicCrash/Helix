@@ -92,7 +92,7 @@ export default class ChunkedBodyReader implements BodyReader {
         this.buff.push(chunk);
     }
 
-    /** // TODO: check that the remaining data in buffer is actually CRLF before removing.
+    /**
      * Consumes the CRLF that terminates the current chunk — either the trailing CRLF
      * after the chunk-data, or the CRLF after the size-line of the terminal 0-chunk.
      * Pulls more bytes from the connection if the buffer doesn't yet have them.
@@ -101,7 +101,7 @@ export default class ChunkedBodyReader implements BodyReader {
         while (this.buff.length < 2) {
             await this.readData();
         }
-        if (this.buff.getView().toString() !== Delimiter.CRLF) {
+        if (this.buff.getView(2).toString() !== Delimiter.CRLF) {
             throw new Error('Invalid chunk framing: missing CRLF after chunk data');
         }
 
