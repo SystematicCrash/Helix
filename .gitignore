@@ -3,6 +3,7 @@
 
 # Third-Party
 node_modules
+.hermes
 
 # Secret
 .env
