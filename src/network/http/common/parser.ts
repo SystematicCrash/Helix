@@ -1,22 +1,35 @@
-import {HEADER_NAME_REGEX} from "./constants.js";
+import {TOKEN_CHAR_CODES} from "./constants.js";
 import Delimiter from "../../common/constants.js";
 
 /**
  * RFC 7230 generic parser primitives. Not tied to any single message part —
  * usable for headers, chunk-ext, trailers, and any future RFC 7230 grammar.
+ *
+ * Implementation note: all char comparisons go through `String.charCodeAt(i)`,
+ * which returns `number` (never `undefined`), so these helpers stay compatible
+ * with `noUncheckedIndexedAccess` without using `!` assertions.
  */
+
+const SP = 0x20;       // Delimiter.SP
+const HTAB = 0x09;     // Delimiter.HTAB
+const DQ = 0x22;       // "
+const BS = 0x5C;       // \
 
 /** Consumes optional whitespace (SP/HTAB) and returns the remainder. */
 export function consumeBWS(s: string): string {
     let i = 0;
-    while (i < s.length && (s[i] === Delimiter.SP || s[i] === Delimiter.HTAB)) i++;
+    while (i < s.length) {
+        const code = s.charCodeAt(i);
+        if (code !== SP && code !== HTAB) break;
+        i++;
+    }
     return s.slice(i);
 }
 
 /** Returns the length of the leading token run, or 0 if the first char isn't a token char. */
 export function scanToken(s: string): number {
     let i = 0;
-    while (i < s.length && HEADER_NAME_REGEX.test(s[i]!)) i++;
+    while (i < s.length && TOKEN_CHAR_CODES.has(s.charCodeAt(i))) i++;
     return i;
 }
 
@@ -30,17 +43,17 @@ export function consumeQuotedString(s: string): {value: string; consumed: number
     let out = '';
     let i = 1;
     while (i < s.length) {
-        const c = s[i]!;
-        if (c === '\\') {
+        const code = s.charCodeAt(i);
+        if (code === BS) {
             if (i + 1 >= s.length) {
                 throw new Error('Unterminated quoted-string');
             }
             out += s[i + 1];
             i += 2;
-        } else if (c === '"') {
+        } else if (code === DQ) {
             return {value: out, consumed: i + 1};
         } else {
-            out += c;
+            out += s[i];
             i++;
         }
     }
