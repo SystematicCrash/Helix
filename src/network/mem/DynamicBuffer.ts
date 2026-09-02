@@ -44,6 +44,11 @@ export default class DynamicBuffer {
         return this._data.subarray(this._start, this._start + length);
     }
 
+    /** Creates and allocates a new buffer with current buffer content */
+    public clone(length: number = this._length): Buffer {
+        return Buffer.from(this.getView(length));
+    }
+
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
     public push(data: Buffer | null): void {
         if (!data) return;
