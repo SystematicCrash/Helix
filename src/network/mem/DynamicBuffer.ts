@@ -49,6 +49,13 @@ export default class DynamicBuffer {
         return Buffer.from(this.getView(length));
     }
 
+    /** Allocates a new buffer with given length of data from current buffer and clears the buffer */
+    public pop(length: number = this._length): Buffer {
+        const data = this.clone(length);
+        this.clear(length);
+        return data;
+    }
+
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
     public push(data: Buffer | null): void {
         if (!data) return;
