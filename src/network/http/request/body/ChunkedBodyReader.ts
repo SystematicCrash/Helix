@@ -30,7 +30,7 @@ export default class ChunkedBodyReader implements BodyReader {
     }
 
     /** Generator that reads all chunks sequentially until the terminal zero chunk. */
-    private async *readChunks(): BufferGenerator {
+    private async* readChunks(): BufferGenerator {
         for (let last = false; !last;) {
             const remain = await this.readChunkSize();
             last = remain === 0;
@@ -39,7 +39,7 @@ export default class ChunkedBodyReader implements BodyReader {
                 yield* this.consumeChunk(remain);
             }
 
-            this.buff.clear(2);
+            await this.skipCRLF();
         }
     }
 
@@ -90,6 +90,22 @@ export default class ChunkedBodyReader implements BodyReader {
             throw new HttpError(410, 'Unexpected EOF while reading chunk data');
         }
         this.buff.push(chunk);
+    }
+
+    /** // TODO: check that the remaining data in buffer is actually CRLF before removing.
+     * Consumes the CRLF that terminates the current chunk — either the trailing CRLF
+     * after the chunk-data, or the CRLF after the size-line of the terminal 0-chunk.
+     * Pulls more bytes from the connection if the buffer doesn't yet have them.
+     */
+    private async skipCRLF(): Promise<void> {
+        while (this.buff.length < 2) {
+            await this.readData();
+        }
+        if (this.buff.getView().toString() !== Delimiter.CRLF) {
+            throw new Error('Invalid chunk framing: missing CRLF after chunk data');
+        }
+
+        this.buff.clear(2);
     }
 
     /**
