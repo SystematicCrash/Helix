@@ -17,17 +17,16 @@ const BS = 0x5C;       // \
 
 /** Consumes optional beginning whitespace (SP/HTAB/Bad White Space) and returns the remainder. */
 export function consumeBWS(s: string): string {
-    let i = 0;
-    while (i < s.length) { // TODO: replace this with for-loop for more readability
+    let i;
+    for (i = 0; i < s.length; i++) {
         const code = s.charCodeAt(i);
         if (code !== SP && code !== HTAB) break;
-        i++;
     }
     return s.slice(i);
 }
-// TODO: choose a better and more descriptive name for this function (findToken or findFirstToken or whatever sounds better to you)
+
 /** Returns the length of the leading token run, or 0 if the first char isn't a token char. */
-export function scanToken(s: string): number {
+export function getTokenLength(s: string): number {
     let i = 0;
     while (i < s.length && TOKEN_CHAR_CODES.has(s.charCodeAt(i))) i++;
     return i;

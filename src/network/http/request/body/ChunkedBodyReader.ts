@@ -2,7 +2,7 @@ import DynamicBuffer from "../../../mem/DynamicBuffer.js";
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
 import {BodyReader, BufferGenerator, ChunkExtension} from "../../common/types.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
-import {consumeBWS, consumeQuotedString, scanToken} from "../../common/parser.js";
+import {consumeBWS, consumeQuotedString, getTokenLength} from "../../common/parser.js";
 import Delimiter from "../../../common/constants.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
@@ -49,7 +49,7 @@ export default class ChunkedBodyReader implements BodyReader {
             const idx = this.buff.getView().indexOf('\r\n');
 
             if (idx < 0) {
-                await this.readData();
+                await this.readFromSock();
                 continue;
             }
 
@@ -72,7 +72,7 @@ export default class ChunkedBodyReader implements BodyReader {
     private async* consumeChunk(remain: number): BufferGenerator {
         while (remain > 0) {
             if (!this.buff.length) {
-                await this.readData();
+                await this.readFromSock();
             }
 
             const consume = Math.min(remain, this.buff.length);
@@ -81,15 +81,14 @@ export default class ChunkedBodyReader implements BodyReader {
             yield data;
         }
     }
-    // TODO: Maybe it's better to rename this method to something more descriptive like (readFromSocket).
-    // TODO: Also rename chunk to something else, because that read does not exactly read the whole chunk data.
+
     /** Reads chunk data from socket and pushes it into the buffer */
-    private async readData(): Promise<void> {
-        const chunk = await this.conn.read();
-        if (chunk === null) {
+    private async readFromSock(): Promise<void> {
+        const data = await this.conn.read();
+        if (data === null) {
             throw new Error('Unexpected EOF while reading chunk data');
         }
-        this.buff.push(chunk);
+        this.buff.push(data);
     }
 
     /**
@@ -99,7 +98,7 @@ export default class ChunkedBodyReader implements BodyReader {
      */
     private async skipCRLF(): Promise<void> {
         while (this.buff.length < 2) {
-            await this.readData();
+            await this.readFromSock();
         }
         if (this.buff.getView(2).toString() !== Delimiter.CRLF) {
             throw new Error('Invalid chunk framing: missing CRLF after chunk data');
@@ -132,7 +131,6 @@ export default class ChunkedBodyReader implements BodyReader {
     /**
      * Parses chunk extensions from a chunk-size line (no trailing CRLF).
      * Returns an empty array if no extensions are present.
-     * // TODO: Extract this method into separate methods if possible for more clarity (Only if it's reasonable to do so)
      * RFC 7230 §4.1.1:
      *   chunk-ext  = *( BWS ";" BWS chunk-ext-name [ BWS "=" BWS chunk-ext-val ] )
      *   chunk-ext-name = token
@@ -151,7 +149,7 @@ export default class ChunkedBodyReader implements BodyReader {
             }
             rest = consumeBWS(rest.slice(1));
 
-            const nameEnd = scanToken(rest);
+            const nameEnd = getTokenLength(rest);
             if (nameEnd === 0) {
                 throw new Error(`Invalid chunk extension name: "${line}"`);
             }
@@ -173,7 +171,7 @@ export default class ChunkedBodyReader implements BodyReader {
                     throw new Error(`Unterminated quoted-string in chunk extension: "${line}"`);
                 }
             } else {
-                const valEnd = scanToken(rest);
+                const valEnd = getTokenLength(rest);
                 if (valEnd === 0) {
                     throw new Error(`Invalid chunk extension value: "${line}"`);
                 }
