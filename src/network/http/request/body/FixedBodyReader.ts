@@ -20,7 +20,7 @@ export default class FixedBodyReader implements BodyReader {
         if (this.buf.length === 0) {
             const data = await this.conn.read();
             if (data === null) {
-                throw new Error('Unexpected EOF from http body');
+                throw new Error('Unexpected EOF while reading request body');
             }
             this.buf.push(data);
         }

@@ -120,7 +120,7 @@ describe('ResponseWriter.write()', () => {
             };
 
             await ResponseWriter.write(conn, response);
-            expect(conn.write).toHaveBeenCalledTimes(2); // headers + body
+            expect(conn.write).toHaveBeenCalledTimes(2); // header + body
         });
     });
 

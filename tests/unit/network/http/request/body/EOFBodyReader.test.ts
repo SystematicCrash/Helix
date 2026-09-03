@@ -68,7 +68,7 @@ describe('EOFBodyReader', () => {
 
     describe('pre-buffered data', () => {
         test('should drain bytes already in the buffer before pulling from the connection', async () => {
-            // Simulates serveClient having parsed headers and left the start of
+            // Simulates serveClient having parsed header and left the start of
             // the body in the DynamicBuffer before constructing the reader.
             const reader = new EOFBodyReader(
                 mockConn(Buffer.from('lo world')),

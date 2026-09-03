@@ -32,7 +32,7 @@ export default class DynamicBuffer {
     public get end(): number {
         return this._start + this._length;
     }
-    // TODO: return a view instead of copying data to another buffer.
+
     /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
     public getView(length = this._length): Buffer<ArrayBufferLike> {
         if (length > this._length) {

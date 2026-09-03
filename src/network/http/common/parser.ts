@@ -3,7 +3,7 @@ import Delimiter from "../../common/constants.js";
 
 /**
  * RFC 7230 generic parser primitives. Not tied to any single message part —
- * usable for headers, chunk-ext, trailers, and any future RFC 7230 grammar.
+ * usable for header, chunk-ext, trailers, and any future RFC 7230 grammar.
  *
  * Implementation note: all char comparisons go through `String.charCodeAt(i)`,
  * which returns `number` (never `undefined`), so these helpers stay compatible

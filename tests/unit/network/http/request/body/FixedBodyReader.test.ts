@@ -181,14 +181,14 @@ describe('FixedBodyReader', () => {
         test('should throw on EOF before any data', async () => {
             const reader = new FixedBodyReader(mockConn(null), new DynamicBuffer(), 10);
 
-            await expect(reader.read()).rejects.toThrow('Unexpected EOF from http body');
+            await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading request body');
         });
 
         test('should throw on EOF mid-body when remaining length is still positive', async () => {
             // Buffer empty, conn returns null, length=10. Must throw, not return null.
             const reader = new FixedBodyReader(mockConn(null), new DynamicBuffer(), 10);
 
-            await expect(reader.read()).rejects.toThrow('Unexpected EOF from http body');
+            await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading request body');
         });
 
         test('should NOT throw on EOF when the body is already complete', async () => {

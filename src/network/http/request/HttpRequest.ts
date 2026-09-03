@@ -1,13 +1,13 @@
 import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
 import Delimiter from "../../common/constants.js";
-import {parseHeaders} from "../common/headers/parseHeaders.js";
+import {parseHeaders} from "../header/parseHeaders.js";
 import {HttpHeader, HttpMethod, SUPPORTED_VERSIONS, VALID_METHODS} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 import {HttpRequest as HttpRequestType} from "../common/types.js";
 
 /*
  * Parsed HTTP request value object.
- * Holds the method, URL, version, and headers, and validates them on construction.
+ * Holds the method, URL, version, and header, and validates them on construction.
  */
 export default class HttpRequest implements HttpRequestType {
     public method!: string;
