@@ -1,13 +1,13 @@
 import DynamicBuffer from "../../../mem/DynamicBuffer.js";
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
-import {BodyReader, BufferGenerator, ChunkExtension} from "../../common/types.js";
+import {BufferGenerator, ChunkExtension} from "../../common/types.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
 import {consumeBWS, consumeQuotedString, getTokenLength} from "../../common/parser.js";
 import Delimiter from "../../../common/constants.js";
+import {BodyReaderAbs} from "./BodyReaderAbs.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
-export default class ChunkedBodyReader implements BodyReader {
-    public length = -1;
+export default class ChunkedBodyReader extends BodyReaderAbs {
     private readonly gen: BufferGenerator;
     private _extensions: ChunkExtension[] = [];
 
@@ -15,6 +15,7 @@ export default class ChunkedBodyReader implements BodyReader {
         private readonly conn: TCPConnection,
         private readonly buff: DynamicBuffer,
     ) {
+        super();
         this.gen = this.readChunks();
     }
 
@@ -25,6 +26,8 @@ export default class ChunkedBodyReader implements BodyReader {
 
     /** Reads the next chunk payload buffer. */
     async read(): Promise<Buffer | null> {
+        this.checkMaxSize();
+
         const r = await this.gen.next();
         return r.done ? null : r.value;
     }
@@ -33,6 +36,7 @@ export default class ChunkedBodyReader implements BodyReader {
     private async* readChunks(): BufferGenerator {
         for (let last = false; !last;) {
             const remain = await this.readChunkSize();
+            this.length += remain;
             last = remain === 0;
 
             if (remain > 0) {

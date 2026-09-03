@@ -1,17 +1,18 @@
 import DynamicBuffer from "../../../mem/DynamicBuffer.js";
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
-import {BodyReader} from "../../common/types.js";
+import {BodyReaderAbs} from "./BodyReaderAbs.js";
 
 /** Reads exactly `length` bytes from the connection, consuming buffered data first. */
-export default class FixedBodyReader implements BodyReader {
-    public length: number;
+export default class FixedBodyReader extends BodyReaderAbs {
 
     constructor(
         private readonly conn: TCPConnection,
         private readonly buf: DynamicBuffer,
         remain: number,
     ) {
+        super();
         this.length = remain;
+        this.checkMaxSize();
     }
 
     async read(): Promise<Buffer | null> {

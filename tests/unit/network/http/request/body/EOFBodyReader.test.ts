@@ -23,7 +23,7 @@ describe('EOFBodyReader', () => {
     describe('length', () => {
         test('should expose length = -1 to signal body-length is until-connection-close', () => {
             const reader = new EOFBodyReader(mockConn(), new DynamicBuffer());
-            expect(reader.length).toBe(-1);
+            expect(reader.length).toBe(-1); // TODO: Fix this broken test
         });
     });
 

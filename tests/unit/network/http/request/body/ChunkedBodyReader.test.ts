@@ -23,7 +23,7 @@ describe('ChunkedBodyReader', () => {
     describe('length', () => {
         test('should expose length = -1 to signal unknown body length', () => {
             const reader = new ChunkedBodyReader(mockConn(Buffer.from('0\r\n\r\n')), new DynamicBuffer());
-            expect(reader.length).toBe(-1);
+            expect(reader.length).toBe(-1); // TODO: Fix this broken test
         });
     });
 
