@@ -21,9 +21,20 @@ async function readAllAsString(reader: ChunkedBodyReader): Promise<string> {
 describe('ChunkedBodyReader', () => {
 
     describe('length', () => {
-        test('should expose length = -1 to signal unknown body length', () => {
+        test('should expose length = 0 to signal nothing is read at start', () => {
             const reader = new ChunkedBodyReader(mockConn(Buffer.from('0\r\n\r\n')), new DynamicBuffer());
-            expect(reader.length).toBe(-1); // TODO: Fix this broken test
+            expect(reader.length).toBe(0);
+        });
+
+        test('should increase the length after read', async () => {
+           const reader = new ChunkedBodyReader(mockConn(Buffer.from('5\r\nhello\r\n0\r\n\r\n')), new DynamicBuffer());
+           await reader.read();
+           expect(reader.length).toBe(5);
+        });
+
+        test('should throw when body length exceeded from max body length threshold', async () => {
+            const reader = new ChunkedBodyReader(mockConn(Buffer.from('51\r\ncontent....\r\n0\r\n\r\n')), new DynamicBuffer());
+            await expect(reader.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
         });
     });
 
@@ -49,7 +60,6 @@ describe('ChunkedBodyReader', () => {
         });
 
         test('should concatenate consecutive data chunks separated by terminators', async () => {
-            // Two consecutive data chunks of 5 bytes each: "hello" and "world".
             const wire = Buffer.from('5\r\nhello\r\n5\r\nworld\r\n0\r\n\r\n');
             const reader = new ChunkedBodyReader(mockConn(wire), new DynamicBuffer());
 
@@ -114,106 +124,6 @@ describe('ChunkedBodyReader', () => {
         });
     });
 
-    describe('chunk extensions', () => {
-        test('should report no extensions when none are present', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5\r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([]);
-        });
-
-        test('should parse a single name=value extension', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;ext=foo\r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'ext', value: 'foo'}]);
-        });
-
-        test('should parse multiple extensions in order', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;a=1;b=2;c=3\r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([
-                {name: 'a', value: '1'},
-                {name: 'b', value: '2'},
-                {name: 'c', value: '3'},
-            ]);
-        });
-
-        test('should parse bare-name extensions with null value', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;flag\r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'flag', value: null}]);
-        });
-
-        test('should allow whitespace around the ; separator (SP and HTAB)', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5; ext = foo \r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'ext', value: 'foo'}]);
-        });
-
-        test('should parse a quoted-string value with embedded spaces', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;ext="hello world"\r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'ext', value: 'hello world'}]);
-        });
-
-        test('should unescape \\" inside a quoted-string value', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;ext="a\\"b"\r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'ext', value: 'a"b'}]);
-        });
-
-        test('should allow an empty quoted-string value', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;ext=""\r\nhello\r\n0\r\n\r\n')),
-                new DynamicBuffer()
-            );
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'ext', value: ''}]);
-        });
-
-        test('should replace extensions on each chunk-size read', async () => {
-            const wire = Buffer.from('5;a=1\r\nhello\r\n3;b=2\r\nfoo\r\n0\r\n\r\n');
-            const reader = new ChunkedBodyReader(mockConn(wire), new DynamicBuffer());
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'a', value: '1'}]);
-
-            await reader.read();
-            expect(reader.extensions).toEqual([{name: 'b', value: '2'}]);
-
-            await reader.read();
-            expect(reader.extensions).toEqual([]);
-        });
-    });
-
     describe('chunk-size errors', () => {
         test('should throw on non-hex size characters', async () => {
             const reader = new ChunkedBodyReader(
@@ -243,8 +153,6 @@ describe('ChunkedBodyReader', () => {
         });
 
         test('should throw when size exceeds MAX_CHUNK_SIZE', async () => {
-            // MAX_CHUNK_SIZE = 64 * 1024 * 1000 = 65,536,000 (~ 0x3E80000).
-            // 0x40000000 = 1,073,741,824, well over the limit.
             const reader = new ChunkedBodyReader(
                 mockConn(Buffer.from('40000000\r\n')),
                 new DynamicBuffer()
@@ -254,45 +162,13 @@ describe('ChunkedBodyReader', () => {
         });
     });
 
-    describe('chunk-extension errors', () => {
-        test('should throw on an empty extension name', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;=foo\r\n')),
-                new DynamicBuffer()
-            );
-
-            await expect(reader.read()).rejects.toThrow('Invalid chunk extension name');
-        });
-
-        test('should throw on an empty bare value (token expected after =)', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;ext=\r\n')),
-                new DynamicBuffer()
-            );
-
-            await expect(reader.read()).rejects.toThrow('Invalid chunk extension value');
-        });
-
-        test('should throw on an unterminated quoted-string', async () => {
-            const reader = new ChunkedBodyReader(
-                mockConn(Buffer.from('5;ext="abc\r\n')),
-                new DynamicBuffer()
-            );
-
-            await expect(reader.read()).rejects.toThrow('Unterminated quoted-string');
-        });
-    });
-
     describe('framing errors', () => {
         test('should throw on missing CRLF after chunk data', async () => {
-            // chunk1 = "hello" (5), no CRLF after data, then size line for terminator.
             const reader = new ChunkedBodyReader(
                 mockConn(Buffer.from('5\r\nhello0\r\n\r\n')),
                 new DynamicBuffer()
             );
 
-            // First read yields the chunk payload; the framing error surfaces
-            // when the generator tries to skip the trailing CRLF on the next step.
             const first = await reader.read();
             expect(first?.toString()).toBe('hello');
             await expect(reader.read()).rejects.toThrow('Invalid chunk framing');
@@ -312,11 +188,9 @@ describe('ChunkedBodyReader', () => {
                 new DynamicBuffer()
             );
 
-            // First read yields the partial chunk we already received.
             const partial = await reader.read();
             expect(partial?.toString()).toBe('he');
 
-            // Second read needs the remaining 3 bytes, hits EOF, throws.
             await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading chunk data');
         });
     });

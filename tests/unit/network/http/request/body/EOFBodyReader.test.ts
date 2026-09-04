@@ -1,4 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
+
+/** Mocks */
+vi.mock('../../../../../../src/network/http/common/constants.js', () => ({
+    MAX_BODY_LENGTH: 50,
+}));
+
 import EOFBodyReader from '../../../../../../src/network/http/request/body/EOFBodyReader.js';
 import DynamicBuffer from '../../../../../../src/network/mem/DynamicBuffer.js';
 
@@ -21,9 +27,20 @@ async function readAllAsString(reader: EOFBodyReader): Promise<string> {
 describe('EOFBodyReader', () => {
 
     describe('length', () => {
-        test('should expose length = -1 to signal body-length is until-connection-close', () => {
+        test('should expose length = 0 to signal nothing is read at start', () => {
             const reader = new EOFBodyReader(mockConn(), new DynamicBuffer());
-            expect(reader.length).toBe(-1); // TODO: Fix this broken test
+            expect(reader.length).toBe(0);
+        });
+
+        test('should increase the length after read', async () => {
+            const reader = new EOFBodyReader(mockConn(Buffer.from('hello')), new DynamicBuffer());
+            await reader.read();
+            expect(reader.length).toBe(5);
+        });
+
+        test('should throw when body length exceeded from max body length threshold', async () => {
+            const reader = new EOFBodyReader(mockConn(Buffer.from('x'.repeat(51))), new DynamicBuffer());
+            await expect(reader.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
         });
     });
 
@@ -68,8 +85,6 @@ describe('EOFBodyReader', () => {
 
     describe('pre-buffered data', () => {
         test('should drain bytes already in the buffer before pulling from the connection', async () => {
-            // Simulates serveClient having parsed header and left the start of
-            // the body in the DynamicBuffer before constructing the reader.
             const reader = new EOFBodyReader(
                 mockConn(Buffer.from('lo world')),
                 new DynamicBuffer(Buffer.from('hel')),
@@ -99,25 +114,18 @@ describe('EOFBodyReader', () => {
         });
 
         test('should call conn.read() exactly once beyond the body bytes (to discover EOF)', async () => {
-            // First conn.read() yields the body; second call returns null (peer FIN).
-            // After that, the reader must NOT call conn.read() again.
             const conn = mockConn(Buffer.from('done'));
             const reader = new EOFBodyReader(conn, new DynamicBuffer());
 
             await readAllAsString(reader);
             expect(conn.read).toHaveBeenCalledTimes(2);
 
-            // Further read() calls must not touch the connection.
             await reader.read();
             await reader.read();
             expect(conn.read).toHaveBeenCalledTimes(2);
         });
 
         test('should ignore leftover bytes that arrive after the body is complete', async () => {
-            // The factory wires EOFBodyReader with the same connection that will
-            // later serve the next pipelined request. Any bytes the peer sends
-            // after the EOF reader finishes belong to that next request, not
-            // to this body. The reader must return null cleanly.
             const reader = new EOFBodyReader(
                 mockConn(Buffer.from('body'), null),
                 new DynamicBuffer()

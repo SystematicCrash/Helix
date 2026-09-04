@@ -1,6 +1,5 @@
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
 import DynamicBuffer from "../../../mem/DynamicBuffer.js";
-import {MAX_BODY_LENGTH} from "../../common/constants.js";
 import {BodyReaderAbs} from "./BodyReaderAbs.js";
 
 /**
@@ -20,12 +19,6 @@ export default class EOFBodyReader extends BodyReaderAbs {
         private readonly buf: DynamicBuffer,
     ) {
         super();
-    }
-
-    checkMaxSize(): void {
-        if (this.length > MAX_BODY_LENGTH) {
-            throw new Error('Body length exceeded the maximum number of bytes');
-        }
     }
 
     async read(): Promise<Buffer | null> {
