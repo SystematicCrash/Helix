@@ -1,4 +1,14 @@
 import { describe, test, expect, vi } from 'vitest';
+
+/** Mocks */
+vi.mock('../../../../../../src/network/http/common/constants.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../../../../src/network/http/common/constants.js')>();
+    return {
+        ...actual,
+        MAX_BODY_LENGTH: 500,
+    };
+});
+
 import ChunkedBodyReader from '../../../../../../src/network/http/request/body/ChunkedBodyReader.js';
 import DynamicBuffer from '../../../../../../src/network/mem/DynamicBuffer.js';
 
@@ -33,7 +43,7 @@ describe('ChunkedBodyReader', () => {
         });
 
         test('should throw when body length exceeded from max body length threshold', async () => {
-            const reader = new ChunkedBodyReader(mockConn(Buffer.from('51\r\ncontent....\r\n0\r\n\r\n')), new DynamicBuffer());
+            const reader = new ChunkedBodyReader(mockConn(Buffer.from('1f5\r\n' + 'x'.repeat(501) + '\r\n0\r\n\r\n')), new DynamicBuffer());
             await expect(reader.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
         });
     });

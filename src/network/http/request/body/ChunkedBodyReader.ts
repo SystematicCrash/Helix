@@ -26,8 +26,6 @@ export default class ChunkedBodyReader extends BodyReaderAbs {
 
     /** Reads the next chunk payload buffer. */
     async read(): Promise<Buffer | null> {
-        this.checkMaxSize();
-
         const r = await this.gen.next();
         return r.done ? null : r.value;
     }
@@ -37,6 +35,7 @@ export default class ChunkedBodyReader extends BodyReaderAbs {
         for (let last = false; !last;) {
             const remain = await this.readChunkSize();
             this.length += remain;
+            this.checkMaxSize();
             last = remain === 0;
 
             if (remain > 0) {

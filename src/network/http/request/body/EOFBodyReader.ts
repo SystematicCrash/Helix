@@ -23,7 +23,6 @@ export default class EOFBodyReader extends BodyReaderAbs {
 
     async read(): Promise<Buffer | null> {
         if (this.finished) return null;
-        this.checkMaxSize();
 
         if (this.buf.length === 0) {
             const data = await this.conn.read();
@@ -33,6 +32,7 @@ export default class EOFBodyReader extends BodyReaderAbs {
             }
             this.buf.push(data);
             this.length += data.length;
+            this.checkMaxSize();
         }
 
         return this.buf.pop();

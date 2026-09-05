@@ -1,9 +1,13 @@
 import { describe, test, expect, vi } from 'vitest';
 
 /** Mocks */
-vi.mock('../../../../../../src/network/http/common/constants.js', () => ({
-    MAX_BODY_LENGTH: 50,
-}));
+vi.mock('../../../../../../src/network/http/common/constants.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../../../../src/network/http/common/constants.js')>();
+    return {
+        ...actual,
+        MAX_BODY_LENGTH: 500,
+    };
+});
 
 import EOFBodyReader from '../../../../../../src/network/http/request/body/EOFBodyReader.js';
 import DynamicBuffer from '../../../../../../src/network/mem/DynamicBuffer.js';
@@ -39,7 +43,7 @@ describe('EOFBodyReader', () => {
         });
 
         test('should throw when body length exceeded from max body length threshold', async () => {
-            const reader = new EOFBodyReader(mockConn(Buffer.from('x'.repeat(51))), new DynamicBuffer());
+            const reader = new EOFBodyReader(mockConn(Buffer.from('x'.repeat(501))), new DynamicBuffer());
             await expect(reader.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
         });
     });
