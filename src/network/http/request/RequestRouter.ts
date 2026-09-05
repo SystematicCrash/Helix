@@ -1,6 +1,6 @@
 import {BodyReader, HttpRequest, HttpResponse} from "../common/types.js";
 import GeneratorBodyReader from "./body/GeneratorBodyReader.js";
-import {memoryReader} from "./body/MemoryBodyReader.js";
+import MemoryBodyReader from "./body/MemoryBodyReader.js";
 
 type BufferGenerator = AsyncGenerator<Buffer, void, void>;
 
@@ -26,7 +26,7 @@ export async function handleRequest(request: HttpRequest, body: BodyReader): Pro
             payload = new GeneratorBodyReader(countSheep());
             break;
         default:
-            payload = memoryReader(Buffer.from('Hello world!'));
+            payload = new MemoryBodyReader(Buffer.from('Hello world!'));
             break;
     }
 

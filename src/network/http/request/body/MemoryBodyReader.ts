@@ -1,12 +1,13 @@
-import {BodyReader} from "../../common/types.js";
+import {BodyReaderAbs} from "./BodyReaderAbs.js";
 
 /** Returns a BodyReader that yields the given buffer once, then signals EOF. */
-export default class MemoryBodyReader implements BodyReader {
-    public length: number;
+export default class MemoryBodyReader extends BodyReaderAbs {
     private done = false;
 
     constructor(private readonly data: Buffer) {
+        super();
         this.length = data.length;
+        this.checkMaxSize();
     }
 
     async read(): Promise<Buffer | null> {
@@ -14,9 +15,4 @@ export default class MemoryBodyReader implements BodyReader {
         this.done = true;
         return this.data;
     }
-}
-
-/** Convenience factory mirroring the previous `memoryReader` helper. */
-export function memoryReader(data: Buffer): BodyReader {
-    return new MemoryBodyReader(data);
 }

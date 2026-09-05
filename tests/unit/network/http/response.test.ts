@@ -4,7 +4,7 @@ import { mapErrorToResponse } from '../../../../src/network/http/response/mapErr
 import { ResponseWriter } from '../../../../src/network/http/response/ResponseWriter.js';
 import { HttpVersion } from '../../../../src/network/http/common/constants.js';
 import { HttpResponse } from '../../../../src/network/http/common/types.js';
-import { memoryReader } from '../../../../src/network/http/request/body/MemoryBodyReader.js';
+import MemoryBodyReader from '../../../../src/network/http/request/body/MemoryBodyReader.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import {TCPConnection} from '../../../../src/network/tcp';
 
@@ -91,7 +91,7 @@ describe('ResponseWriter.write()', () => {
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
-                body: memoryReader(Buffer.from('hello')),
+                body: new MemoryBodyReader(Buffer.from('hello')),
                 headers: new Map(),
             };
 
@@ -103,7 +103,7 @@ describe('ResponseWriter.write()', () => {
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
-                body: memoryReader(Buffer.from('hello')),
+                body: new MemoryBodyReader(Buffer.from('hello')),
                 headers: new Map(),
             };
 
@@ -115,12 +115,12 @@ describe('ResponseWriter.write()', () => {
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
-                body: memoryReader(Buffer.from('hello')),
+                body: new MemoryBodyReader(Buffer.from('hello')),
                 headers: new Map(),
             };
 
             await ResponseWriter.write(conn, response);
-            expect(conn.write).toHaveBeenCalledTimes(2); // headers + body
+            expect(conn.write).toHaveBeenCalledTimes(2); // header + body
         });
     });
 

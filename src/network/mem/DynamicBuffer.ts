@@ -32,7 +32,7 @@ export default class DynamicBuffer {
     public get end(): number {
         return this._start + this._length;
     }
-    // TODO: return a view instead of copying data to another buffer.
+
     /** Returns a copy of the first `length` bytes without consuming them from the buffer. */
     public getView(length = this._length): Buffer<ArrayBufferLike> {
         if (length > this._length) {
@@ -42,6 +42,18 @@ export default class DynamicBuffer {
             );
         }
         return this._data.subarray(this._start, this._start + length);
+    }
+
+    /** Creates and allocates a new buffer with current buffer content */
+    public clone(length: number = this._length): Buffer {
+        return Buffer.from(this.getView(length));
+    }
+
+    /** Allocates a new buffer with given length of data from current buffer and clears the buffer */
+    public pop(length: number = this._length): Buffer {
+        const data = this.clone(length);
+        this.clear(length);
+        return data;
     }
 
     /** Appends data to the buffer, doubling its capacity when the current allocation is exceeded. */
