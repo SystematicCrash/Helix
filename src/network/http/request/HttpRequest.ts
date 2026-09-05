@@ -1,14 +1,11 @@
 import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
 import Delimiter from "../../common/constants.js";
-import {parseHeaders} from "../header/parseHeaders.js";
-import {HttpHeader, HttpMethod, SUPPORTED_VERSIONS, VALID_METHODS} from "../common/constants.js";
+import {parseHeaders} from "./parser/parseHeaders.js";
 import HttpError from "../common/HttpError.js";
 import {HttpRequest as HttpRequestType} from "../common/types.js";
+import {parseRequestLine} from "./parser/parseRequestLine.js";
 
-/*
- * Parsed HTTP request value object.
- * Holds the method, URL, version, and header, and validates them on construction.
- */
+/** Parsed HTTP request value object holding method, URL, version, and headers. */
 export default class HttpRequest implements HttpRequestType {
     public method!: string;
     public url!: string;
@@ -19,16 +16,12 @@ export default class HttpRequest implements HttpRequestType {
         this.parse(requestData);
     }
 
-    /*
-     * Builds a request from raw request bytes.
-     */
+    /** Builds an HttpRequest from raw request bytes. */
     static from(requestData: Buffer): HttpRequest {
         return new HttpRequest(requestData);
     }
 
-    /**
-     * Parses a raw HTTP request buffer into this request, validating method and version.
-     */
+    /** Parses raw request bytes into this request. */
     private parse(data: Buffer): void {
         data = stripBuffer(data, Delimiter.CRLF);
         const lines = splitBuffer(data, Delimiter.CRLF);
@@ -38,20 +31,10 @@ export default class HttpRequest implements HttpRequestType {
         const firstLine = lines[0];
         if (!firstLine) throw new HttpError(400, "empty request line");
 
-        const [method, url, version] = splitBuffer(firstLine, Delimiter.SP);
-        if (!method || !url || !version)
-            throw new HttpError(400, 'Malformed request line');
-
-        const headers = parseHeaders(lines.slice(1, lines.length));
-
-        if (!VALID_METHODS.has(method.toString()))
-            throw new HttpError(405, 'Method not allowed');
-        if (!SUPPORTED_VERSIONS.includes(version.toString()))
-            throw new HttpError(501, 'Http version not supported. supported version: 1.1');
-
-        this.headers = headers;
-        this.url = url.toString('latin1');
-        this.method = method.toString();
-        this.version = version.toString();
+        const {method, url, version} = parseRequestLine(firstLine);
+        this.headers = parseHeaders(lines.slice(1, lines.length));
+        this.url = url;
+        this.method = method;
+        this.version = version;
     }
 }

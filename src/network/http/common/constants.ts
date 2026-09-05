@@ -2,6 +2,7 @@ export const MAX_HEADER_COUNT           = 100;
 export const MAX_HEADER_NAME_LENGTH     = 100;
 export const MAX_HEADER_VALUE_LENGTH    = 8000;
 export const MAX_HEADER_LENGTH = 8 * 1024;
+export const MAX_REQUEST_LINE_LENGTH    = 8000;
 export const MAX_CHUNK_SIZE = 64 * 1024;
 export const MAX_BODY_LENGTH = 1024 * 1024
 

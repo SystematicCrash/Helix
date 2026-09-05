@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from 'vitest';
 import { getReader } from '../../../../src/network/http/request/body/bodyReaderFactory.js';
 import HttpError from '../../../../src/network/http/common/HttpError.js';
+import {MAX_REQUEST_LINE_LENGTH} from '../../../../src/network/http/common/constants.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import DynamicBuffer from '../../../../src/network/mem/DynamicBuffer.js';
 import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
@@ -65,6 +66,60 @@ describe('new HttpRequest()', () => {
 
             expect(() => new HttpRequest(raw))
                 .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
+        });
+    });
+
+    describe('invalid request line', () => {
+        test('should throw 400 with only one SP (missing version)', () => {
+            const raw = Buffer.from('GET /api/users\r\nHost: example.com');
+
+            expect(() => new HttpRequest(raw))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 with two SP but no third part (empty version)', () => {
+            const raw = Buffer.from('GET /api/users \r\nHost: example.com');
+
+            expect(() => new HttpRequest(raw))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when extra SP between method and target', () => {
+            const raw = Buffer.from('GET  /api/users HTTP/1.1\r\nHost: example.com');
+
+            expect(() => new HttpRequest(raw))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when extra trailing segment after version', () => {
+            const raw = Buffer.from('GET /api/users HTTP/1.1 extra\r\nHost: example.com');
+
+            expect(() => new HttpRequest(raw))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when method is empty', () => {
+            const raw = Buffer.from(' /api/users HTTP/1.1\r\nHost: example.com');
+
+            expect(() => new HttpRequest(raw))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when request-target is empty', () => {
+            const raw = Buffer.from('GET  HTTP/1.1\r\nHost: example.com');
+
+            expect(() => new HttpRequest(raw))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+    });
+
+    describe('request line length limit', () => {
+        test('should throw 414 when request line exceeds MAX_REQUEST_LINE_LENGTH', () => {
+            const longPath = '/' + 'a'.repeat(MAX_REQUEST_LINE_LENGTH);
+            const raw = Buffer.from(`GET ${longPath} HTTP/1.1\r\nHost: example.com`);
+
+            expect(() => new HttpRequest(raw))
+                .toThrow(new HttpError(414, 'Request line too long'));
         });
     });
 });
