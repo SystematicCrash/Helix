@@ -10,3 +10,6 @@ node_modules
 
 # Build
 dist
+
+# CodeGraph — local index/daemon state, regenerated per machine
+.codegraph/
