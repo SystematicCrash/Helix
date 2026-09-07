@@ -3,7 +3,6 @@ import {MAX_HEADER_LENGTH} from "../common/constants.js";
 import DynamicBuffer from "../../mem/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import HttpRequest from "../request/HttpRequest.js";
-import {getReader} from "../request/body/bodyReaderFactory.js";
 import {handleRequest} from "../request/RequestRouter.js";
 import {ResponseWriter} from "../response/ResponseWriter.js";
 import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
@@ -32,7 +31,7 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
                 continue;
             }
 
-            const body = getReader(conn, buf, request);
+            const body = request.getBodyReader(conn, buf);
             const response = await handleRequest(request, body);
             await ResponseWriter.write(conn, response);
 
