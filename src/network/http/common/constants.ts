@@ -33,6 +33,7 @@ export const TOKEN_CHAR_CODES: ReadonlySet<number> = new Set<number>([
 ]);
 
 export const MANDATORY_HEADERS = ['host'] as const;
+export const UNIQUE_HEADERS = ['host', 'content-length', 'transfer-encoding'];
 export const SUPPORTED_VERSIONS = ['HTTP/1.1'];
 
 export enum TransferEncoding {
