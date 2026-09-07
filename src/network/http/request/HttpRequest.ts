@@ -1,7 +1,7 @@
 import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
 import Delimiter from "../../common/constants.js";
 import {parseHeaders} from "../header/parseHeaders.js";
-import {HttpHeader, HttpMethod, SUPPORTED_VERSIONS, VALID_METHODS} from "../common/constants.js";
+import {HttpHeader, HttpMethod, HttpVersion, SUPPORTED_VERSIONS, VALID_METHODS} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 import {HttpRequest as HttpRequestType} from "../common/types.js";
 import DynamicBuffer from "../../mem/DynamicBuffer.js";
@@ -74,7 +74,7 @@ export default class HttpRequest implements HttpRequestType {
 
         if (!VALID_METHODS.has(method.toString()))
             throw new HttpError(405, 'Method not allowed');
-        if (!SUPPORTED_VERSIONS.includes(version.toString()))
+        if (!SUPPORTED_VERSIONS.includes(version.toString() as HttpVersion))
             throw new HttpError(501, 'Http version not supported. supported version: 1.1');
 
         this.headers = headers;

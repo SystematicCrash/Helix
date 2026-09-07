@@ -32,10 +32,6 @@ export const TOKEN_CHAR_CODES: ReadonlySet<number> = new Set<number>([
     0x7C, 0x7E,                                       // |~
 ]);
 
-export const MANDATORY_HEADERS = ['host'] as const;
-export const UNIQUE_HEADERS = ['host', 'content-length', 'transfer-encoding'];
-export const SUPPORTED_VERSIONS = ['HTTP/1.1'];
-
 export enum TransferEncoding {
     CHUNKED = 'chunked',
 }
@@ -173,3 +169,7 @@ export const HTTP_STATUS: Record<number, string> = {
     510: 'Not Extended',
     511: 'Network Authentication Required',
 } as const;
+
+export const MANDATORY_HEADERS = [HttpHeader.Host] as const;
+export const UNIQUE_HEADERS = [HttpHeader.Host, HttpHeader.ContentLength, HttpHeader.TransferEncoding];
+export const SUPPORTED_VERSIONS = [HttpVersion.HTTP_1_1];
