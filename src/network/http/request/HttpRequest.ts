@@ -1,7 +1,14 @@
 import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
 import Delimiter from "../../common/constants.js";
 import {parseHeaders} from "../header/parseHeaders.js";
-import {HttpHeader, HttpMethod, HttpVersion, SUPPORTED_VERSIONS, VALID_METHODS} from "../common/constants.js";
+import {
+    HttpHeader,
+    HttpMethod,
+    HttpVersion,
+    MAX_REQUEST_LINE_LENGTH,
+    SUPPORTED_VERSIONS,
+    VALID_METHODS
+} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 import {HttpRequest as HttpRequestType} from "../common/types.js";
 import DynamicBuffer from "../../mem/DynamicBuffer.js";
@@ -64,7 +71,11 @@ export default class HttpRequest implements HttpRequestType {
         if (!lines.length) throw new HttpError(400, "lines cannot be empty");
 
         const firstLine = lines[0];
-        if (!firstLine) throw new HttpError(400, "empty request line");
+        if (!firstLine)
+            throw new HttpError(400, "empty request line");
+        if (firstLine.length > MAX_REQUEST_LINE_LENGTH)
+            throw new HttpError(400, 'maximum request line length exceeded');
+
         // TODO: Validate start line with regex before splitting to ignore invalid request
         const [method, url, version] = splitBuffer(firstLine, Delimiter.SP);
         if (!method || !url || !version)
