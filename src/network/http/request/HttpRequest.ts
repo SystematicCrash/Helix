@@ -65,7 +65,7 @@ export default class HttpRequest implements HttpRequestType {
 
         const firstLine = lines[0];
         if (!firstLine) throw new HttpError(400, "empty request line");
-
+        // TODO: Validate start line with regex before splitting to ignore invalid request
         const [method, url, version] = splitBuffer(firstLine, Delimiter.SP);
         if (!method || !url || !version)
             throw new HttpError(400, 'Malformed request line');
