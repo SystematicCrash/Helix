@@ -9,7 +9,8 @@ export function splitBuffer(bytes: Buffer, delimiter: Delimiter|string): Buffer[
     while (true) {
         const idx = bytes.indexOf(target, start);
         if (idx === -1) break;
-        parts.push(bytes.subarray(start, idx));
+        const part = bytes.subarray(start, idx);
+        if (part.length) parts.push(part);
         start = idx + target.length;
     }
 
