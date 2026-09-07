@@ -6,8 +6,11 @@ import HttpError from "../common/HttpError.js";
 import {HttpRequest as HttpRequestType} from "../common/types.js";
 
 /*
- * Parsed HTTP request value object.
- * Holds the method, URL, version, and header, and validates them on construction.
+ * Parsed HTTP request head value object.
+ * Holds the method, URL, version, and headers, and validates them on construction.
+ * The body is deliberately not part of this object: it can be arbitrarily large
+ * or chunked, so it is streamed separately by a BodyReader selected in
+ * bodyReaderFactory once the head has been parsed.
  */
 export default class HttpRequest implements HttpRequestType {
     public method!: string;
