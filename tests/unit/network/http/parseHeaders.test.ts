@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { parseHeaders } from '../../../../src/network/http/header/parseHeaders.js';
+import { parseHeaders } from '../../../../src/network/http/request/parser/parseHeaders.js';
 import HttpError from '../../../../src/network/http/common/HttpError.js';
 
 /** Builds a raw header buffer list from `Name: value` strings. */

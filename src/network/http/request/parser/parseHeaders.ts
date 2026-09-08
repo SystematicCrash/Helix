@@ -1,11 +1,11 @@
-import HttpError from "../common/HttpError.js";
+import HttpError from "../../common/HttpError.js";
 import {
     HEADER_NAME_REGEX,
     HEADER_VALUE_REGEX, HttpHeader,
     MANDATORY_HEADERS,
     MAX_HEADER_NAME_LENGTH,
     MAX_HEADER_VALUE_LENGTH, UNIQUE_HEADERS
-} from "../common/constants.js";
+} from "../../common/constants.js";
 
 /** Parses and validates raw header buffers into a name/value map. */
 export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
