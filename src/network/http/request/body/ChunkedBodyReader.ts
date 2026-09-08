@@ -49,7 +49,7 @@ export default class ChunkedBodyReader extends BodyReaderAbs {
     /** Reads and parses the hexadecimal chunk size line, including any chunk-ext. */
     private async readChunkSize(): Promise<number> {
         while (true) {
-            const idx = this.buff.getView().indexOf('\r\n');
+            const idx = this.buff.getView().indexOf(Delimiter.CRLF);
 
             if (idx < 0) {
                 await this.readFromSock();

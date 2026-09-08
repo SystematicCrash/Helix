@@ -27,19 +27,20 @@ describe('splitBuffer()', () => {
         expect(parts).toHaveLength(1);
     });
 
-    test('should handle consecutive delimiters', () => {
+    test('should skip empty parts for consecutive delimiters', () => {
         const buf = Buffer.from('first\n\nthird');
         const parts = splitBuffer(buf, Delimiter.LF).map(p => p.toString());
 
-        expect(parts).toHaveLength(3);
-        expect(parts[1]).toBe('');
+        expect(parts).toHaveLength(2);
+        expect(parts[0]).toBe('first');
+        expect(parts[1]).toBe('third');
     });
 
-    test('should handle delimiter at start of buffer', () => {
+    test('should skip empty leading part when buffer starts with delimiter', () => {
         const buf = Buffer.from('\nfirst\nsecond');
         const parts = splitBuffer(buf, Delimiter.LF).map(p => p.toString());
 
-        expect(parts[0]).toBe('');
+        expect(parts[0]).toBe('first');
     });
 
     test('should handle delimiter at end of buffer', () => {

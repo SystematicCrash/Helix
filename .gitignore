@@ -4,6 +4,7 @@
 # Third-Party
 node_modules
 .hermes
+.codegraph
 
 # Secret
 .env
