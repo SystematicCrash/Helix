@@ -1,18 +1,19 @@
 import { describe, test, expect, vi } from 'vitest';
-import { getReader } from '../../../../src/network/http/request/body/bodyReaderFactory.js';
 import HttpError from '../../../../src/network/http/common/HttpError.js';
 import {MAX_REQUEST_LINE_LENGTH} from '../../../../src/network/http/common/constants.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import DynamicBuffer from '../../../../src/network/mem/DynamicBuffer.js';
 import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
-import type { HttpRequest as HttpRequestData } from '../../../../src/network/http/common/types.js';
+
+function fromRaw(head: string): HttpRequest {
+    return new HttpRequest(Buffer.from(head));
+}
 
 describe('new HttpRequest()', () => {
 
     describe('valid requests', () => {
         test('should parse raw bytes into an HttpRequest object', () => {
-            const raw = Buffer.from('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nCustom: something');
-            const parsed = new HttpRequest(raw);
+            const parsed = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nCustom: something');
 
             expect(parsed).toMatchObject({
                 method: 'POST',
@@ -26,8 +27,7 @@ describe('new HttpRequest()', () => {
         });
 
         test('should parse GET request', () => {
-            const raw = Buffer.from('GET /api/users HTTP/1.1\r\nHost: example.com');
-            const parsed = new HttpRequest(raw);
+            const parsed = fromRaw('GET /api/users HTTP/1.1\r\nHost: example.com');
 
             expect(parsed).toMatchObject({
                 method: 'GET',
@@ -39,32 +39,24 @@ describe('new HttpRequest()', () => {
 
     describe('invalid method', () => {
         test('should throw 405 when method is not allowed', () => {
-            const raw = Buffer.from('INVALID /user/messages HTTP/1.1\r\nHost: example.com');
-
-            expect(() => new HttpRequest(raw))
+            expect(() => fromRaw('INVALID /user/messages HTTP/1.1\r\nHost: example.com'))
                 .toThrow(new HttpError(405, 'Method not allowed'));
         });
 
         test('should throw 405 when method is lowercase', () => {
-            const raw = Buffer.from('get /user/messages HTTP/1.1\r\nHost: example.com');
-
-            expect(() => new HttpRequest(raw))
+            expect(() => fromRaw('get /user/messages HTTP/1.1\r\nHost: example.com'))
                 .toThrow(new HttpError(405, 'Method not allowed'));
         });
     });
 
     describe('invalid version', () => {
         test('should throw 501 when HTTP version is not supported', () => {
-            const raw = Buffer.from('POST /user/messages HTTP/3\r\nHost: example.com');
-
-            expect(() => new HttpRequest(raw))
+            expect(() => fromRaw('POST /user/messages HTTP/3\r\nHost: example.com'))
                 .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
         });
 
         test('should throw 501 when HTTP version is malformed', () => {
-            const raw = Buffer.from('POST /user/messages INVALID\r\nHost: example.com');
-
-            expect(() => new HttpRequest(raw))
+            expect(() => fromRaw('POST /user/messages INVALID\r\nHost: example.com'))
                 .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
         });
     });
@@ -124,30 +116,20 @@ describe('new HttpRequest()', () => {
     });
 });
 
-describe('getReader()', () => {
+describe('createBodyReader()', () => {
 
     describe('content-length body', () => {
         test('should return fixed reader with correct length', () => {
-            const request: HttpRequestData = {
-                method: 'POST',
-                url: '/user/messages',
-                version: 'HTTP/1.1',
-                headers: new Map([['content-length', '1000']]),
-            };
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 1000');
 
-            const reader = getReader(mockedTCPConnection(), new DynamicBuffer(), request);
+            const reader = request.getBodyReader(mockedTCPConnection(), new DynamicBuffer());
             expect(reader).toMatchObject({ length: 1000 });
         });
 
         test.todo('should return fixed reader with zero length when content-length is 0', () => {
-            const request: HttpRequestData = {
-                method: 'POST',
-                url: '/user/messages',
-                version: 'HTTP/1.1',
-                headers: new Map([['content-length', '0']]),
-            };
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0');
 
-            const reader = getReader(mockedTCPConnection(), new DynamicBuffer(), request);
+            const reader = request.getBodyReader(mockedTCPConnection(), new DynamicBuffer());
             expect(reader).toMatchObject({ length: 0 });
         });
     });
@@ -160,14 +142,9 @@ describe('getReader()', () => {
             } as any;
 
             const buf = new DynamicBuffer();
-            const request: HttpRequestData = {
-                method: 'POST',
-                url: '/',
-                version: 'HTTP/1.1',
-                headers: new Map([['transfer-encoding', 'chunked']]),
-            };
+            const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
-            const reader = getReader(conn, buf, request);
+            const reader = request.getBodyReader(conn, buf);
             const chunks: Buffer[] = [];
             let chunk;
             while ((chunk = await reader.read()) !== null) {
@@ -183,14 +160,9 @@ describe('getReader()', () => {
             } as any;
 
             const buf = new DynamicBuffer();
-            const request: HttpRequestData = {
-                method: 'POST',
-                url: '/',
-                version: 'HTTP/1.1',
-                headers: new Map([['transfer-encoding', 'chunked']]),
-            };
+            const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
-            const reader = getReader(conn, buf, request);
+            const reader = request.getBodyReader(conn, buf);
             await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading chunk data');
         });
 
@@ -200,14 +172,9 @@ describe('getReader()', () => {
             } as any;
 
             const buf = new DynamicBuffer();
-            const request: HttpRequestData = {
-                method: 'POST',
-                url: '/',
-                version: 'HTTP/1.1',
-                headers: new Map([['transfer-encoding', 'chunked']]),
-            };
+            const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
-            const reader = getReader(conn, buf, request);
+            const reader = request.getBodyReader(conn, buf);
             await expect(reader.read()).rejects.toThrow('Invalid chunk size');
         });
     });

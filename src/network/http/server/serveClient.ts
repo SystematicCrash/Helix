@@ -3,10 +3,13 @@ import {MAX_HEADER_LENGTH} from "../common/constants.js";
 import DynamicBuffer from "../../mem/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import HttpRequest from "../request/HttpRequest.js";
-import {getReader} from "../request/body/bodyReaderFactory.js";
 import {handleRequest} from "../request/RequestRouter.js";
 import {ResponseWriter} from "../response/ResponseWriter.js";
 import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
+import Delimiter from "../../common/constants.js";
+
+/** Terminator marking the end of the header block: an empty line (CRLF CRLF). */
+const HEADER_TERMINATOR = Delimiter.CRLF + Delimiter.CRLF;
 
 /** Handles one accepted connection: reads requests, dispatches them, and streams responses. */
 export async function serveClient(conn: TCPConnection): Promise<void> {
@@ -28,7 +31,7 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
                 continue;
             }
 
-            const body = getReader(conn, buf, request);
+            const body = request.getBodyReader(conn, buf);
             const response = await handleRequest(request, body);
             await ResponseWriter.write(conn, response);
 
@@ -42,7 +45,7 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
 
 /** Scans the buffer for a complete HTTP header block (CRLF * 2) and returns a parsed request. */
 function cutMessage(buf: DynamicBuffer): HttpRequest | null {
-    const idx = buf.getView(buf.length).indexOf('\r\n\r\n');
+    const idx = buf.getView(buf.length).indexOf(HEADER_TERMINATOR);
 
     if (idx < 0) {
         if (buf.length > MAX_HEADER_LENGTH) {
@@ -52,6 +55,6 @@ function cutMessage(buf: DynamicBuffer): HttpRequest | null {
     }
 
     const msg = HttpRequest.from(buf.getView(idx));
-    buf.clear(idx + 4);
+    buf.clear(idx + HEADER_TERMINATOR.length);
     return msg;
 }
