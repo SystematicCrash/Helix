@@ -76,8 +76,9 @@ export default class HttpRequest implements HttpRequestType {
         if (firstLine.length > MAX_REQUEST_LINE_LENGTH)
             throw new HttpError(400, 'maximum request line length exceeded');
 
-        // TODO: Validate start line with regex before splitting to ignore invalid request
-        const [method, url, version] = splitBuffer(firstLine, Delimiter.SP);
+        // RFC 9112 §3: request-line = method SP absolute-form SP HTTP-version.
+        // Exactly one space separates the three fields; reject otherwise.
+        const [method, url, version] = firstLine.toString().match(/^(\S+) (\S+) (\S+)$/)?.slice(1) ?? [];
         if (!method || !url || !version)
             throw new HttpError(400, 'Malformed request line');
 
