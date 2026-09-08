@@ -59,6 +59,33 @@ describe('new HttpRequest()', () => {
                 .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
         });
     });
+
+    describe('malformed request line', () => {
+        test('should throw 400 when there are double spaces between fields', () => {
+            expect(() => fromRaw('GET  /api/users HTTP/1.1\r\nHost: example.com'))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when there is a trailing space after the version', () => {
+            expect(() => fromRaw('GET /api/users HTTP/1.1 \r\nHost: example.com'))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when the request line has a leading space', () => {
+            expect(() => fromRaw(' GET /api/users HTTP/1.1\r\nHost: example.com'))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when the request line has only two fields', () => {
+            expect(() => fromRaw('GET /api/users\r\nHost: example.com'))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+
+        test('should throw 400 when the request line uses tabs as separators', () => {
+            expect(() => fromRaw('GET\t/api/users\tHTTP/1.1\r\nHost: example.com'))
+                .toThrow(new HttpError(400, 'Malformed request line'));
+        });
+    });
 });
 
 describe('createBodyReader()', () => {
