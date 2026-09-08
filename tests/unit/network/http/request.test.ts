@@ -3,6 +3,8 @@ import HttpError from '../../../../src/network/http/common/HttpError.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import DynamicBuffer from '../../../../src/network/mem/DynamicBuffer.js';
 import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
+import {MAX_BODY_LENGTH} from '../../../../src/network/http/common/constants.js';
+import EOFBodyReader from '../../../../src/network/http/request/body/EOFBodyReader.js';
 
 function fromRaw(head: string): HttpRequest {
     return new HttpRequest(Buffer.from(head));
@@ -98,11 +100,55 @@ describe('createBodyReader()', () => {
             expect(reader).toMatchObject({ length: 1000 });
         });
 
-        test.todo('should return fixed reader with zero length when content-length is 0', () => {
+        test('should return fixed reader with zero length when content-length is 0', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0');
 
             const reader = request.getBodyReader(mockedTCPConnection(), new DynamicBuffer());
-            expect(reader).toMatchObject({ length: 0 });
+            expect(reader).toMatchObject({length: 0});
+        });
+    });
+
+    describe('content-length validation', () => {
+        test('should throw 400 when content-length is not a number', () => {
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: abc');
+            expect(() => request.getBodyReader(mockedTCPConnection(), new DynamicBuffer()))
+                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+        });
+
+        test('should throw 400 when content-length is negative', () => {
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: -1');
+            expect(() => request.getBodyReader(mockedTCPConnection(), new DynamicBuffer()))
+                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+        });
+
+        test('should throw 400 when content-length is a float', () => {
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 12.5');
+            expect(() => request.getBodyReader(mockedTCPConnection(), new DynamicBuffer()))
+                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+        });
+
+        test('should throw 400 when content-length has a leading plus sign', () => {
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: +100');
+            expect(() => request.getBodyReader(mockedTCPConnection(), new DynamicBuffer()))
+                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+        });
+
+        test('should throw 400 when content-length is hex', () => {
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0x10');
+            expect(() => request.getBodyReader(mockedTCPConnection(), new DynamicBuffer()))
+                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+        });
+
+        test('should throw 413 when content-length exceeds MAX_BODY_LENGTH', () => {
+            const request = fromRaw(`POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: ${MAX_BODY_LENGTH + 1}`);
+            expect(() => request.getBodyReader(mockedTCPConnection(), new DynamicBuffer()))
+                .toThrow(new HttpError(413, 'Content Too Large'));
+        });
+
+        test('should accept content-length exactly at MAX_BODY_LENGTH', () => {
+            const request = fromRaw(`POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: ${MAX_BODY_LENGTH}`);
+            const reader = request.getBodyReader(mockedTCPConnection(), new DynamicBuffer());
+            expect(reader).toMatchObject({length: MAX_BODY_LENGTH});
         });
     });
 
@@ -152,6 +198,11 @@ describe('createBodyReader()', () => {
     });
 
     describe('no body', () => {
-        test.todo('should return EOF reader when no content-length or transfer-encoding is set');
+        test('should return EOF reader when no content-length or transfer-encoding is set', () => {
+            const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com');
+
+            const reader = request.getBodyReader(mockedTCPConnection(), new DynamicBuffer());
+            expect(reader).toBeInstanceOf(EOFBodyReader);
+        });
     });
 });

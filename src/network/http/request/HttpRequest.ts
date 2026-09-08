@@ -1,13 +1,11 @@
 import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
 import Delimiter from "../../common/constants.js";
-import {parseHeaders} from "../header/parseHeaders.js";
+import {parseHeaders} from "./parser/parseHeaders.js";
+import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {
     HttpHeader,
     HttpMethod,
-    HttpVersion,
-    MAX_REQUEST_LINE_LENGTH,
-    SUPPORTED_VERSIONS,
-    VALID_METHODS
+    MAX_BODY_LENGTH
 } from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 import {HttpRequest as HttpRequestType} from "../common/types.js";
@@ -73,39 +71,29 @@ export default class HttpRequest implements HttpRequestType {
         const firstLine = lines[0];
         if (!firstLine)
             throw new HttpError(400, "empty request line");
-        if (firstLine.length > MAX_REQUEST_LINE_LENGTH)
-            throw new HttpError(400, 'maximum request line length exceeded');
 
-        // RFC 9112 §3: request-line = method SP absolute-form SP HTTP-version.
-        // Exactly one space separates the three fields; reject otherwise.
-        const [method, url, version] = firstLine.toString().match(/^(\S+) (\S+) (\S+)$/)?.slice(1) ?? [];
-        if (!method || !url || !version)
-            throw new HttpError(400, 'Malformed request line');
+        const {method, url, version} = parseRequestLine(firstLine);
 
         const headers = parseHeaders(lines.slice(1, lines.length));
 
-        if (!VALID_METHODS.has(method.toString()))
-            throw new HttpError(405, 'Method not allowed');
-        if (!SUPPORTED_VERSIONS.includes(version.toString() as HttpVersion))
-            throw new HttpError(501, 'Http version not supported. supported version: 1.1');
-
         this.headers = headers;
-        this.url = url.toString('latin1');
-        this.method = method.toString();
-        this.version = version.toString();
+        this.url = url;
+        this.method = method;
+        this.version = version;
     }
-    // TODO: validate content-length (it must be a valid positive integer)
-    /** Extracts and parses the Content-Length header value, returning -1 if absent. */
-    private getBodyLength(): number {
-        let bodyLen = -1;
-        const contentLen = this.headers.get(HttpHeader.ContentLength);
 
-        if (contentLen) {
-            bodyLen = +contentLen;
-            if (isNaN(bodyLen)) {
-                throw new HttpError(400, 'Invalid Content-Length');
-            }
-        }
+    /** Extracts and parses the Content-Length header value, returning -1 if absent.
+     * RFC 9110 §8.6: Content-Length must be a single non-negative integer of ASCII digits. */
+    private getBodyLength(): number {
+        const contentLen = this.headers.get(HttpHeader.ContentLength);
+        if (!contentLen) return -1;
+
+        if (!/^\d+$/.test(contentLen))
+            throw new HttpError(400, 'Invalid Content-Length');
+
+        const bodyLen = Number(contentLen);
+        if (bodyLen > MAX_BODY_LENGTH)
+            throw new HttpError(413, 'Content Too Large');
         return bodyLen;
     }
 

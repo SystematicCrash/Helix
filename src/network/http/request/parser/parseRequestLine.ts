@@ -2,6 +2,7 @@ import {splitBuffer} from "../../../mem/bytes.js";
 import Delimiter from "../../../common/constants.js";
 import HttpError from "../../common/HttpError.js";
 import {
+    HttpVersion,
     MAX_REQUEST_LINE_LENGTH,
     SUPPORTED_VERSIONS,
     VALID_METHODS,
@@ -12,7 +13,7 @@ export function parseRequestLine(line: Buffer): {method: string; url: string; ve
     if (line.length > MAX_REQUEST_LINE_LENGTH)
         throw new HttpError(414, 'Request line too long');
 
-    const parts = splitBuffer(line, Delimiter.SP);
+    const parts = splitBuffer(line, Delimiter.SP, true);
 
     // Reject anything that isn't exactly `method SP target SP version`.
     // splitBuffer can yield >3 parts on trailing/embedded SP — both are malformed.
@@ -30,7 +31,7 @@ export function parseRequestLine(line: Buffer): {method: string; url: string; ve
 
     if (!VALID_METHODS.has(method))
         throw new HttpError(405, 'Method not allowed');
-    if (!SUPPORTED_VERSIONS.includes(version))
+    if (!SUPPORTED_VERSIONS.includes(version as HttpVersion))
         throw new HttpError(501, 'Http version not supported. supported version: 1.1');
 
     return {method, url, version};
