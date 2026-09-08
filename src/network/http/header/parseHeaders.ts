@@ -7,8 +7,6 @@ import {
     MAX_HEADER_VALUE_LENGTH, UNIQUE_HEADERS
 } from "../common/constants.js";
 
-// TODO: Write tests for this section to reject duplicated unique header and comma concatenation
-// TODO: Remove that null assertion operator and find a better way
 /** Parses and validates raw header buffers into a name/value map. */
 export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
     const parsed = new Map<string, string>();
@@ -18,11 +16,12 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
         if (!isValidHeader(entry)) {
             throw new HttpError(400, 'Bad Headers');
         }
-        if (parsed.has(entry[0])) {
+        const existing = parsed.get(entry[0]);
+        if (existing !== undefined) {
             if (UNIQUE_HEADERS.includes(entry[0] as HttpHeader)) {
                 throw new HttpError(400, 'Bad Headers');
             }
-            entry[1] = concatenateValues(entry[0], parsed.get(entry[0])!, entry[1]);
+            entry[1] = concatenateValues(entry[0], existing, entry[1]);
         }
         parsed.set(entry[0], entry[1]);
     }
