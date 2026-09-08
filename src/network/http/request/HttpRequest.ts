@@ -94,7 +94,7 @@ export default class HttpRequest implements HttpRequestType {
         this.method = method.toString();
         this.version = version.toString();
     }
-
+    // TODO: validate content-length (it must be a valid positive integer)
     /** Extracts and parses the Content-Length header value, returning -1 if absent. */
     private getBodyLength(): number {
         let bodyLen = -1;
