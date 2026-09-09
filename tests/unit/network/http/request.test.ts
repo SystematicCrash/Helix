@@ -1,10 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
-import HttpError from '../../../../src/network/http/common/HttpError.js';
+import HttpError from '../../../../src/net/http/common/HttpError.js';
 import { mockedTCPConnection } from '../common/utils.js';
-import DynamicBuffer from '../../../../src/network/mem/DynamicBuffer.js';
-import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
-import {MAX_BODY_LENGTH} from '../../../../src/network/http/common/constants.js';
-import EOFBodyReader from '../../../../src/network/http/request/body/EOFBodyReader.js';
+import DynamicBuffer from '../../../../src/buffer/DynamicBuffer.js';
+import HttpRequest from '../../../../src/net/http/request/HttpRequest.js';
+import {MAX_BODY_LENGTH} from '../../../../src/net/http/common/constants.js';
+import EOFBodyReader from '../../../../src/net/http/request/body/EOFBodyReader.js';
 
 function fromRaw(head: string): HttpRequest {
     return new HttpRequest(Buffer.from(head));

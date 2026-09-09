@@ -1,13 +1,13 @@
 import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
-import {TCPErrCode, TCPError} from "../../../../../src/network/tcp/index.js";
+import {TCPErrCode, TCPError} from "../../../../../src/net/tcp/index.js";
 import net, {Socket} from "net";
 import {createClient, getRandomPort} from "../common/utils.js";
-import SocketReader from "../../../../../src/network/tcp/conn/SocketReader.js";
+import SocketReader from "../../../../../src/net/tcp/conn/SocketReader.js";
 import {Server} from "node:net";
 
 /** Mocks */
-vi.mock('../../../../../src/network/tcp/common/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
+vi.mock('../../../../../src/net/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/net/tcp/common/constants')>('../../../../../src/net/tcp/common/constants');
 
     return {
         ...actual,

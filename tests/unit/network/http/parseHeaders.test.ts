@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { parseHeaders } from '../../../../src/network/http/request/parser/parseHeaders.js';
-import HttpError from '../../../../src/network/http/common/HttpError.js';
-import { MAX_HEADER_VALUE_LENGTH } from '../../../../src/network/http/common/constants.js';
+import { parseHeaders } from '../../../../src/net/http/request/parser/parseHeaders.js';
+import HttpError from '../../../../src/net/http/common/HttpError.js';
+import { MAX_HEADER_VALUE_LENGTH } from '../../../../src/net/http/common/constants.js';
 
 /** Builds a raw header buffer list from `Name: value` strings. */
 function raw(...lines: string[]): Buffer[] {

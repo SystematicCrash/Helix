@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /** Mocks */
-vi.mock('../../../../../src/network/tcp/common/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
+vi.mock('../../../../../src/net/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/net/tcp/common/constants')>('../../../../../src/net/tcp/common/constants');
 
     return {
         ...actual,
@@ -12,7 +12,7 @@ vi.mock('../../../../../src/network/tcp/common/constants', async () => {
 
 import * as net from 'node:net';
 import { createClient, getRandomPort } from '../common/utils.js';
-import {TCPListener, TCPConnection, TCPErrCode, MAXIMUM_ALIVE_CONNECTIONS} from '../../../../../src/network/tcp/index.js';
+import {TCPListener, TCPConnection, TCPErrCode, MAXIMUM_ALIVE_CONNECTIONS} from '../../../../../src/net/tcp/index.js';
 import {delay} from "@vitest/utils/timers";
 
 describe('TCPListener', () => {

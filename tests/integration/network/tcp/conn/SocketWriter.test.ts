@@ -2,19 +2,19 @@ import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
 import net from "net";
 import {Server, Socket} from "node:net";
 import {createClient, getRandomPort} from "../common/utils.js";
-import SocketWriter from "../../../../../src/network/tcp/conn/SocketWriter.js";
+import SocketWriter from "../../../../../src/net/tcp/conn/SocketWriter.js";
 import {
     MAX_FLUSH_RETIES,
     MAX_WRITE_BUFFER_SIZE,
     TCPErrCode,
     TCPError,
     WRITE_BUFFER_FLUSH_THRESHOLD,
-} from "../../../../../src/network/tcp/index.js";
+} from "../../../../../src/net/tcp/index.js";
 import {spyOn} from "@vitest/spy";
 
 /** Mocks */
-vi.mock('../../../../../src/network/tcp/common/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
+vi.mock('../../../../../src/net/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/net/tcp/common/constants')>('../../../../../src/net/tcp/common/constants');
 
     return {
         ...actual,

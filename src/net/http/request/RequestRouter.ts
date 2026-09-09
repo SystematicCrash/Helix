@@ -1,6 +1,7 @@
 import {BodyReader, HttpRequest, HttpResponse} from "../common/types.js";
 import GeneratorBodyReader from "./body/GeneratorBodyReader.js";
 import MemoryBodyReader from "./body/MemoryBodyReader.js";
+import {serveStaticFile} from "../../../fs/index.js";
 
 type BufferGenerator = AsyncGenerator<Buffer, void, void>;
 
@@ -24,6 +25,9 @@ export async function handleRequest(request: HttpRequest, body: BodyReader): Pro
             break;
         case '/sheep':
             payload = new GeneratorBodyReader(countSheep());
+            break;
+        case '/files':
+            payload = new MemoryBodyReader(await serveStaticFile());
             break;
         default:
             payload = new MemoryBodyReader(Buffer.from('Hello world!'));

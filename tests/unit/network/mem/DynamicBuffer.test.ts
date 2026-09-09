@@ -1,9 +1,9 @@
 import {beforeEach, afterEach, expect, test, describe} from "vitest";
-import DynamicBuffer from "../../../../src/network/mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../../src/buffer/DynamicBuffer.js";
 import {push} from "node:stream/iter";
-import {MAX_BUFFER_SIZE, BufferErrCode} from "../../../../src/network/mem/constants.js";
-import BufferError from "../../../../src/network/mem/BufferError.js";
-import {LF} from "../../../../src/network/common/constants.js";
+import {MAX_BUFFER_SIZE, BufferErrCode} from "../../../../src/buffer/constants.js";
+import BufferError from "../../../../src/buffer/BufferError.js";
+import {LF} from "../../../../src/net/common/constants.js";
 
 describe("DynamicBuffer", () => {
     describe("push()", () => {
