@@ -1,5 +1,5 @@
 import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
-import {Delimiter} from "../../common/constants.js";
+import {CRLF} from "../../common/constants.js";
 import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {HttpHeader, HttpMethod, MAX_BODY_LENGTH} from "../common/constants.js";
@@ -58,8 +58,8 @@ export default class HttpRequest implements HttpRequestType {
      * Parses a raw HTTP request buffer into this request, validating method and version.
      */
     private parse(data: Buffer): void {
-        data = stripBuffer(data, Delimiter.CRLF);
-        const lines = splitBuffer(data, Delimiter.CRLF);
+        data = stripBuffer(data, CRLF);
+        const lines = splitBuffer(data, CRLF);
 
         if (!lines.length) throw new HttpError(400, "lines cannot be empty");
 

@@ -1,5 +1,5 @@
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
-import {Delimiter} from "../../common/constants.js";
+import {CRLF} from "../../common/constants.js";
 import {HttpHeader, TransferEncoding} from "../common/constants.js";
 import {BodyReader, HttpResponse} from "../common/types.js";
 import {encodeHeaders} from "./encodeHeaders.js";
@@ -47,17 +47,17 @@ export class ResponseWriter {
             const data = await body.read();
             if (!data) break;
 
-            const chunk = Buffer.from(
-                data.length.toString(16) +
-                Delimiter.CRLF +
-                data +
-                Delimiter.CRLF
-            );
+            const chunk = Buffer.concat([
+                Buffer.from(data.length.toString(16)),
+                CRLF,
+                data,
+                CRLF,
+            ]);
 
             await conn.write(chunk);
         }
 
-        const chunk = Buffer.from(0 + Delimiter.CRLF + Delimiter.CRLF);
-        await conn.write(chunk);
+        const terminator = Buffer.concat([Buffer.from('0'), CRLF, CRLF]);
+        await conn.write(terminator);
     }
 }

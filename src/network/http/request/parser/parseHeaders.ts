@@ -6,7 +6,7 @@ import {
     MAX_HEADER_NAME_LENGTH,
     MAX_HEADER_VALUE_LENGTH, UNIQUE_HEADERS
 } from "../../common/constants.js";
-import {Delimiter} from "../../../common/constants.js";
+import {HTAB, SP} from "../../../common/constants.js";
 
 /** Parses and validates raw header buffers into a name/value map.
  * Supports obs-fold (RFC 9112 §5.2): a line starting with SP/HTAB continues
@@ -65,8 +65,7 @@ function applyObsFold(current: [string, string] | null, header: Buffer): string 
 
 /** Returns true when the line starts with SP or HTAB, marking an obs-fold continuation. */
 function isObsFold(rawHeader: Buffer): boolean {
-    const first = rawHeader.length > 0 ? rawHeader.toString('latin1', 0, 1) : '';
-    return first === Delimiter.SP || first === Delimiter.HTAB;
+    return rawHeader.length > 0 && (rawHeader[0] === SP[0] || rawHeader[0] === HTAB[0]);
 }
 
 /** Decodes and trims a raw header-line buffer into its value string. */

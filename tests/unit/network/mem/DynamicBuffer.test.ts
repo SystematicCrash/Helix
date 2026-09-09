@@ -3,7 +3,7 @@ import DynamicBuffer from "../../../../src/network/mem/DynamicBuffer.js";
 import {push} from "node:stream/iter";
 import {MAX_BUFFER_SIZE, BufferErrCode} from "../../../../src/network/mem/constants.js";
 import BufferError from "../../../../src/network/mem/BufferError.js";
-import {Delimiter} from "../../../../src/network/common/constants.js";
+import {LF} from "../../../../src/network/common/constants.js";
 
 describe("DynamicBuffer", () => {
     describe("push()", () => {
@@ -185,16 +185,16 @@ describe("DynamicBuffer", () => {
         })
     });
 
-    describe("consume()", () => {
+    describe('consume()', () => {
         test("should consume message until default newline delimiter", () => {
             const buffer = new DynamicBuffer();
             buffer.push(Buffer.from("hello\nworld\n"));
 
-            const msg1 = buffer.consume(Delimiter.LF);
+            const msg1 = buffer.consume(LF);
             expect(msg1?.toString()).toEqual("hello\n");
             expect(buffer.length).toEqual(6);
 
-            const msg2 = buffer.consume(Delimiter.LF);
+            const msg2 = buffer.consume(LF);
             expect(msg2?.toString()).toEqual("world\n");
             expect(buffer.length).toEqual(0);
         });
@@ -203,23 +203,15 @@ describe("DynamicBuffer", () => {
             const buffer = new DynamicBuffer();
             buffer.push(Buffer.from("hello"));
 
-            expect(buffer.consume(Delimiter.LF)).toBeNull();
+            expect(buffer.consume(LF)).toBeNull();
         });
 
-        test("should consume message until custom string delimiter", () => {
+        test("should consume message until custom delimiter Buffer", () => {
             const buffer = new DynamicBuffer();
             buffer.push(Buffer.from("foo|bar|baz"));
 
-            const msg1 = buffer.consume('|');
-            expect(msg1?.toString()).toEqual("foo|");
-            expect(buffer.length).toEqual(7);
-        });
-
-        test("should consume message until custom numeric char code delimiter", () => {
-            const buffer = new DynamicBuffer();
-            buffer.push(Buffer.from("foo|bar|baz"));
-
-            const msg1 = buffer.consume('|'.charCodeAt(0));
+            const pipe = Buffer.from("|");
+            const msg1 = buffer.consume(pipe);
             expect(msg1?.toString()).toEqual("foo|");
             expect(buffer.length).toEqual(7);
         });

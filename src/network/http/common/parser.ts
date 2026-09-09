@@ -1,5 +1,5 @@
 import {TOKEN_CHAR_CODES} from "./constants.js";
-import {Delimiter} from "../../common/constants.js";
+import {BS, DQ, HTAB, SP} from "../../common/constants.js";
 
 /**
  * RFC 7230 generic parser primitives. Not tied to any single message part —
@@ -10,17 +10,14 @@ import {Delimiter} from "../../common/constants.js";
  * with `noUncheckedIndexedAccess` without using `!` assertions.
  */
 
-const SP = 0x20;       // Delimiter.SP
-const HTAB = 0x09;     // Delimiter.HTAB
-const DQ = 0x22;       // "
-const BS = 0x5C;       // \
-
 /** Consumes optional beginning whitespace (SP/HTAB/Bad White Space) and returns the remainder. */
 export function consumeBWS(s: string): string {
+    const SP_CODE = SP[0]!;
+    const HTAB_CODE = HTAB[0]!;
     let i;
     for (i = 0; i < s.length; i++) {
         const code = s.charCodeAt(i);
-        if (code !== SP && code !== HTAB) break;
+        if (code !== SP_CODE && code !== HTAB_CODE) break;
     }
     return s.slice(i);
 }
@@ -39,17 +36,19 @@ export function getTokenLength(s: string): number {
  */
 export function consumeQuotedString(s: string): {value: string; consumed: number} {
     // s[0] === '"'
+    const DQ_CODE = DQ[0]!;
+    const BS_CODE = BS[0]!;
     let out = '';
     let i = 1;
     while (i < s.length) {
         const code = s.charCodeAt(i);
-        if (code === BS) {
+        if (code === BS_CODE) {
             if (i + 1 >= s.length) {
                 throw new Error('Unterminated quoted-string');
             }
             out += s[i + 1];
             i += 2;
-        } else if (code === DQ) {
+        } else if (code === DQ_CODE) {
             return {value: out, consumed: i + 1};
         } else {
             out += s[i];

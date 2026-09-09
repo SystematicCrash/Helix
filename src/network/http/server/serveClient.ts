@@ -6,10 +6,10 @@ import HttpRequest from "../request/HttpRequest.js";
 import {handleRequest} from "../request/RequestRouter.js";
 import {ResponseWriter} from "../response/ResponseWriter.js";
 import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
-import {Delimiter} from "../../common/constants.js";
+import {CRLF} from "../../common/constants.js";
 
 /** Terminator marking the end of the header block: an empty line (CRLF CRLF). */
-const HEADER_TERMINATOR = Delimiter.CRLF + Delimiter.CRLF;
+const HEADER_TERMINATOR = Buffer.concat([CRLF, CRLF]);
 
 /** Handles one accepted connection: reads requests, dispatches them, and streams responses. */
 export async function serveClient(conn: TCPConnection): Promise<void> {
