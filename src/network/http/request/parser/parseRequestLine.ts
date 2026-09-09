@@ -1,5 +1,5 @@
 import {splitBuffer} from "../../../mem/bytes.js";
-import Delimiter from "../../../common/constants.js";
+import {Delimiter} from "../../../common/constants.js";
 import HttpError from "../../common/HttpError.js";
 import {
     HttpVersion,

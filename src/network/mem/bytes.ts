@@ -1,4 +1,4 @@
-import Delimiter from "../common/constants";
+import {Delimiter} from "../common/constants";
 
 /** Splits a buffer on all occurrences of a delimiter, returning the parts without the delimiter.
  * Empty parts are dropped unless `keepEmpty` is set (needed when empty parts are significant,

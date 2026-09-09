@@ -6,7 +6,7 @@ import HttpRequest from "../request/HttpRequest.js";
 import {handleRequest} from "../request/RequestRouter.js";
 import {ResponseWriter} from "../response/ResponseWriter.js";
 import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
-import Delimiter from "../../common/constants.js";
+import {Delimiter} from "../../common/constants.js";
 
 /** Terminator marking the end of the header block: an empty line (CRLF CRLF). */
 const HEADER_TERMINATOR = Delimiter.CRLF + Delimiter.CRLF;

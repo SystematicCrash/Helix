@@ -3,7 +3,7 @@ import DynamicBuffer from "../../../../src/network/mem/DynamicBuffer.js";
 import {push} from "node:stream/iter";
 import {MAX_BUFFER_SIZE, BufferErrCode} from "../../../../src/network/mem/constants.js";
 import BufferError from "../../../../src/network/mem/BufferError.js";
-import Delimiter from "../../../../src/network/common/constants.js";
+import {Delimiter} from "../../../../src/network/common/constants.js";
 
 describe("DynamicBuffer", () => {
     describe("push()", () => {

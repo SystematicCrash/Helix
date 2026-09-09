@@ -1,6 +1,6 @@
 import DynamicBuffer from "../../mem/DynamicBuffer.js";
 import TCPConnection from "../conn/TCPConnection.js";
-import Delimiter from "../../common/constants.js";
+import {Delimiter} from "../../common/constants.js";
 
 /**
  * TODO: This is just a toy and should be removed from the main product

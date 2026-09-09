@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { splitBuffer, stripBuffer } from '../../../../src/network/mem/bytes.js';
-import Delimiter from '../../../../src/network/common/constants.js';
+import {Delimiter} from '../../../../src/network/common/constants.js';
 
 describe('splitBuffer()', () => {
 

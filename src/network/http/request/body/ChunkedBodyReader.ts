@@ -3,7 +3,7 @@ import TCPConnection from "../../../tcp/conn/TCPConnection.js";
 import {BufferGenerator, ChunkExtension} from "../../common/types.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
 import {consumeBWS, consumeQuotedString, getTokenLength} from "../../common/parser.js";
-import Delimiter from "../../../common/constants.js";
+import {Delimiter} from "../../../common/constants.js";
 import {BodyReaderAbs} from "./BodyReaderAbs.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */

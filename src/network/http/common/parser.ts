@@ -1,5 +1,5 @@
 import {TOKEN_CHAR_CODES} from "./constants.js";
-import Delimiter from "../../common/constants.js";
+import {Delimiter} from "../../common/constants.js";
 
 /**
  * RFC 7230 generic parser primitives. Not tied to any single message part —

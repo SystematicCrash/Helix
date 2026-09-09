@@ -1,5 +1,5 @@
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
-import Delimiter from "../../common/constants.js";
+import {Delimiter} from "../../common/constants.js";
 import {HttpHeader, TransferEncoding} from "../common/constants.js";
 import {BodyReader, HttpResponse} from "../common/types.js";
 import {encodeHeaders} from "./encodeHeaders.js";

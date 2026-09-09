@@ -1,20 +1,15 @@
 import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
-import Delimiter from "../../common/constants.js";
+import {Delimiter} from "../../common/constants.js";
 import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
-import {
-    HttpHeader,
-    HttpMethod,
-    MAX_BODY_LENGTH
-} from "../common/constants.js";
+import {HttpHeader, HttpMethod, MAX_BODY_LENGTH} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
-import {HttpRequest as HttpRequestType} from "../common/types.js";
+import {BodyReader, HttpRequest as HttpRequestType} from "../common/types.js";
 import DynamicBuffer from "../../mem/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import FixedBodyReader from "./body/FixedBodyReader.js";
 import ChunkedBodyReader from "./body/ChunkedBodyReader.js";
 import EOFBodyReader from "./body/EOFBodyReader.js";
-import {BodyReader} from "../common/types.js";
 
 /*
  * Parsed HTTP request head value object.
@@ -74,9 +69,7 @@ export default class HttpRequest implements HttpRequestType {
 
         const {method, url, version} = parseRequestLine(firstLine);
 
-        const headers = parseHeaders(lines.slice(1, lines.length));
-
-        this.headers = headers;
+        this.headers = parseHeaders(lines.slice(1, lines.length));
         this.url = url;
         this.method = method;
         this.version = version;
