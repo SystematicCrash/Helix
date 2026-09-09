@@ -16,17 +16,11 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
     let current: [string, string] | null = null;
     for (const header of rawHeaders) {
         if (isObsFold(header)) {
-            // A continuation line must follow an already-parsed header and carry
-            // at least one non-WSP character — a bare-WSP line adds nothing and
-            // is a request-smuggling vector.
-            if (current === null || header.toString('latin1').trim().length === 0)
-                throw new HttpError(400, 'Bad Headers');
-            const unfolded = `${current[1]} ${trimValue(header)}`;
-            if (!isValidValue(unfolded))
-                throw new HttpError(400, 'Bad Headers');
-            current[1] = unfolded;
-            // The map stores the string by value, so re-set it after unfolding.
-            parsed.set(current[0], unfolded);
+            const value = applyObsFold(current, header);
+            if (current !== null) {
+                current[1] = value;
+                parsed.set(current[0], value);
+            }
             continue;
         }
 
@@ -34,6 +28,7 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
         if (!isValidHeader(entry)) {
             throw new HttpError(400, 'Bad Headers');
         }
+
         const existing = parsed.get(entry[0]);
         if (existing !== undefined) {
             if (UNIQUE_HEADERS.includes(entry[0] as HttpHeader)) {
@@ -41,12 +36,30 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
             }
             entry[1] = concatenateValues(entry[0], existing, entry[1]);
         }
+
         parsed.set(entry[0], entry[1]);
         current = entry;
     }
 
     checkMandatories(parsed);
     return parsed;
+}
+
+/** Unfolds an obs-fold continuation line onto the previous header's value.
+ * Returns the new concatenated value string; the caller is responsible for
+ * updating the parsed-headers map. Throws 400 if a continuation appears with
+ * no prior header, has no content, or produces an invalid value. */
+function applyObsFold(current: [string, string] | null, header: Buffer): string {
+    if (current === null || header.toString('latin1').trim().length === 0) {
+        throw new HttpError(400, 'Bad Headers');
+    }
+
+    const unfolded = `${current[1]} ${trimValue(header)}`;
+    if (!isValidValue(unfolded)) {
+        throw new HttpError(400, 'Bad Headers');
+    }
+
+    return unfolded;
 }
 
 /** Returns true when the line starts with SP or HTAB, marking an obs-fold continuation. */
@@ -59,6 +72,10 @@ function trimValue(rawHeader: Buffer): string {
     return rawHeader.toString('latin1').trim();
 }
 
+/** Joins a duplicated non-unique header's previous and new values into one string.
+ * Cookies are joined with "; " (per RFC 9110 §5.5, where repeated Cookie fields
+ * are merged with semicolons); all other header fields are joined with ", "
+ * (the generic list-join rule from RFC 9110 §5.3). */
 function concatenateValues(name: string, value: string, newValue: string): string {
     if (name === HttpHeader.Cookie) {
         return `${value}; ${newValue}`;
