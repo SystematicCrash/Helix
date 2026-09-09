@@ -1,4 +1,4 @@
-import {splitBuffer} from "../../../mem/bytes.js";
+import {splitBuffer} from "../../../../buffer/bytes.js";
 import {SP} from "../../../common/constants.js";
 import HttpError from "../../common/HttpError.js";
 import {

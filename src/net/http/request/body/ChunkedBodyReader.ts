@@ -1,4 +1,4 @@
-import DynamicBuffer from "../../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
 import {BufferGenerator, ChunkExtension} from "../../common/types.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";

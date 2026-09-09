@@ -1,5 +1,5 @@
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
-import DynamicBuffer from "../../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../../buffer/DynamicBuffer.js";
 import {BodyReaderAbs} from "./BodyReaderAbs.js";
 
 /**

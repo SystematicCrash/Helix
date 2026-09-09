@@ -9,7 +9,7 @@ import {
     WRITE_TIMEOUT
 } from "../common/constants.js";
 import TCPError from "../common/TCPError.js";
-import DynamicBuffer from "../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 
 export default class SocketWriter {
     private timer: Timer;

@@ -1,6 +1,6 @@
 import HttpError from "../common/HttpError.js";
 import {MAX_HEADER_LENGTH} from "../common/constants.js";
-import DynamicBuffer from "../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import HttpRequest from "../request/HttpRequest.js";
 import {handleRequest} from "../request/RequestRouter.js";

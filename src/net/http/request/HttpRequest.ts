@@ -1,11 +1,11 @@
-import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
+import {splitBuffer, stripBuffer} from "../../../buffer/bytes.js";
 import {CRLF} from "../../common/constants.js";
 import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {HttpHeader, HttpMethod, MAX_BODY_LENGTH} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 import {BodyReader, HttpRequest as HttpRequestType} from "../common/types.js";
-import DynamicBuffer from "../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import FixedBodyReader from "./body/FixedBodyReader.js";
 import ChunkedBodyReader from "./body/ChunkedBodyReader.js";

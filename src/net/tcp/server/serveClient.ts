@@ -1,4 +1,4 @@
-import DynamicBuffer from "../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../conn/TCPConnection.js";
 import {LF} from "../../common/constants.js";
 
