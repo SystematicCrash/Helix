@@ -6,6 +6,7 @@ import {
     MAX_HEADER_NAME_LENGTH,
     MAX_HEADER_VALUE_LENGTH, UNIQUE_HEADERS
 } from "../../common/constants.js";
+import {Delimiter} from "../../../common/constants.js";
 
 /** Parses and validates raw header buffers into a name/value map.
  * Supports obs-fold (RFC 9112 §5.2): a line starting with SP/HTAB continues
@@ -64,7 +65,8 @@ function applyObsFold(current: [string, string] | null, header: Buffer): string 
 
 /** Returns true when the line starts with SP or HTAB, marking an obs-fold continuation. */
 function isObsFold(rawHeader: Buffer): boolean {
-    return rawHeader.length > 0 && (rawHeader[0] === 0x20 || rawHeader[0] === 0x09);
+    const first = rawHeader.length > 0 ? rawHeader.toString('latin1', 0, 1) : '';
+    return first === Delimiter.SP || first === Delimiter.HTAB;
 }
 
 /** Decodes and trims a raw header-line buffer into its value string. */
@@ -72,10 +74,7 @@ function trimValue(rawHeader: Buffer): string {
     return rawHeader.toString('latin1').trim();
 }
 
-/** Joins a duplicated non-unique header's previous and new values into one string.
- * Cookies are joined with "; " (per RFC 9110 §5.5, where repeated Cookie fields
- * are merged with semicolons); all other header fields are joined with ", "
- * (the generic list-join rule from RFC 9110 §5.3). */
+/** Joins a duplicated non-unique header's previous and new values into one string. */
 function concatenateValues(name: string, value: string, newValue: string): string {
     if (name === HttpHeader.Cookie) {
         return `${value}; ${newValue}`;
