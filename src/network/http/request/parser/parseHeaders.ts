@@ -65,7 +65,8 @@ function applyObsFold(current: [string, string] | null, header: Buffer): string 
 
 /** Returns true when the line starts with SP or HTAB, marking an obs-fold continuation. */
 function isObsFold(rawHeader: Buffer): boolean {
-    return rawHeader.length > 0 && (rawHeader[0] === SP[0] || rawHeader[0] === HTAB[0]);
+    return rawHeader.length >= SP.length && rawHeader.subarray(0, SP.length).equals(SP)
+        || rawHeader.length >= HTAB.length && rawHeader.subarray(0, HTAB.length).equals(HTAB);
 }
 
 /** Decodes and trims a raw header-line buffer into its value string. */

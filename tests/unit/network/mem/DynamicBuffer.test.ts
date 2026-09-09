@@ -191,11 +191,11 @@ describe("DynamicBuffer", () => {
             buffer.push(Buffer.from("hello\nworld\n"));
 
             const msg1 = buffer.consume(LF);
-            expect(msg1?.toString()).toEqual("hello\n");
+            expect(msg1?.toString()).toEqual("hello");
             expect(buffer.length).toEqual(6);
 
             const msg2 = buffer.consume(LF);
-            expect(msg2?.toString()).toEqual("world\n");
+            expect(msg2?.toString()).toEqual("world");
             expect(buffer.length).toEqual(0);
         });
 
@@ -212,7 +212,7 @@ describe("DynamicBuffer", () => {
 
             const pipe = Buffer.from("|");
             const msg1 = buffer.consume(pipe);
-            expect(msg1?.toString()).toEqual("foo|");
+            expect(msg1?.toString()).toEqual("foo");
             expect(buffer.length).toEqual(7);
         });
     });

@@ -116,7 +116,7 @@ export default class DynamicBuffer {
 
         if (idx < 0) return null;
 
-        const msg = this.getView(idx + delimiter.length);
+        const msg = this.getView(idx);
         this.clear(idx + delimiter.length);
         return msg;
     }
