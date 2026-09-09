@@ -2,11 +2,12 @@ export const MAX_HEADER_COUNT           = 100;
 export const MAX_HEADER_NAME_LENGTH     = 100;
 export const MAX_HEADER_VALUE_LENGTH    = 8000;
 export const MAX_HEADER_LENGTH = 8 * 1024;
+export const MAX_REQUEST_LINE_LENGTH    = 8000;
 export const MAX_CHUNK_SIZE = 64 * 1024;
-export const MAX_BODY_LENGTH = 1024 * 1024
+export const MAX_BODY_LENGTH = 1024 * 1024;
 
 export const HEADER_NAME_REGEX = /^[-a-zA-Z0-9!#$%&'*+.^_`|~]+$/;
-export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]*$/;
+export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]+$/;
 
 /** RFC 7230 §4.1.1 — chunk-size grammar: 1*HEXDIG */
 export const HEX_DIGITS = /^[0-9A-Fa-f]+$/;
@@ -31,9 +32,6 @@ export const TOKEN_CHAR_CODES: ReadonlySet<number> = new Set<number>([
     0x78, 0x79, 0x7A,                                 // x-z
     0x7C, 0x7E,                                       // |~
 ]);
-
-export const MANDATORY_HEADERS = ['host'] as const;
-export const SUPPORTED_VERSIONS = ['HTTP/1.1'];
 
 export enum TransferEncoding {
     CHUNKED = 'chunked',
@@ -172,3 +170,7 @@ export const HTTP_STATUS: Record<number, string> = {
     510: 'Not Extended',
     511: 'Network Authentication Required',
 } as const;
+
+export const MANDATORY_HEADERS = [HttpHeader.Host] as const;
+export const UNIQUE_HEADERS = [HttpHeader.Host, HttpHeader.ContentLength, HttpHeader.TransferEncoding];
+export const SUPPORTED_VERSIONS = [HttpVersion.HTTP_1_1];

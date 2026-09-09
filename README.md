@@ -37,7 +37,7 @@ index.ts
               └─ DynamicBuffer  (sliding-window growable, max 10 MB)
 
 http/server/serveClient.ts
-  cutMessage → HttpRequest → getReader → handleRequest → ResponseWriter
+  cutMessage → HttpRequest → createBodyReader → handleRequest → ResponseWriter
 ```
 
 | Path                         | Contents                                                            |

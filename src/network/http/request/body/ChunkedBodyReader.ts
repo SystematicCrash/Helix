@@ -3,7 +3,7 @@ import TCPConnection from "../../../tcp/conn/TCPConnection.js";
 import {BufferGenerator, ChunkExtension} from "../../common/types.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
 import {consumeBWS, consumeQuotedString, getTokenLength} from "../../common/parser.js";
-import Delimiter from "../../../common/constants.js";
+import {CRLF} from "../../../common/constants.js";
 import {BodyReaderAbs} from "./BodyReaderAbs.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
@@ -49,7 +49,7 @@ export default class ChunkedBodyReader extends BodyReaderAbs {
     /** Reads and parses the hexadecimal chunk size line, including any chunk-ext. */
     private async readChunkSize(): Promise<number> {
         while (true) {
-            const idx = this.buff.getView().indexOf('\r\n');
+            const idx = this.buff.getView().indexOf(CRLF);
 
             if (idx < 0) {
                 await this.readFromSock();
@@ -66,7 +66,7 @@ export default class ChunkedBodyReader extends BodyReaderAbs {
 
             this._extensions = ext;
 
-            this.buff.clear(idx + 2);
+            this.buff.clear(idx + CRLF.length);
             return size;
         }
     }
@@ -103,11 +103,11 @@ export default class ChunkedBodyReader extends BodyReaderAbs {
         while (this.buff.length < 2) {
             await this.readFromSock();
         }
-        if (this.buff.getView(2).toString() !== Delimiter.CRLF) {
+        if (!this.buff.getView(CRLF.length).equals(CRLF)) {
             throw new Error('Invalid chunk framing: missing CRLF after chunk data');
         }
 
-        this.buff.clear(2);
+        this.buff.clear(CRLF.length);
     }
 
     /**
