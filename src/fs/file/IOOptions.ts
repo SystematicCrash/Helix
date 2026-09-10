@@ -22,9 +22,8 @@ export interface IOOptions {
 }
 
 /** Normalizes and validates read options. Throws FsError(INVALID_ARGUMENT) on bad input. */
-export function resolveIOOptions(opts: RawIOOptions | number | undefined): IOOptions {
-    // Sugar: read(64) === read({length: 64})
-    const o: RawIOOptions = typeof opts === 'number' ? {length: opts} : (opts ?? {});
+export function resolveIOOptions(opts: RawIOOptions | undefined): IOOptions {
+    const o: RawIOOptions = opts ?? {};
     if (typeof o.offset === 'number' && (o.offset < 0 || !Number.isInteger(o.offset)))
         throw FsError.from(FsErrCode.INVALID_ARGUMENT, `read offset must be a non-negative integer`);
     if (typeof o.length === 'number' && (o.length <= 0 || !Number.isInteger(o.length)))

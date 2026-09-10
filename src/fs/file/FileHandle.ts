@@ -1,17 +1,16 @@
 import {open as fsOpen} from "node:fs/promises";
 import FileStats from "./FileStats.js";
-import {DEFAULT_READ_CHUNK_SIZE, FsErrCode} from "../common/constants.js";
+import {DEFAULT_READ_CHUNK_SIZE, FsErrCode, FsOperation, errnoToFsErrCode} from "../common/constants.js";
 import FsError from "../common/FsError.js";
 import {RawIOOptions, IOOptions, resolveIOOptions} from "./IOOptions.js";
 
 /** Read-only file handle. Wraps node:fs/promises FileHandle; all errors surface as FsError. */
 export default class FileHandle {
-    private closed_ = false;
+    private _closed = false;
 
     private constructor(
         private readonly handle: import("node:fs/promises").FileHandle,
         public readonly path: string,
-        /** Node flag string the handle was opened with. */
         public readonly flag: string,
     ) {}
 
@@ -21,13 +20,15 @@ export default class FileHandle {
         try {
             handle = await fsOpen(path, 'r');
         } catch (err) {
-            throw FsError.from(mapOpenError(err), err instanceof Error ? err.message : String(err));
+            const errno = (err as NodeJS.ErrnoException)?.code;
+            throw FsError.from(errnoToFsErrCode(errno, FsErrCode.OPEN_FAILED), err instanceof Error ? err.message : String(err));
         }
         return new FileHandle(handle, path, 'r');
     }
 
+    /** Returns the file's metadata. */
     public async stat(): Promise<FileStats> {
-        this.assertNotClosed('stat');
+        this.assertNotClosed(FsOperation.STAT);
         try {
             return FileStats.from(await this.handle.stat());
         } catch (err) {
@@ -39,8 +40,8 @@ export default class FileHandle {
      * Reads up to `length` bytes from `position` (or the cursor).
      * Returns null at EOF.
      */
-    public async read(opts?: RawIOOptions | number): Promise<Buffer | null> {
-        this.assertNotClosed('read');
+    public async read(opts?: RawIOOptions): Promise<Buffer | null> {
+        this.assertNotClosed(FsOperation.READ);
         const {buffer, offset, length, position}: IOOptions = resolveIOOptions(opts);
 
         try {
@@ -67,42 +68,25 @@ export default class FileHandle {
 
     /** Closes the handle. Idempotent. */
     public async close(): Promise<void> {
-        if (this.closed_) return;
-        this.closed_ = true;
+        if (this._closed) return;
+        this._closed = true;
         try {
             await this.handle.close();
-        } catch (err) { // TODO: shouldn't we set the closed_ to false after failure?
+        } catch (err) {
             throw this.wrap(err, FsErrCode.CLOSE_FAILED);
         }
     }
 
     /** True once close() has been called. */
     public get closed(): boolean {
-        return this.closed_;
+        return this._closed;
     }
-
-    private assertNotClosed(operation: string): void {
-        if (this.closed_)
+    private assertNotClosed(operation: FsOperation): void {
+        if (this._closed)
             throw FsError.from(FsErrCode.INVALID_ARGUMENT, `Cannot ${operation} from a closed file (${this.path})`);
     }
 
     private wrap(err: unknown, code: FsErrCode): FsError {
         return FsError.from(code, err instanceof Error ? err.message : String(err));
-    }
-}
-
-/** Maps node open() errno codes to FsErrCode. */
-function mapOpenError(err: unknown): FsErrCode {
-    const code = (err as NodeJS.ErrnoException)?.code;
-    switch (code) {
-        case 'ENOENT': return FsErrCode.NOT_FOUND;
-        case 'EACCES':
-        case 'EPERM':  return FsErrCode.PERMISSION_DENIED;
-        case 'EISDIR': return FsErrCode.IS_DIRECTORY;
-        case 'ENOTDIR': return FsErrCode.NOT_DIRECTORY;
-        case 'EEXIST': return FsErrCode.ALREADY_EXISTS;
-        case 'ENAMETOOLONG': return FsErrCode.PATH_TOO_LONG;
-        case 'ENOSPC': return FsErrCode.OUT_OF_SPACE;
-        default: return FsErrCode.OPEN_FAILED;
     }
 }

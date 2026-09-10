@@ -27,7 +27,7 @@ export async function handleRequest(request: HttpRequest, body: BodyReader): Pro
             payload = new GeneratorBodyReader(countSheep());
             break;
         case '/files':
-            payload = new MemoryBodyReader(await serveStaticFile());
+            payload = new MemoryBodyReader(await serveStaticFile(request.url));
             break;
         default:
             payload = new MemoryBodyReader(Buffer.from('Hello world!'));

@@ -65,7 +65,7 @@ describe('FileHandle.read()', () => {
         await writeFile(p, '0123456789');
         const handle = await FileHandle.open(p);
 
-        const data = await handle.read(10);
+        const data = await handle.read({length: 10});
         expect(data?.toString()).toBe('0123456789');
         await handle.close();
     });
@@ -75,7 +75,7 @@ describe('FileHandle.read()', () => {
         await writeFile(p, 'abc');
         const handle = await FileHandle.open(p);
 
-        expect((await handle.read(10))?.toString()).toBe('abc');
+        expect((await handle.read({length: 10}))?.toString()).toBe('abc');
         await handle.close();
     });
 
@@ -84,8 +84,8 @@ describe('FileHandle.read()', () => {
         await writeFile(p, 'abc');
         const handle = await FileHandle.open(p);
 
-        await handle.read(3);
-        expect(await handle.read(10)).toBeNull();
+        await handle.read({length: 3});
+        expect(await handle.read({length: 10})).toBeNull();
         await handle.close();
     });
 
@@ -94,11 +94,11 @@ describe('FileHandle.read()', () => {
         await writeFile(p, 'abcdefgh');
         const handle = await FileHandle.open(p);
 
-        expect((await handle.read(2))?.toString()).toBe('ab');
-        expect((await handle.read(2))?.toString()).toBe('cd');
-        expect((await handle.read(2))?.toString()).toBe('ef');
-        expect((await handle.read(2))?.toString()).toBe('gh');
-        expect(await handle.read(2)).toBeNull();
+        expect((await handle.read({length: 2}))?.toString()).toBe('ab');
+        expect((await handle.read({length: 2}))?.toString()).toBe('cd');
+        expect((await handle.read({length: 2}))?.toString()).toBe('ef');
+        expect((await handle.read({length: 2}))?.toString()).toBe('gh');
+        expect(await handle.read({length: 2})).toBeNull();
         await handle.close();
     });
 
@@ -107,7 +107,7 @@ describe('FileHandle.read()', () => {
         await writeFile(p, '');
         const handle = await FileHandle.open(p);
 
-        expect(await handle.read(5)).toBeNull();
+        expect(await handle.read({length: 5})).toBeNull();
         await handle.close();
     });
 
@@ -118,7 +118,7 @@ describe('FileHandle.read()', () => {
 
         expect((await handle.read({length: 3, position: 4}))?.toString()).toBe('456');
         // cursor still at 0
-        expect((await handle.read(2))?.toString()).toBe('01');
+        expect((await handle.read({length: 2}))?.toString()).toBe('01');
         await handle.close();
     });
 
@@ -291,7 +291,7 @@ describe('operations on a closed handle', () => {
         const handle = await FileHandle.open(p);
         await handle.close();
 
-        await expect(handle.read(1)).rejects.toThrow(FsError);
+        await expect(handle.read({length: 1})).rejects.toThrow(FsError);
     });
 
     test('should reject stat after close', async () => {
@@ -310,7 +310,7 @@ describe('serveFile.open()', () => {
         await writeFile(p, 'served');
         const handle = await open(p);
         expect(handle).toBeInstanceOf(FileHandle);
-        expect((await handle.read(6))?.toString()).toBe('served');
+        expect((await handle.read({length: 6}))?.toString()).toBe('served');
         await handle.close();
     });
 

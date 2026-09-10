@@ -16,7 +16,7 @@ describe('resolveIOOptions()', () => {
         });
 
         test('should treat a bare number as length', () => {
-            const io = resolveIOOptions(64);
+            const io = resolveIOOptions({length: 64});
             expect(io.length).toBe(64);
             expect(io.buffer.length).toBe(64);
         });
