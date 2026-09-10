@@ -6,7 +6,6 @@ import FileHandle from '../../../src/fs/file/FileHandle.js';
 import FileStats from '../../../src/fs/file/FileStats.js';
 import FsError from '../../../src/fs/common/FsError.js';
 import { FsErrCode } from '../../../src/fs/common/constants.js';
-import { open } from '../../../src/fs/server/serveFile.js';
 
 let dir: string;
 
@@ -308,14 +307,14 @@ describe('serveFile.open()', () => {
     test('should return a FileHandle for a valid path', async () => {
         const p = join(dir, 'serve-open.txt');
         await writeFile(p, 'served');
-        const handle = await open(p);
+        const handle = await FileHandle.open(p);
         expect(handle).toBeInstanceOf(FileHandle);
         expect((await handle.read({length: 6}))?.toString()).toBe('served');
         await handle.close();
     });
 
     test('should propagate FsError for a missing file', async () => {
-        const err: unknown = await open(join(dir, 'no-such.txt')).catch((e: unknown) => e);
+        const err: unknown = await FileHandle.open(join(dir, 'no-such.txt')).catch((e: unknown) => e);
         expect(FsError.is(err as Error, FsErrCode.NOT_FOUND)).toBe(true);
     });
 });

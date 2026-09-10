@@ -19,19 +19,21 @@ async function* countSheep(): BufferGenerator {
 export async function handleRequest(request: HttpRequest, body: BodyReader): Promise<HttpResponse> {
     let payload: BodyReader;
 
-    switch (request.url) {
-        case '/echo':
-            payload = body;
-            break;
-        case '/sheep':
-            payload = new GeneratorBodyReader(countSheep());
-            break;
-        case '/files':
-            payload = new MemoryBodyReader(await serveStaticFile(request.url));
-            break;
-        default:
-            payload = new MemoryBodyReader(Buffer.from('Hello world!'));
-            break;
+    if (request.url === '/files' || request.url.startsWith('/files/')) {
+        const fileUrl = request.url.slice('/files'.length) || '/';
+        payload = new MemoryBodyReader(await serveStaticFile(fileUrl));
+    } else {
+        switch (request.url) {
+            case '/echo':
+                payload = body;
+                break;
+            case '/sheep':
+                payload = new GeneratorBodyReader(countSheep());
+                break;
+            default:
+                payload = new MemoryBodyReader(Buffer.from('Hello world!'));
+                break;
+        }
     }
 
     return {

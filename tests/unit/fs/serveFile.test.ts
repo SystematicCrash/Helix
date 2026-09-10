@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { serveStaticFile, open } from '../../../src/fs/server/serveFile.js';
+import { serveStaticFile } from '../../../src/fs/server/serveFile.js';
 import FsError from '../../../src/fs/common/FsError.js';
 import { FsErrCode, errnoToFsErrCode } from '../../../src/fs/common/constants.js';
 import FileHandle from '../../../src/fs/file/FileHandle.js';
@@ -74,10 +74,10 @@ describe('serveStaticFile()', () => {
     });
 });
 
-describe('serveFile.open()', () => {
+describe('FileHandle.open()', () => {
     test('should return a read-only FileHandle for a direct path', async () => {
         const p = join(publicDir, 'hello.txt');
-        const handle = await open(p);
+        const handle = await FileHandle.open(p);
         expect(handle).toBeInstanceOf(FileHandle);
         expect(handle.flag).toBe('r');
         await handle.close();
