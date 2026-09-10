@@ -1,6 +1,9 @@
 export const DEFAULT_READ_LENGTH = 64 * 1024;
 export const DEFAULT_READ_CHUNK_SIZE = 64 * 1024;
 
+/** Root directory for relative urls. */
+export const DOCUMENT_ROOT = 'public';
+
 export enum FsErrCode {
     NOT_FOUND = 'File or directory not found',
     PERMISSION_DENIED = 'Permission denied for the filesystem operation',
