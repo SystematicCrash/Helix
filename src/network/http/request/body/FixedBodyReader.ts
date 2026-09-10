@@ -1,9 +1,9 @@
 import DynamicBuffer from "../../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
-import {BodyReaderAbs} from "./BodyReaderAbs.js";
+import {BodyReader} from "./BodyReader.js";
 
 /** Reads exactly `length` bytes from the connection, consuming buffered data first. */
-export default class FixedBodyReader extends BodyReaderAbs {
+export default class FixedBodyReader extends BodyReader {
 
     constructor(
         private readonly conn: TCPConnection,

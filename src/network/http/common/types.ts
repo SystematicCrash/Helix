@@ -1,4 +1,4 @@
-import {BodyReaderAbs} from "../request/body/BodyReaderAbs.js";
+import {BodyReader} from "../request/body/BodyReader.js";
 
 /** A single parsed chunk extension: a name with an optional value. */
 export interface ChunkExtension {
@@ -20,5 +20,4 @@ export interface HttpResponse {
     body: BodyReader;
 }
 
-export type BodyReader = BodyReaderAbs;
 export type BufferGenerator = AsyncGenerator<Buffer, void, void>;

@@ -4,12 +4,13 @@ import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {HttpHeader, HttpMethod, MAX_BODY_LENGTH} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
-import {BodyReader, HttpRequest as HttpRequestType} from "../common/types.js";
+import {HttpRequest as HttpRequestType} from "../common/types.js";
 import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import FixedBodyReader from "./body/FixedBodyReader.js";
 import ChunkedBodyReader from "./body/ChunkedBodyReader.js";
 import EOFBodyReader from "./body/EOFBodyReader.js";
+import {BodyReader} from "./body/BodyReader.js";
 
 /*
  * Parsed HTTP request head value object.

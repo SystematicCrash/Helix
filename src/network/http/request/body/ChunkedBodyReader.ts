@@ -4,10 +4,10 @@ import {BufferGenerator, ChunkExtension} from "../../common/types.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
 import {consumeBWS, consumeQuotedString, getTokenLength} from "../../common/parser.js";
 import {CRLF} from "../../../common/constants.js";
-import {BodyReaderAbs} from "./BodyReaderAbs.js";
+import {BodyReader} from "./BodyReader.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
-export default class ChunkedBodyReader extends BodyReaderAbs {
+export default class ChunkedBodyReader extends BodyReader {
     private readonly gen: BufferGenerator;
     private _extensions: ChunkExtension[] = [];
 

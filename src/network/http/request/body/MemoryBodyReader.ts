@@ -1,7 +1,7 @@
-import {BodyReaderAbs} from "./BodyReaderAbs.js";
+import {BodyReader} from "./BodyReader.js";
 
 /** Returns a BodyReader that yields the given buffer once, then signals EOF. */
-export default class MemoryBodyReader extends BodyReaderAbs {
+export default class MemoryBodyReader extends BodyReader {
     private done = false;
 
     constructor(private readonly data: Buffer) {

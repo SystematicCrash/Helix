@@ -1,6 +1,6 @@
 import {MAX_BODY_LENGTH} from "../../common/constants.js";
 
-export abstract class BodyReaderAbs {
+export abstract class BodyReader {
     public length: number = 0;
 
     public abstract read(): Promise<Buffer | null>;
