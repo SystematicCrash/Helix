@@ -2,7 +2,8 @@ import {open as fsOpen} from "node:fs/promises";
 import FileStats from "./FileStats.js";
 import {DEFAULT_READ_CHUNK_SIZE, FsErrCode, FsOperation, errnoToFsErrCode} from "../common/constants.js";
 import FsError from "../common/FsError.js";
-import {RawIOOptions, IOOptions, resolveIOOptions} from "./IOOptions.js";
+import {resolveIOOptions} from "./IOOptions.js";
+import {IOOptions, RawIOOptions} from "../common/types.js";
 
 /** Read-only file handle. Wraps node:fs/promises FileHandle; all errors surface as FsError. */
 export default class FileHandle {
