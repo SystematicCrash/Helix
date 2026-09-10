@@ -1,12 +1,12 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import HttpError from '../../../../src/net/http/common/HttpError.js';
-import { mapErrorToResponse } from '../../../../src/net/http/response/mapErrorToResponse.js';
-import { ResponseWriter } from '../../../../src/net/http/response/ResponseWriter.js';
-import { HttpVersion } from '../../../../src/net/http/common/constants.js';
-import { HttpResponse } from '../../../../src/net/http/common/types.js';
-import MemoryBodyReader from '../../../../src/net/http/request/body/MemoryBodyReader.js';
+import HttpError from '../../../../src/network/http/common/HttpError.js';
+import { mapErrorToResponse } from '../../../../src/network/http/response/mapErrorToResponse.js';
+import { ResponseWriter } from '../../../../src/network/http/response/ResponseWriter.js';
+import { HttpVersion } from '../../../../src/network/http/common/constants.js';
+import { HttpResponse } from '../../../../src/network/http/common/types.js';
+import MemoryBodyReader from '../../../../src/network/http/request/body/MemoryBodyReader.js';
 import { mockedTCPConnection } from '../common/utils.js';
-import {TCPConnection} from '../../../../src/net/tcp';
+import {TCPConnection} from '../../../../src/network/tcp';
 
 describe('mapErrorToResponse()', () => {
 

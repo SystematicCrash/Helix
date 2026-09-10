@@ -1,8 +1,8 @@
 import {describe, test, expect, beforeEach, afterEach, vi} from 'vitest';
 
 /** Mocks */
-vi.mock('../../../../../src/net/tcp/common/constants', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/net/tcp/common/constants')>('../../../../../src/net/tcp/common/constants');
+vi.mock('../../../../../src/network/tcp/common/constants', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/network/tcp/common/constants')>('../../../../../src/network/tcp/common/constants');
 
     return {
         ...actual,
@@ -12,9 +12,9 @@ vi.mock('../../../../../src/net/tcp/common/constants', async () => {
 
 import { Socket } from 'net';
 import { createClient, getRandomPort } from '../common/utils.js';
-import {TCPConnection, TCPListener, TCPErrCode, WRITE_BUFFER_FLUSH_THRESHOLD} from '../../../../../src/net/tcp';
+import {TCPConnection, TCPListener, TCPErrCode, WRITE_BUFFER_FLUSH_THRESHOLD} from '../../../../../src/network/tcp';
 import {spyOn} from "@vitest/spy";
-import SocketWriter from "../../../../../src/net/tcp/conn/SocketWriter.js";
+import SocketWriter from "../../../../../src/network/tcp/conn/SocketWriter.js";
 
 describe('TCPConnection', () => {
     let conn: TCPConnection;

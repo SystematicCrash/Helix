@@ -3,7 +3,7 @@ import DynamicBuffer from "../../../../src/buffer/DynamicBuffer.js";
 import {push} from "node:stream/iter";
 import {MAX_BUFFER_SIZE, BufferErrCode} from "../../../../src/buffer/constants.js";
 import BufferError from "../../../../src/buffer/BufferError.js";
-import {LF} from "../../../../src/net/common/constants.js";
+import {LF} from "../../../../src/network/common/constants.js";
 
 describe("DynamicBuffer", () => {
     describe("push()", () => {

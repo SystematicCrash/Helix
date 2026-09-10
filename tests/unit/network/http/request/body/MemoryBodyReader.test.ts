@@ -1,15 +1,15 @@
 import { describe, test, expect, vi } from 'vitest';
 
 /** Mocks */
-vi.mock('../../../../../../src/net/http/common/constants.js', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../../../../../../src/net/http/common/constants.js')>();
+vi.mock('../../../../../../src/network/http/common/constants.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../../../../src/network/http/common/constants.js')>();
     return {
         ...actual,
         MAX_BODY_LENGTH: 500,
     };
 });
 
-import MemoryBodyReader from '../../../../../../src/net/http/request/body/MemoryBodyReader.js';
+import MemoryBodyReader from '../../../../../../src/network/http/request/body/MemoryBodyReader.js';
 
 describe('MemoryBodyReader', () => {
 

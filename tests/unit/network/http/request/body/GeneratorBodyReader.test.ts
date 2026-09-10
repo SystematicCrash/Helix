@@ -1,16 +1,16 @@
 import { describe, test, expect, vi } from 'vitest';
 
 /** Mocks */
-vi.mock('../../../../../../src/net/http/common/constants.js', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../../../../../../src/net/http/common/constants.js')>();
+vi.mock('../../../../../../src/network/http/common/constants.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../../../../src/network/http/common/constants.js')>();
     return {
         ...actual,
         MAX_BODY_LENGTH: 500,
     };
 });
 
-import GeneratorBodyReader from '../../../../../../src/net/http/request/body/GeneratorBodyReader.js';
-import {BufferGenerator} from '../../../../../../src/net/http/common/types.js';
+import GeneratorBodyReader from '../../../../../../src/network/http/request/body/GeneratorBodyReader.js';
+import {BufferGenerator} from '../../../../../../src/network/http/common/types.js';
 
 /** An async generator that yields the given buffers in order, then ends. */
 async function* fromChunks(...chunks: Buffer[]): BufferGenerator {

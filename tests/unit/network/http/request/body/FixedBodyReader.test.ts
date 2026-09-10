@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
-import FixedBodyReader from '../../../../../../src/net/http/request/body/FixedBodyReader.js';
+import FixedBodyReader from '../../../../../../src/network/http/request/body/FixedBodyReader.js';
 import DynamicBuffer from '../../../../../../src/buffer/DynamicBuffer.js';
 
 /** A TCPConnection mock that returns `chunks` on successive `read()` calls, then null (EOF). */

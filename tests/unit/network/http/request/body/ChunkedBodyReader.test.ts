@@ -1,15 +1,15 @@
 import { describe, test, expect, vi } from 'vitest';
 
 /** Mocks */
-vi.mock('../../../../../../src/net/http/common/constants.js', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../../../../../../src/net/http/common/constants.js')>();
+vi.mock('../../../../../../src/network/http/common/constants.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../../../../src/network/http/common/constants.js')>();
     return {
         ...actual,
         MAX_BODY_LENGTH: 500,
     };
 });
 
-import ChunkedBodyReader from '../../../../../../src/net/http/request/body/ChunkedBodyReader.js';
+import ChunkedBodyReader from '../../../../../../src/network/http/request/body/ChunkedBodyReader.js';
 import DynamicBuffer from '../../../../../../src/buffer/DynamicBuffer.js';
 
 /** A TCPConnection mock that returns `chunks` on successive `read()` calls, then null (EOF). */
