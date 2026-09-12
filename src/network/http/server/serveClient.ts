@@ -16,7 +16,7 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
     const buf = new DynamicBuffer();
     try {
         while (true) {
-            const request = cutMessage(buf);
+            const request = cutRequest(buf);
 
             if (!request) {
                 const data = await conn.read();
@@ -40,11 +40,13 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
     } catch (error: unknown) {
         const response = mapErrorToResponse(error);
         await ResponseWriter.write(conn, response);
+    } finally {
+        await conn.close();
     }
 }
 
 /** Scans the buffer for a complete HTTP header block (CRLF * 2) and returns a parsed request. */
-function cutMessage(buf: DynamicBuffer): HttpRequest | null {
+function cutRequest(buf: DynamicBuffer): HttpRequest | null {
     const idx = buf.getView(buf.length).indexOf(HEADER_TERMINATOR);
 
     if (idx < 0) {

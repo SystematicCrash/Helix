@@ -1,8 +1,9 @@
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import {CRLF} from "../../common/constants.js";
 import {HttpHeader, TransferEncoding} from "../common/constants.js";
-import {BodyReader, HttpResponse} from "../common/types.js";
+import {HttpResponse} from "../common/types.js";
 import {encodeHeaders} from "./encodeHeaders.js";
+import {BodyReader} from "../request/body/BodyReader.js";
 
 /*
  * Serializes and streams HTTP responses to a connection.

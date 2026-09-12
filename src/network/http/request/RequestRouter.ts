@@ -1,7 +1,8 @@
-import {BodyReader, HttpRequest, HttpResponse} from "../common/types.js";
+import {HttpRequest, HttpResponse} from "../common/types.js";
 import GeneratorBodyReader from "./body/GeneratorBodyReader.js";
 import MemoryBodyReader from "./body/MemoryBodyReader.js";
 import {serveStaticFile} from "../../../fs/index.js";
+import {BodyReader} from "./body/BodyReader.js";
 
 type BufferGenerator = AsyncGenerator<Buffer, void, void>;
 
