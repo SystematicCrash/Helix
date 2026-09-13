@@ -1,3 +1,4 @@
+import {realpath} from "node:fs/promises";
 import FileHandle from "../file/FileHandle.js";
 import FsError from "../common/FsError.js";
 import {DOCUMENT_ROOT, FsErrCode} from "../common/constants.js";
@@ -12,10 +13,30 @@ function resolvePath(url: string): string {
     return clean || 'index.html';
 }
 
-/** Reads the whole file addressed by `url` into memory. */
+/**
+ * Verifies that `resolved` (a realpath) is contained inside the document root.
+ * Defeats TOCTOU where an attacker replaces a regular file with a symlink to
+ * /etc/passwd (or anywhere outside the root) between path validation and open.
+ */
+async function assertInsideRoot(resolved: string): Promise<void> {
+    const rootReal = await realpath(DOCUMENT_ROOT).catch(() => DOCUMENT_ROOT);
+    const rootPrefix = rootReal.endsWith('/') ? rootReal : `${rootReal}/`;
+    if (resolved !== rootReal && !resolved.startsWith(rootPrefix)) {
+        throw FsError.from(FsErrCode.PATH_OUTSIDE_ROOT, `Resolved path ${resolved} is outside ${rootReal}`);
+    }
+}
+
+/** Reads the whole file addressed by `url` into memory, refusing to leave the document root. */
 export async function serveStaticFile(url: string): Promise<Buffer> {
-    const handle = await FileHandle.open(resolvePath(url));
+    const filePath = resolvePath(url);
+    const handle = await FileHandle.open(filePath);
     try {
+        // Post-open check: the kernel FD is bound to an inode, but the path we
+        // hold could point at a symlink that the attacker swapped in after open.
+        // realpath on the requested path dereferences symlinks; we then verify
+        // the final target is still inside the document root.
+        const resolved = await realpath(filePath).catch(() => filePath);
+        await assertInsideRoot(resolved);
         const chunks: Buffer[] = [];
         for await (const chunk of handle.stream()) chunks.push(chunk);
         return Buffer.concat(chunks);
@@ -23,4 +44,3 @@ export async function serveStaticFile(url: string): Promise<Buffer> {
         await handle.close();
     }
 }
-

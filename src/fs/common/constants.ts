@@ -19,6 +19,8 @@ export enum FsErrCode {
     INVALID_PATH = 'Path is malformed or empty',
     INVALID_ARGUMENT = 'Invalid argument passed to a filesystem operation',
     OUT_OF_SPACE = 'No space left on the device',
+    SYMLINK_NOT_ALLOWED = 'Symbolic links are not permitted at the resolved path',
+    PATH_OUTSIDE_ROOT = 'Resolved path escapes the allowed document root',
     UNEXPECTED_ERROR = 'Unexpected filesystem error occurred',
 }
 
