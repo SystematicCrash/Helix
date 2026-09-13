@@ -9,10 +9,16 @@ export default class GeneratorBodyReader extends BodyReader {
         super();
     }
 
-    async read(): Promise<Buffer | null> {
+    async read(target?: Buffer): Promise<Buffer | null | number> {
         const r = await this.gen.next();
         this.length += r?.value?.length ?? 0;
         this.checkMaxSize();
-        return r.done ? null : r.value;
+        if (r.done) return null;
+        if (target) {
+            const len = Math.min(r.value.length, target.length);
+            r.value.copy(target, 0, 0, len);
+            return len;
+        }
+        return r.value;
     }
 }

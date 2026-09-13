@@ -33,10 +33,11 @@ export class ResponseWriter {
      * Streams a body of known length by writing each read chunk directly.
      */
     private static async fixedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
+        const scratch = Buffer.allocUnsafe(16384);
         while (true) {
-            const data = await body.read();
-            if (!data) break;
-            await conn.write(data);
+            const bytesRead = await body.readInto(scratch);
+            if (bytesRead === null) break;
+            await conn.write(scratch.subarray(0, bytesRead));
         }
     }
 
@@ -44,10 +45,12 @@ export class ResponseWriter {
      * Streams a body using chunked transfer encoding.
      */
     private static async chunkedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
+        const scratch = Buffer.allocUnsafe(16384);
         while (true) {
-            const data = await body.read();
-            if (!data) break;
+            const bytesRead = await body.readInto(scratch);
+            if (bytesRead === null) break;
 
+            const data = scratch.subarray(0, bytesRead);
             const chunk = Buffer.concat([
                 Buffer.from(data.length.toString(16)),
                 CRLF,
