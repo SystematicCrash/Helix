@@ -6,10 +6,7 @@ import Timer from "../../common/Timer.js";
 import {
     Event,
     IDLE_TIMEOUT,
-    MAX_WRITE_BUFFER_SIZE,
-    READ_TIMEOUT,
     TCPErrCode,
-    WRITE_TIMEOUT,
 } from "../common/constants.js";
 
 /**
