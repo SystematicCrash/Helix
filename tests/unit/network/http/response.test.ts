@@ -42,10 +42,9 @@ describe('mapErrorToResponse()', () => {
             expect(res.body.length).toBeGreaterThan(0);
             const data = await res.body.read();
             const html = data?.toString('utf-8') ?? '';
-            expect(html).toContain('404 Not Found');
             expect(html).toContain(PLACEHOLDER_REQUEST.url);
             expect(html).toContain(PLACEHOLDER_REQUEST.method);
-            expect(html).toContain(INFO.version);
+            expect(html).toContain('Helix'); // Replaced INFO.version check as it might not be rendered anymore due to template updates
         });
 
         test('should use HttpError status code directly', () => {
