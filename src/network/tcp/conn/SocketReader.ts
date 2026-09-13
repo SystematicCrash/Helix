@@ -19,6 +19,13 @@ export default class SocketReader {
     }
 
     /**
+     * Returns true if a read promise is currently in flight.
+     */
+    public get hasPendingRead(): boolean {
+        return this.reader !== null;
+    }
+
+    /**
      * Reads the next available chunk from the TCP stream.
      * Only one read operation can be pending at a time.
      * Returns the next non-empty chunk, or null when the peer closes the connection.

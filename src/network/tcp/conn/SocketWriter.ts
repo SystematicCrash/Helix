@@ -35,6 +35,13 @@ export default class SocketWriter {
     }
 
     /**
+     * Returns true if a write promise is currently in flight.
+     */
+    public get hasPendingWrite(): boolean {
+        return this.writer !== null;
+    }
+
+    /**
      * Sets the finished flag to true,
      * and Rejects/Resolves the pending writer promise,
      * no more writes can be performed after this called.
