@@ -42,7 +42,11 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
             const response = await handleRequest(request, body, info);
             await ResponseWriter.write(conn, response);
 
-            while ((await body.read()) !== null);
+            // Drain the remaining body
+            while (true) {
+                const result = await body.read();
+                if (result === null) break;
+            }
             request = null;
         }
     } catch (error: unknown) {
