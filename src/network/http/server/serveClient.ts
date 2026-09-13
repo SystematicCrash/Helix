@@ -11,7 +11,7 @@ import {ServerInfo} from "../../../server/ServerInfo.js";
 
 /** Terminator marking the end of the header block: an empty line (CRLF CRLF). */
 const HEADER_TERMINATOR = Buffer.concat([CRLF, CRLF]);
-
+// TODO: Use default values in the mapErrorToResponse instead of this object
 /** Stand-in used by the error path when no request has been parsed yet. */
 const PLACEHOLDER_REQUEST: HttpRequest = {
     method: 'UNKNOWN',
@@ -52,7 +52,7 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
             request = null;
         }
     } catch (error: unknown) {
-        const response = mapErrorToResponse(error, request ?? PLACEHOLDER_REQUEST, info);
+        const response = mapErrorToResponse(error, request ?? PLACEHOLDER_REQUEST, info, 500);
         await ResponseWriter.write(conn, response);
         await conn.close();
     }

@@ -26,14 +26,7 @@ export default class FileHandle {
         public readonly flag: string,
     ) {}
 
-    /**
-     * Opens `path` read-only and refuses to follow symbolic links atomically
-     * (O_NOFOLLOW). Opening a symlink results in ELOOP, which is mapped to
-     * SYMLINK_NOT_ALLOWED. After a successful open the FD points at a real
-     * inode, defeating the TOCTOU window between path validation and read.
-     * The opened FD is then fstat'd to reject non-regular files (directories,
-     * devices, sockets, FIFOs).
-     */
+    /** Opens file read-only, preventing symlink traversal and non-regular files. */
     static async open(path: string): Promise<FileHandle> {
         let handle;
         try {
@@ -76,7 +69,7 @@ export default class FileHandle {
      * Returns null at EOF. Serializes through the in-flight lock.
      */
     public async read(opts?: RawIOOptions): Promise<Buffer | null> {
-        return this.runExclusive(() => this.readUnlocked(opts));
+        return this.runExclusive(() => this.readBypassingLock(opts));
     }
 
     /**
@@ -94,7 +87,7 @@ export default class FileHandle {
         try {
             this.assertNotClosed(FsOperation.READ);
             while (true) {
-                const chunk = await this.readUnlocked({length: chunkSize, position});
+                const chunk = await this.readBypassingLock({length: chunkSize, position});
                 if (chunk === null) return;
                 if (position) position += chunk.length;
                 yield chunk;
@@ -123,6 +116,7 @@ export default class FileHandle {
     public get closed(): boolean {
         return this._closed;
     }
+
     private assertNotClosed(operation: FsOperation): void {
         if (this._closed)
             throw FsError.from(FsErrCode.INVALID_ARGUMENT, `Cannot ${operation} from a closed file (${this.path})`);
@@ -142,9 +136,8 @@ export default class FileHandle {
         this.inFlight = next.catch(() => {});
         return next;
     }
-
-    /** Internal read that does NOT take the lock — used by stream() which owns the lock. */
-    private async readUnlocked(opts?: RawIOOptions): Promise<Buffer | null> {
+    /** Internal read bypassing the in-flight lock; used by stream() which owns the lock. */
+    private async readBypassingLock(opts?: RawIOOptions): Promise<Buffer | null> {
         this.assertNotClosed(FsOperation.READ);
         const {buffer, offset, length, position}: IOOptions = resolveIOOptions(opts);
 
