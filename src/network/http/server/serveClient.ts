@@ -15,13 +15,16 @@ const HEADER_TERMINATOR = Buffer.concat([CRLF, CRLF]);
 /** Handles one accepted connection: reads requests, dispatches them, and streams responses. */
 export async function serveClient(conn: TCPConnection, info: ServerInfo): Promise<void> {
     const buf = new DynamicBuffer();
+    // Scratch buffer for reading to minimize allocation churn
+    const scratch = Buffer.allocUnsafe(16384);
     let request: HttpRequest | null = null;
     try {
         while (true) {
             if (!request) request = cutRequest(buf);
 
             if (!request) {
-                const data = await conn.read();
+                const bytesRead = await conn.read(scratch);
+                const data = typeof bytesRead === 'number' ? scratch.subarray(0, bytesRead) : bytesRead;
 
                 if (!data) {
                     if (!buf.length) {
