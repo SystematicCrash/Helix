@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtemp, writeFile, mkdir, rm, chmod, stat as fsStat } from 'node:fs/promises';
+import { mkdtemp, writeFile, mkdir, rm, chmod, stat as fsStat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import FileHandle from '../../../src/fs/file/FileHandle.js';
@@ -334,5 +334,99 @@ describe('FileStats.from()', () => {
         const stats = FileStats.from(await fsStat(p));
         expect(stats.isFile).toBe(true);
         expect(stats.size).toBe(3);
+    });
+});
+
+describe('FileHandle.open() post-open security check', () => {
+    test('should reject a symlink with FsError SYMLINK_NOT_ALLOWED', async () => {
+        if (process.platform === 'win32') return;
+        const target = join(dir, 'symlink-target.txt');
+        await writeFile(target, 'data');
+        const link = join(dir, 'symlink.txt');
+        await symlink(target, link);
+
+        const err: unknown = await FileHandle.open(link).catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(FsError);
+        expect(FsError.is(err as Error, FsErrCode.SYMLINK_NOT_ALLOWED)).toBe(true);
+    });
+
+    test('should reject a directory with FsError SYMLINK_NOT_ALLOWED', async () => {
+        const subdir = join(dir, 'a-directory');
+        await mkdir(subdir);
+
+        const err: unknown = await FileHandle.open(subdir).catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(FsError);
+        expect(FsError.is(err as Error, FsErrCode.SYMLINK_NOT_ALLOWED)).toBe(true);
+    });
+});
+
+describe('FileHandle concurrent operation serialization', () => {
+    test('should serialize concurrent reads through the in-flight lock', async () => {
+        const p = join(dir, 'concurrent.txt');
+        await writeFile(p, '0123456789ABCDEF');
+        const handle = await FileHandle.open(p);
+
+        // Fire several reads in parallel. Without the lock these could interleave
+        // the cursor advance; with the lock each read is atomic.
+        const results = await Promise.all([
+            handle.read({length: 4}),
+            handle.read({length: 4}),
+            handle.read({length: 4}),
+            handle.read({length: 4}),
+        ]);
+        expect(results.map((b) => b?.toString())).toEqual(['0123', '4567', '89AB', 'CDEF']);
+        await handle.close();
+    });
+
+    test('should serialize concurrent stat and read calls', async () => {
+        const p = join(dir, 'stat-read.txt');
+        await writeFile(p, 'abc');
+        const handle = await FileHandle.open(p);
+
+        const [stats, data] = await Promise.all([
+            handle.stat(),
+            handle.read({length: 3}),
+        ]);
+        expect(stats.size).toBe(3);
+        expect(data?.toString()).toBe('abc');
+        await handle.close();
+    });
+
+    test('should queue a close behind an in-flight read', async () => {
+        const p = join(dir, 'queued-close.txt');
+        await writeFile(p, 'payload');
+        const handle = await FileHandle.open(p);
+
+        const readPromise = handle.read({length: 7});
+        const closePromise = handle.close();
+        await Promise.all([readPromise, closePromise]);
+
+        expect(handle.closed).toBe(true);
+        await expect(handle.read({length: 1})).rejects.toThrow(FsError);
+    });
+
+    test('should keep a stream holding the lock until iteration ends', async () => {
+        const p = join(dir, 'stream-lock.txt');
+        await writeFile(p, 'streamdata');
+        const handle = await FileHandle.open(p);
+
+        const stream = handle.stream(4);
+        const first = await stream.next();
+        expect(first.value?.toString()).toBe('stre');
+
+        // A concurrent read on the same handle must wait until the stream finishes.
+        const concurrent = handle.read({length: 100});
+        // Allow the microtask queue to drain; concurrent should not have settled.
+        await new Promise((r) => setImmediate(r));
+        let concurrentSettled = false;
+        concurrent.then(() => { concurrentSettled = true; }, () => { concurrentSettled = true; });
+        await new Promise((r) => setImmediate(r));
+        expect(concurrentSettled).toBe(false);
+
+        // Drain the stream and THEN the concurrent read should complete.
+        for await (const _chunk of stream) { /* drain */ }
+        const tail = await concurrent;
+        expect(tail).toBeNull();
+        await handle.close();
     });
 });

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { serveStaticFile } from '../../../src/fs/server/serveFile.js';
@@ -9,11 +9,14 @@ import FileHandle from '../../../src/fs/file/FileHandle.js';
 
 let root: string;
 let publicDir: string;
+let outsideDir: string;
 
 beforeAll(async () => {
     root = await mkdtemp(join(tmpdir(), 'helix-serve-'));
     publicDir = join(root, 'public');
+    outsideDir = join(root, 'outside');
     await mkdir(publicDir);
+    await mkdir(outsideDir);
     process.chdir(root); // DOCUMENT_ROOT is relative to cwd
 });
 
@@ -81,6 +84,38 @@ describe('FileHandle.open()', () => {
         expect(handle).toBeInstanceOf(FileHandle);
         expect(handle.flag).toBe('r');
         await handle.close();
+    });
+});
+
+describe('serveStaticFile() post-open security', () => {
+    test('should reject a symlink whose target lies outside the document root', async () => {
+        if (process.platform === 'win32') return;
+        const secret = join(outsideDir, 'secret.txt');
+        await writeFile(secret, 'SECRET');
+        const link = join(publicDir, 'leak.txt');
+        await symlink(secret, link);
+
+        const err: unknown = await serveStaticFile('/leak.txt').catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(FsError);
+        // Either SYMLINK_NOT_ALLOWED (FileHandle rejected the symlink outright)
+        // or PATH_OUTSIDE_ROOT (realpath check caught it). Either is acceptable.
+        const ok = FsError.is(err as Error, FsErrCode.SYMLINK_NOT_ALLOWED)
+            || FsError.is(err as Error, FsErrCode.PATH_OUTSIDE_ROOT);
+        expect(ok).toBe(true);
+    });
+
+    test('should refuse to follow a symlink chain that exits the document root', async () => {
+        if (process.platform === 'win32') return;
+        const secret = join(outsideDir, 'secret2.txt');
+        await writeFile(secret, 'SECRET');
+        const link = join(publicDir, 'leak2.txt');
+        await symlink(secret, link);
+
+        const err: unknown = await serveStaticFile('/leak2.txt').catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(FsError);
+        const ok = FsError.is(err as Error, FsErrCode.SYMLINK_NOT_ALLOWED)
+            || FsError.is(err as Error, FsErrCode.PATH_OUTSIDE_ROOT);
+        expect(ok).toBe(true);
     });
 });
 
