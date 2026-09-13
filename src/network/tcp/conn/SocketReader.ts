@@ -26,12 +26,11 @@ export default class SocketReader {
     }
 
     /**
-     * Reads the next available chunk from the TCP stream.
-     * Only one read operation can be pending at a time.
-     * Returns the next non-empty chunk, or null when the peer closes the connection.
-     * Zero-length chunks are consumed and skipped internally so callers never see them.
+     * Reads the next available chunk from the TCP stream into `target`.
+     * If `target` is provided, copies data into it and returns the number of bytes written.
+     * If no target is provided, behaves like `read()`.
      */
-    public async read(): Promise<Buffer | null> {
+    public async read(target?: Buffer): Promise<Buffer | null | number> {
         if (this.finished) {
             throw TCPError.from(TCPErrCode.READ_AFTER_EOF);
         }
@@ -46,6 +45,15 @@ export default class SocketReader {
             do {
                 data = await this.readPromise();
             } while (data !== null && data.length === 0);
+
+            if (data === null) return null;
+
+            if (target) {
+                const len = Math.min(data.length, target.length);
+                data.copy(target, 0, 0, len);
+                return len;
+            }
+
             return data;
         } finally {
             this.timer.stop();
