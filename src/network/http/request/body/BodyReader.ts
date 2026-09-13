@@ -4,7 +4,7 @@ export abstract class BodyReader {
     public length: number = 0;
     public abstract readonly hasLength: boolean;
 
-    public abstract read(): Promise<Buffer | null>;
+    public abstract read(target?: Buffer): Promise<Buffer | null | number>;
 
     protected checkMaxSize(): void {
         if (this.length > MAX_BODY_LENGTH) {

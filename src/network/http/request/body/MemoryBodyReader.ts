@@ -11,9 +11,14 @@ export default class MemoryBodyReader extends BodyReader {
         this.checkMaxSize();
     }
 
-    async read(): Promise<Buffer | null> {
+    async read(target?: Buffer): Promise<Buffer | null | number> {
         if (this.done) return null; // EOF
         this.done = true;
+        if (target) {
+            const len = Math.min(this.data.length, target.length);
+            this.data.copy(target, 0, 0, len);
+            return len;
+        }
         return this.data;
     }
 }
