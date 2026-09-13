@@ -2,6 +2,7 @@ import {BodyReader} from "./BodyReader.js";
 
 /** Returns a BodyReader that yields the given buffer once, then signals EOF. */
 export default class MemoryBodyReader extends BodyReader {
+    public readonly hasLength: boolean = true;
     private done = false;
 
     constructor(private readonly data: Buffer) {

@@ -8,6 +8,7 @@ import {BodyReader} from "./BodyReader.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
 export default class ChunkedBodyReader extends BodyReader {
+    public readonly hasLength: boolean = false;
     private readonly gen: BufferGenerator;
     private _extensions: ChunkExtension[] = [];
 

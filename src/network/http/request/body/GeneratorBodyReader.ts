@@ -3,6 +3,7 @@ import {BufferGenerator} from "../../common/types.js";
 
 /** Adapts an async buffer generator into a BodyReader, yielding until the generator ends. */
 export default class GeneratorBodyReader extends BodyReader {
+    public readonly hasLength: boolean = false;
 
     constructor(private readonly gen: BufferGenerator) {
         super();

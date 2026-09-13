@@ -12,6 +12,7 @@ import {BodyReader} from "./BodyReader.js";
  * once the peer closes the connection.
  */
 export default class EOFBodyReader extends BodyReader {
+    public readonly hasLength: boolean = false;
     private finished = false;
 
     constructor(

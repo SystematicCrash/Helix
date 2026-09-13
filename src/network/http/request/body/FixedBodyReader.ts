@@ -4,6 +4,7 @@ import {BodyReader} from "./BodyReader.js";
 
 /** Reads exactly `length` bytes from the connection, consuming buffered data first. */
 export default class FixedBodyReader extends BodyReader {
+    public readonly hasLength: boolean = true;
 
     constructor(
         private readonly conn: TCPConnection,
