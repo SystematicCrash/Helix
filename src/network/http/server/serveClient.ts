@@ -22,9 +22,11 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
                 const data = await conn.read();
 
                 if (!data) {
-                    if (!buf.length) await conn.close(); // EOF
-                    else throw new HttpError(400, 'Unexpected EOF');
-                    break;
+                    if (!buf.length) {
+                        await conn.close(); // EOF
+                        return;
+                    }
+                    throw new HttpError(400, 'Unexpected EOF');
                 }
 
                 buf.push(data);
@@ -40,7 +42,6 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
     } catch (error: unknown) {
         const response = mapErrorToResponse(error);
         await ResponseWriter.write(conn, response);
-    } finally {
         await conn.close();
     }
 }

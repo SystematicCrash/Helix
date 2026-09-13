@@ -9,7 +9,7 @@ import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import FixedBodyReader from "./body/FixedBodyReader.js";
 import ChunkedBodyReader from "./body/ChunkedBodyReader.js";
-import EOFBodyReader from "./body/EOFBodyReader.js";
+import EmptyBodyReader from "./body/EmptyBodyReader.js";
 import {BodyReader} from "./body/BodyReader.js";
 
 /*
@@ -52,7 +52,7 @@ export default class HttpRequest implements HttpRequestType {
 
         if (bodyLen > 0) return new FixedBodyReader(conn, buf, bodyLen);
         else if (chunked) return new ChunkedBodyReader(conn, buf);
-        else return new EOFBodyReader(conn, buf);
+        else return new EmptyBodyReader();
     }
 
     /**
