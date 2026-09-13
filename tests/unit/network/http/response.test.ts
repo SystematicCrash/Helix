@@ -5,6 +5,7 @@ import { ResponseWriter } from '../../../../src/network/http/response/ResponseWr
 import { HttpVersion } from '../../../../src/network/http/common/constants.js';
 import { HttpRequest, HttpResponse } from '../../../../src/network/http/common/types.js';
 import MemoryBodyReader from '../../../../src/network/http/request/body/MemoryBodyReader.js';
+import GeneratorBodyReader from '../../../../src/network/http/request/body/GeneratorBodyReader.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import {TCPConnection} from '../../../../src/network/tcp';
 import {ServerInfo} from '../../../../src/server/ServerInfo.js';
@@ -149,19 +150,44 @@ describe('ResponseWriter.write()', () => {
     });
 
     describe('chunked response', () => {
-        test('should use chunked transfer-encoding when body length is unknown', async () => {
+        test('should use chunked transfer-encoding when body has no known length', async () => {
+            // GeneratorBodyReader is hasLength:false; pick an empty generator to
+            // exercise the chunked path without writing any body bytes.
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
                 headers: new Map(),
-                body: {
-                    length: -1,
-                    read: async () => null,
-                },
+                body: new GeneratorBodyReader((async function* () { /* empty */ })()),
             };
 
             await expect(ResponseWriter.write(conn, response)).resolves.toBeUndefined();
             expect(response.headers.get('transfer-encoding')).toBe('chunked');
+            expect(response.headers.get('content-length')).toBeUndefined();
+        });
+
+        test('should write a chunked terminator after the last body chunk', async () => {
+            async function* gen() {
+                yield Buffer.from('hello');
+                yield Buffer.from('world');
+            }
+            const response: HttpResponse = {
+                code: 200,
+                version: HttpVersion.HTTP_1_1,
+                headers: new Map(),
+                body: new GeneratorBodyReader(gen()),
+            };
+
+            await ResponseWriter.write(conn, response);
+            expect(response.headers.get('transfer-encoding')).toBe('chunked');
+
+            // Concatenate every byte the mocked conn received and verify framing.
+            const writes = (conn.write as unknown as { mock: { calls: [Buffer][] } }).mock.calls;
+            const wire = Buffer.concat(writes.map(([b]) => b));
+            const text = wire.toString('ascii');
+            // Two chunk headers + payloads + the 0-byte terminator.
+            expect(text).toContain('5\r\nhello\r\n');
+            expect(text).toContain('5\r\nworld\r\n');
+            expect(text.endsWith('0\r\n\r\n')).toBe(true);
         });
     });
 });
