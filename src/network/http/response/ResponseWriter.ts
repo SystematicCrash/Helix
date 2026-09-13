@@ -14,7 +14,7 @@ export class ResponseWriter {
      * Writes the response header and streams the body to the connection.
      */
     static async write(conn: TCPConnection, response: HttpResponse): Promise<void> {
-        if (response.body.length === -1) {
+        if (response.body.length === -1) { // TODO: This is not true
             response.headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
         } else {
             response.headers.set(HttpHeader.ContentLength, response.body.length.toString());
