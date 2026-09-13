@@ -31,7 +31,6 @@ function rethrowFsNotFound(err: unknown): never {
 }
 
 /**
- * TODO: This is just a toy and should be changed in the real product.
  * Routes the request to the appropriate handler and returns an HTTP response.
  */
 export async function handleRequest(

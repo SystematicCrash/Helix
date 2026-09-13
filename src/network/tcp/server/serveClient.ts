@@ -3,7 +3,6 @@ import TCPConnection from "../conn/TCPConnection.js";
 import {LF} from "../../common/constants.js";
 
 /**
- * TODO: This is just a toy and should be removed from the main product
  * Reads newline-delimited messages in a loop, dispatching each to replyMessage
  * until the connection is closed.
  */
@@ -31,7 +30,6 @@ export async function serveClient(conn: TCPConnection): Promise<void> {
 }
 
 /**
- * TODO: This is just a toy demo and should be removed from the main product
  * Parses a single framed message and writes the appropriate response.
  * Destroys the conn on a quit command.
  */

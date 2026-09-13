@@ -8,7 +8,7 @@ import {ServerInfo} from "../../../server/ServerInfo.js";
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
 export function mapErrorToResponse(
     error: unknown,
-    request: HttpRequest,
+    request: HttpRequest | null,
     info: ServerInfo,
     code: number = 500,
 ): HttpResponse {
@@ -17,9 +17,9 @@ export function mapErrorToResponse(
     if (error instanceof HttpError) {
         if (error.status === 404) {
             const html = renderHtml('notFound', {
-                path: request.url,
-                method: request.method,
-                version: info.version,
+                path: request?.url ?? '',
+                method: request?.method ?? 'UNKNOWN',
+                version: request?.version ?? info.version,
             });
             body = new MemoryBodyReader(html);
             code = 404;
