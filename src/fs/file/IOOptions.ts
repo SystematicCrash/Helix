@@ -15,7 +15,7 @@ export function resolveIOOptions(opts: RawIOOptions | undefined): IOOptions {
         throw FsError.from(FsErrCode.INVALID_ARGUMENT, `read buffer must be a Buffer type`);
 
     const offset = o.offset ?? 0;
-    const buffer = o.buffer ?? Buffer.alloc(o.length ?? DEFAULT_READ_LENGTH);
+    const buffer = o.buffer ?? Buffer.allocUnsafe(o.length ?? DEFAULT_READ_LENGTH);
     const length = o.length ?? Math.max(0, buffer.length - offset);
     if (length > buffer.length - offset)
         throw FsError.from(FsErrCode.INVALID_ARGUMENT, `read length ${length} exceeds buffer space ${buffer.length - offset}`);
