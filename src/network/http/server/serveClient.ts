@@ -23,10 +23,9 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
             if (!request) request = cutRequest(buf);
 
             if (!request) {
-                const bytesRead = await conn.read(scratch);
-                const data = typeof bytesRead === 'number' ? scratch.subarray(0, bytesRead) : bytesRead;
+                const bytesRead = await conn.readInto(scratch);
 
-                if (!data) {
+                if (bytesRead === null) {
                     if (!buf.length) {
                         await conn.close(); // EOF
                         return;
@@ -34,7 +33,7 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
                     throw new HttpError(400, 'Unexpected EOF');
                 }
 
-                buf.push(data);
+                buf.push(scratch.subarray(0, bytesRead));
                 request = cutRequest(buf);
                 if (!request) continue;
             }

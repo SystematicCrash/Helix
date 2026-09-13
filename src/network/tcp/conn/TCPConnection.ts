@@ -99,9 +99,21 @@ export default class TCPConnection {
     }
 
     /**
-     * Reads data from remote connection
+     * Reads data from remote connection into `target` buffer.
+     * Returns the number of bytes read, or null if EOF.
      */
-    public async read(): Promise<Buffer | null> {
+    public async readInto(target: Buffer): Promise<number | null> {
+        const result = await this.read(target);
+        if (result === null) return null;
+        return typeof result === 'number' ? result : result.length;
+    }
+
+    /**
+     * Reads data from remote connection.
+     * If `target` is provided, copies data into it and returns the number of bytes written.
+     * If no target is provided, returns the next available chunk.
+     */
+    public async read(target?: Buffer): Promise<Buffer | null | number> {
         if (this._error) {
             throw this._error;
         }
@@ -112,7 +124,7 @@ export default class TCPConnection {
 
         this.stopIdleTimer();
         try {
-            return await this.sockReader.read();
+            return await this.sockReader.read(target);
         } finally {
             this.startIdleTimer();
         }
