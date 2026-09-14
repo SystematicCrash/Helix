@@ -65,6 +65,22 @@ export default class FileHandle {
     }
 
     /**
+     * Reads up to `length` bytes from `position` into `target`.
+     * Returns the number of bytes read, or null at EOF.
+     */
+    public async readInto(target: Buffer, position?: number): Promise<number | null> {
+        return this.runExclusive(async () => {
+            this.assertNotClosed(FsOperation.READ);
+            try {
+                const {bytesRead} = await this.handle.read(target, 0, target.length, position ?? null);
+                return bytesRead === 0 ? null : bytesRead;
+            } catch (err) {
+                throw this.wrap(err, FsErrCode.READ_FAILED);
+            }
+        });
+    }
+
+    /**
      * Reads up to `length` bytes from `position` (or the cursor).
      * Returns null at EOF. Serializes through the in-flight lock.
      */
@@ -77,20 +93,36 @@ export default class FileHandle {
      * Holds the in-flight lock for the lifetime of the stream so concurrent reads/stat/close
      * on the same handle wait until iteration finishes.
      */
-    public async *stream(chunkSize: number = DEFAULT_READ_CHUNK_SIZE, position?: number): AsyncGenerator<Buffer> {
+    public async *stream(
+        chunkSize: number = DEFAULT_READ_CHUNK_SIZE, 
+        position?: number,
+        target?: Buffer
+    ): AsyncGenerator<Buffer | number> {
         if (chunkSize <= 0 || !Number.isInteger(chunkSize))
             throw FsError.from(FsErrCode.INVALID_ARGUMENT, 'Chunk size must be a positive integer');
 
         let release: () => void;
         const acquired = new Promise<void>((resolve) => { release = resolve; });
         this.inFlight = Promise.resolve(this.inFlight).then(() => acquired);
+        
+        // Use provided target or allocate one if needed
+        const buffer = target ?? Buffer.allocUnsafe(chunkSize);
+        
         try {
             this.assertNotClosed(FsOperation.READ);
             while (true) {
-                const chunk = await this.readBypassingLock({length: chunkSize, position});
-                if (chunk === null) return;
-                if (position) position += chunk.length;
-                yield chunk;
+                // If caller provided a target, use readInto to avoid new buffer creation
+                if (target) {
+                    const bytesRead = await this.readInto(buffer, position);
+                    if (bytesRead === null) return;
+                    if (position !== undefined) position += bytesRead;
+                    yield bytesRead;
+                } else {
+                    const chunk = await this.readBypassingLock({length: chunkSize, position});
+                    if (chunk === null) return;
+                    if (position !== undefined) position += chunk.length;
+                    yield chunk;
+                }
             }
         } finally {
             release!();
@@ -136,6 +168,7 @@ export default class FileHandle {
         this.inFlight = next.catch(() => {});
         return next;
     }
+
     /** Internal read bypassing the in-flight lock; used by stream() which owns the lock. */
     private async readBypassingLock(opts?: RawIOOptions): Promise<Buffer | null> {
         this.assertNotClosed(FsOperation.READ);
