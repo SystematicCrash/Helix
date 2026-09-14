@@ -89,9 +89,8 @@ export default class FileHandle {
     }
 
     /**
-     * Yields the file contents in `chunkSize` chunks, optionally from `position` to EOF.
-     * Holds the in-flight lock for the lifetime of the stream so concurrent reads/stat/close
-     * on the same handle wait until iteration finishes.
+     * Streams the file contents in chunks into the provided `target`.
+     * Yields the number of bytes read in each chunk.
      */
     public async *stream(
         chunkSize: number = DEFAULT_READ_CHUNK_SIZE, 
@@ -105,13 +104,11 @@ export default class FileHandle {
         const acquired = new Promise<void>((resolve) => { release = resolve; });
         this.inFlight = Promise.resolve(this.inFlight).then(() => acquired);
         
-        // Use provided target or allocate one if needed
         const buffer = target ?? Buffer.allocUnsafe(chunkSize);
         
         try {
             this.assertNotClosed(FsOperation.READ);
             while (true) {
-                // If caller provided a target, use readInto to avoid new buffer creation
                 if (target) {
                     const bytesRead = await this.readInto(buffer, position);
                     if (bytesRead === null) return;
@@ -158,10 +155,6 @@ export default class FileHandle {
         return FsError.from(code, err instanceof Error ? err.message : String(err));
     }
 
-    /**
-     * Runs `fn` only after every previously-scheduled operation has settled,
-     * so concurrent calls on the same handle are strictly serialized.
-     */
     private async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
         const prev = this.inFlight ?? Promise.resolve();
         const next = prev.then(fn, fn);
