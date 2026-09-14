@@ -89,37 +89,24 @@ export default class FileHandle {
     }
 
     /**
-     * Streams the file contents in chunks into the provided `target`.
-     * Yields the number of bytes read in each chunk.
+     * Yields the file contents in `chunkSize` chunks, optionally from `position` to EOF.
+     * Holds the in-flight lock for the lifetime of the stream so concurrent reads/stat/close
+     * on the same handle wait until iteration finishes.
      */
-    public async *stream(
-        chunkSize: number = DEFAULT_READ_CHUNK_SIZE, 
-        position?: number,
-        target?: Buffer
-    ): AsyncGenerator<Buffer | number> {
+    public async *stream(chunkSize: number = DEFAULT_READ_CHUNK_SIZE, position?: number): AsyncGenerator<Buffer> {
         if (chunkSize <= 0 || !Number.isInteger(chunkSize))
             throw FsError.from(FsErrCode.INVALID_ARGUMENT, 'Chunk size must be a positive integer');
 
         let release: () => void;
         const acquired = new Promise<void>((resolve) => { release = resolve; });
         this.inFlight = Promise.resolve(this.inFlight).then(() => acquired);
-        
-        const buffer = target ?? Buffer.allocUnsafe(chunkSize);
-        
         try {
             this.assertNotClosed(FsOperation.READ);
             while (true) {
-                if (target) {
-                    const bytesRead = await this.readInto(buffer, position);
-                    if (bytesRead === null) return;
-                    if (position !== undefined) position += bytesRead;
-                    yield bytesRead;
-                } else {
-                    const chunk = await this.readBypassingLock({length: chunkSize, position});
-                    if (chunk === null) return;
-                    if (position !== undefined) position += chunk.length;
-                    yield chunk;
-                }
+                const chunk = await this.readBypassingLock({length: chunkSize, position});
+                if (chunk === null) return;
+                if (position) position += chunk.length;
+                yield chunk;
             }
         } finally {
             release!();

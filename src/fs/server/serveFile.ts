@@ -31,10 +31,6 @@ export async function serveStaticFile(url: string): Promise<Buffer> {
     const filePath = resolvePath(url);
     const handle = await FileHandle.open(filePath);
     try {
-        // Post-open check: the kernel FD is bound to an inode, but the path we
-        // hold could point at a symlink that the attacker swapped in after open.
-        // realpath on the requested path dereferences symlinks; we then verify
-        // the final target is still inside the document root.
         const resolved = await realpath(filePath).catch(() => filePath);
         await assertInsideRoot(resolved);
         const chunks: Buffer[] = [];
