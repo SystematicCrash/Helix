@@ -8,7 +8,6 @@ import {BodyReader} from "./BodyReader.js";
 
 /** Reads a Transfer-Encoding: chunked body, yielding each chunk's payload. */
 export default class ChunkedBodyReader extends BodyReader {
-    public readonly hasLength: boolean = false;
     private readonly gen: BufferGenerator;
     private _extensions: ChunkExtension[] = [];
 
@@ -56,8 +55,6 @@ export default class ChunkedBodyReader extends BodyReader {
     private async* readChunks(): BufferGenerator {
         for (let last = false; !last;) {
             const remain = await this.readChunkSize();
-            this.length += remain;
-            this.checkMaxSize();
             last = remain === 0;
 
             if (remain > 0) {

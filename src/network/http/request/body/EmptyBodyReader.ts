@@ -9,8 +9,6 @@ import {BodyReader} from "./BodyReader.js";
  * the message body has length zero.
  */
 export default class EmptyBodyReader extends BodyReader {
-    public readonly hasLength: boolean = true;
-
     constructor() {
         super();
         this.length = 0;

@@ -7,14 +7,15 @@ import {BodyReader} from "../request/body/BodyReader.js";
 
 /*
  * Serializes and streams HTTP responses to a connection.
- * Picks fixed-length or chunked framing based on the body's hasLength flag.
+ * Picks fixed-length or chunked framing based on the body's known length
+ * (`length !== -1` ⇒ fixed, `length === -1` ⇒ chunked).
  */
 export class ResponseWriter {
     /*
      * Writes the response header and streams the body to the connection.
      */
     static async write(conn: TCPConnection, response: HttpResponse): Promise<void> {
-        if (response.body.hasLength) {
+        if (response.body.length !== -1) {
             response.headers.set(HttpHeader.ContentLength, response.body.length.toString());
         } else {
             response.headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);

@@ -12,7 +12,6 @@ import {BodyReader} from "./BodyReader.js";
  * once the peer closes the connection.
  */
 export default class EOFBodyReader extends BodyReader {
-    public readonly hasLength: boolean = false;
     private finished = false;
 
     constructor(
@@ -32,8 +31,6 @@ export default class EOFBodyReader extends BodyReader {
                 return null;
             }
             this.buf.push(data);
-            this.length += data.length;
-            this.checkMaxSize();
         }
 
         return this.buf.pop();
@@ -49,8 +46,6 @@ export default class EOFBodyReader extends BodyReader {
                 return null;
             }
             this.buf.push(data);
-            this.length += data.length;
-            this.checkMaxSize();
         }
 
         const consume = Math.min(this.buf.length, target.length);

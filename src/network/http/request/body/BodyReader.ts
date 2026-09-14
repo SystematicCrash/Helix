@@ -1,10 +1,15 @@
 import {MAX_BODY_LENGTH} from "../../common/constants.js";
 
 export abstract class BodyReader {
-    public length: number = 0;
-    public abstract readonly hasLength: boolean;
+    /**
+     * The total body length in bytes, or `-1` when the length is unknown
+     * and only discoverable during reads (e.g. chunked, EOF-delimited).
+     */
+    public length: number = -1;
 
-    /** Reads the next available chunk of body data. Returns null on EOF. */
+    /** Bytes pulled from the underlying source so far. Always starts at 0. */
+    public readBytes: number = 0;
+
     public abstract read(): Promise<Buffer | null>;
 
     /**
@@ -14,7 +19,7 @@ export abstract class BodyReader {
     public abstract readInto(target: Buffer): Promise<number | null>;
 
     protected checkMaxSize(): void {
-        if (this.length > MAX_BODY_LENGTH) {
+        if (this.length !== -1 && this.length > MAX_BODY_LENGTH) {
             throw new Error('Body length exceeded the maximum number of bytes');
         }
     }

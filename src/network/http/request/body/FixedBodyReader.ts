@@ -4,8 +4,6 @@ import {BodyReader} from "./BodyReader.js";
 
 /** Reads exactly `length` bytes from the connection, consuming buffered data first. */
 export default class FixedBodyReader extends BodyReader {
-    public readonly hasLength: boolean = true;
-
     constructor(
         private readonly conn: TCPConnection,
         private readonly buf: DynamicBuffer,
@@ -17,7 +15,7 @@ export default class FixedBodyReader extends BodyReader {
     }
 
     async read(): Promise<Buffer | null> {
-        if (this.length === 0) return null; // EOF
+        if (this.readBytes === this.length) return null; // EOF
 
         if (this.buf.length === 0) {
             const data = await this.conn.read();
@@ -27,13 +25,13 @@ export default class FixedBodyReader extends BodyReader {
             this.buf.push(data);
         }
 
-        const consume = Math.min(this.buf.length, this.length);
-        this.length -= consume;
+        const consume = Math.min(this.buf.length, this.length - this.readBytes);
+        this.readBytes += consume;
         return this.buf.pop(consume);
     }
 
     async readInto(target: Buffer): Promise<number | null> {
-        if (this.length === 0) return null; // EOF
+        if (this.readBytes === this.length) return null; // EOF
 
         if (this.buf.length === 0) {
             const data = await this.conn.read();
@@ -43,8 +41,8 @@ export default class FixedBodyReader extends BodyReader {
             this.buf.push(data);
         }
 
-        const consume = Math.min(this.buf.length, this.length, target.length);
-        this.length -= consume;
+        const consume = Math.min(this.buf.length, this.length - this.readBytes, target.length);
+        this.readBytes += consume;
         const data = this.buf.pop(consume);
         data.copy(target, 0, 0, consume);
         return consume;

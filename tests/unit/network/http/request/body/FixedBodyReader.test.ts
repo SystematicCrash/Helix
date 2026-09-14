@@ -31,7 +31,7 @@ describe('FixedBodyReader', () => {
             expect(reader.length).toBe(0);
         });
 
-        test('should decrement length as the body is read', async () => {
+        test('should keep length constant and increment readBytes as the body is read', async () => {
             const reader = new FixedBodyReader(
                 mockConn(Buffer.from('hello')),
                 new DynamicBuffer(),
@@ -39,8 +39,10 @@ describe('FixedBodyReader', () => {
             );
 
             expect(reader.length).toBe(5);
+            expect(reader.readBytes).toBe(0);
             await reader.read();
-            expect(reader.length).toBe(0);
+            expect(reader.length).toBe(5);
+            expect(reader.readBytes).toBe(5);
         });
     });
 

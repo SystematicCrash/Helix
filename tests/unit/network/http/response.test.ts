@@ -150,7 +150,7 @@ describe('ResponseWriter.write()', () => {
 
     describe('chunked response', () => {
         test('should use chunked transfer-encoding when body has no known length', async () => {
-            // GeneratorBodyReader is hasLength:false; pick an empty generator to
+            // GeneratorBodyReader has unknown length (length === -1); pick an empty generator to
             // exercise the chunked path without writing any body bytes.
             const response: HttpResponse = {
                 code: 200,
