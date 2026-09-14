@@ -38,4 +38,24 @@ export default class EOFBodyReader extends BodyReader {
 
         return this.buf.pop();
     }
+
+    async readInto(target: Buffer): Promise<number | null> {
+        if (this.finished) return null;
+
+        if (this.buf.length === 0) {
+            const data = await this.conn.read();
+            if (data === null) {
+                this.finished = true;
+                return null;
+            }
+            this.buf.push(data);
+            this.length += data.length;
+            this.checkMaxSize();
+        }
+
+        const consume = Math.min(this.buf.length, target.length);
+        const out = this.buf.pop(consume);
+        out.copy(target, 0, 0, consume);
+        return consume;
+    }
 }

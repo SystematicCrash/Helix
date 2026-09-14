@@ -26,11 +26,30 @@ export default class SocketReader {
     }
 
     /**
-     * Reads the next available chunk from the TCP stream into `target`.
-     * If `target` is provided, copies data into it and returns the number of bytes written.
-     * If no target is provided, behaves like `read()`.
+     * Reads the next available chunk from the TCP stream.
+     * Returns the chunk, or null if EOF was reached.
      */
-    public async read(target?: Buffer): Promise<Buffer | null | number> {
+    public async read(): Promise<Buffer | null> {
+        return await this.readChunk();
+    }
+
+    /**
+     * Reads the next available chunk from the TCP stream into `target`.
+     * Returns the number of bytes written, or null if EOF was reached.
+     */
+    public async readInto(target: Buffer): Promise<number | null> {
+        const data = await this.readChunk();
+        if (data === null) return null;
+        const len = Math.min(data.length, target.length);
+        data.copy(target, 0, 0, len);
+        return len;
+    }
+
+    /**
+     * Waits for the next non-empty chunk from the socket, or null on EOF.
+     * Shared core for `read()` and `readInto()`.
+     */
+    private async readChunk(): Promise<Buffer | null> {
         if (this.finished) {
             throw TCPError.from(TCPErrCode.READ_AFTER_EOF);
         }
@@ -45,14 +64,6 @@ export default class SocketReader {
             do {
                 data = await this.readPromise();
             } while (data !== null && data.length === 0);
-
-            if (data === null) return null;
-
-            if (target) {
-                const len = Math.min(data.length, target.length);
-                data.copy(target, 0, 0, len);
-                return len;
-            }
 
             return data;
         } finally {

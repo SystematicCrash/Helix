@@ -4,14 +4,14 @@ export abstract class BodyReader {
     public length: number = 0;
     public abstract readonly hasLength: boolean;
 
-    public abstract read(target?: Buffer): Promise<Buffer | null | number>;
+    /** Reads the next available chunk of body data. Returns null on EOF. */
+    public abstract read(): Promise<Buffer | null>;
 
-    /** Fills `target` with data and returns bytes read, or null on EOF. */
-    public async readInto(target: Buffer): Promise<number | null> {
-        const result = await this.read(target);
-        if (result === null) return null;
-        return typeof result === 'number' ? result : result.length;
-    }
+    /**
+     * Reads the next available chunk of body data into `target`.
+     * Returns the number of bytes written, or null on EOF.
+     */
+    public abstract readInto(target: Buffer): Promise<number | null>;
 
     protected checkMaxSize(): void {
         if (this.length > MAX_BODY_LENGTH) {

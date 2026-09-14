@@ -99,21 +99,10 @@ export default class TCPConnection {
     }
 
     /**
-     * Reads data from remote connection into `target` buffer.
-     * Returns the number of bytes read, or null if EOF.
+     * Reads the next available chunk from the remote connection.
+     * Returns the chunk, or null if EOF was reached.
      */
-    public async readInto(target: Buffer): Promise<number | null> {
-        const result = await this.read(target);
-        if (result === null) return null;
-        return typeof result === 'number' ? result : result.length;
-    }
-
-    /**
-     * Reads data from remote connection.
-     * If `target` is provided, copies data into it and returns the number of bytes written.
-     * If no target is provided, returns the next available chunk.
-     */
-    public async read(target?: Buffer): Promise<Buffer | null | number> {
+    public async read(): Promise<Buffer | null> {
         if (this._error) {
             throw this._error;
         }
@@ -124,7 +113,28 @@ export default class TCPConnection {
 
         this.stopIdleTimer();
         try {
-            return await this.sockReader.read(target);
+            return await this.sockReader.read();
+        } finally {
+            this.startIdleTimer();
+        }
+    }
+
+    /**
+     * Reads the next available chunk from the remote connection into `target`.
+     * Returns the number of bytes written, or null if EOF was reached.
+     */
+    public async readInto(target: Buffer): Promise<number | null> {
+        if (this._error) {
+            throw this._error;
+        }
+
+        if (this.isFullyClosed) {
+            throw TCPError.from(TCPErrCode.READ_AFTER_CLOSE);
+        }
+
+        this.stopIdleTimer();
+        try {
+            return await this.sockReader.readInto(target);
         } finally {
             this.startIdleTimer();
         }

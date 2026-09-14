@@ -16,7 +16,11 @@ export default class EmptyBodyReader extends BodyReader {
         this.length = 0;
     }
 
-    async read(_target?: Buffer): Promise<Buffer | null | number> {
+    async read(): Promise<Buffer | null> {
+        return null;
+    }
+
+    async readInto(_target: Buffer): Promise<number | null> {
         return null;
     }
 }

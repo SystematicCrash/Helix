@@ -31,6 +31,27 @@ export default class ChunkedBodyReader extends BodyReader {
         return r.done ? null : r.value;
     }
 
+    /**
+     * Reads chunk payload bytes into `target`.
+     * Returns the number of bytes written, or null when the body is exhausted.
+     */
+    async readInto(target: Buffer): Promise<number | null> {
+        let total = 0;
+        while (total < target.length) {
+            const r = await this.gen.next();
+            if (r.done) break;
+            const remaining = target.length - total;
+            if (r.value.length <= remaining) {
+                r.value.copy(target, total, 0, r.value.length);
+                total += r.value.length;
+            } else {
+                r.value.copy(target, total, 0, remaining);
+                total = target.length;
+            }
+        }
+        return total === 0 ? null : total;
+    }
+
     /** Generator that reads all chunks sequentially until the terminal zero chunk. */
     private async* readChunks(): BufferGenerator {
         for (let last = false; !last;) {
