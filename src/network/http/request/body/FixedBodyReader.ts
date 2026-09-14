@@ -14,7 +14,7 @@ export default class FixedBodyReader extends BodyReader {
         this.checkMaxSize();
     }
 
-    async read(): Promise<Buffer | null> {
+    protected async pullBytes(): Promise<Buffer | null> {
         if (this.readBytes === this.length) return null; // EOF
 
         if (this.buf.length === 0) {
@@ -26,25 +26,6 @@ export default class FixedBodyReader extends BodyReader {
         }
 
         const consume = Math.min(this.buf.length, this.length - this.readBytes);
-        this.readBytes += consume;
         return this.buf.pop(consume);
-    }
-
-    async readInto(target: Buffer): Promise<number | null> {
-        if (this.readBytes === this.length) return null; // EOF
-
-        if (this.buf.length === 0) {
-            const data = await this.conn.read();
-            if (data === null) {
-                throw new Error('Unexpected EOF while reading request body');
-            }
-            this.buf.push(data);
-        }
-
-        const consume = Math.min(this.buf.length, this.length - this.readBytes, target.length);
-        this.readBytes += consume;
-        const data = this.buf.pop(consume);
-        data.copy(target, 0, 0, consume);
-        return consume;
     }
 }

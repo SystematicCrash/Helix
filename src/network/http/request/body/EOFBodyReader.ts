@@ -8,7 +8,7 @@ import {BodyReader} from "./BodyReader.js";
  * Used when neither Content-Length nor Transfer-Encoding is present — the body
  * length is delimited by the server closing the connection (RFC 7230 §3.3.3).
  *
- * `read()` returns every byte the connection provides, then returns `null`
+ * `pullBytes()` returns every byte the connection provides, then returns `null`
  * once the peer closes the connection.
  */
 export default class EOFBodyReader extends BodyReader {
@@ -21,7 +21,7 @@ export default class EOFBodyReader extends BodyReader {
         super();
     }
 
-    async read(): Promise<Buffer | null> {
+    protected async pullBytes(): Promise<Buffer | null> {
         if (this.finished) return null;
 
         if (this.buf.length === 0) {
@@ -34,23 +34,5 @@ export default class EOFBodyReader extends BodyReader {
         }
 
         return this.buf.pop();
-    }
-
-    async readInto(target: Buffer): Promise<number | null> {
-        if (this.finished) return null;
-
-        if (this.buf.length === 0) {
-            const data = await this.conn.read();
-            if (data === null) {
-                this.finished = true;
-                return null;
-            }
-            this.buf.push(data);
-        }
-
-        const consume = Math.min(this.buf.length, target.length);
-        const out = this.buf.pop(consume);
-        out.copy(target, 0, 0, consume);
-        return consume;
     }
 }

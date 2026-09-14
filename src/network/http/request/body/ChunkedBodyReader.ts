@@ -24,31 +24,40 @@ export default class ChunkedBodyReader extends BodyReader {
         return this._extensions;
     }
 
-    /** Reads the next chunk payload buffer. */
-    async read(): Promise<Buffer | null> {
+    protected async pullBytes(): Promise<Buffer | null> {
         const r = await this.gen.next();
         return r.done ? null : r.value;
     }
 
     /**
-     * Reads chunk payload bytes into `target`.
-     * Returns the number of bytes written, or null when the body is exhausted.
+     * Reads chunk payload bytes into `target`, draining multiple chunk yields
+     * until `target` is full or the body is exhausted. Overrides the base to
+     * avoid leaving slack space in `target` when chunk yields are smaller than it.
      */
     async readInto(target: Buffer): Promise<number | null> {
         let total = 0;
+        let pulledBytes = 0;
+        let anyChunk = false;
+
         while (total < target.length) {
-            const r = await this.gen.next();
-            if (r.done) break;
+            const chunk = await this.pullBytes();
+            if (chunk === null) break;
+            anyChunk = true;
+            pulledBytes += chunk.length;
+
             const remaining = target.length - total;
-            if (r.value.length <= remaining) {
-                r.value.copy(target, total, 0, r.value.length);
-                total += r.value.length;
+            if (chunk.length <= remaining) {
+                chunk.copy(target, total, 0, chunk.length);
+                total += chunk.length;
             } else {
-                r.value.copy(target, total, 0, remaining);
+                chunk.copy(target, total, 0, remaining);
                 total = target.length;
             }
         }
-        return total === 0 ? null : total;
+
+        if (!anyChunk) return null;
+        this.readBytes += pulledBytes;
+        return total;
     }
 
     /** Generator that reads all chunks sequentially until the terminal zero chunk. */

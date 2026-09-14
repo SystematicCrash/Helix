@@ -7,17 +7,8 @@ export default class GeneratorBodyReader extends BodyReader {
         super();
     }
 
-    async read(): Promise<Buffer | null> {
+    protected async pullBytes(): Promise<Buffer | null> {
         const r = await this.gen.next();
-        if (r.done) return null;
-        return r.value;
-    }
-
-    async readInto(target: Buffer): Promise<number | null> {
-        const r = await this.gen.next();
-        if (r.done) return null;
-        const len = Math.min(r.value.length, target.length);
-        r.value.copy(target, 0, 0, len);
-        return len;
+        return r.done ? null : r.value;
     }
 }

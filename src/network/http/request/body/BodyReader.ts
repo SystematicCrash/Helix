@@ -10,13 +10,27 @@ export abstract class BodyReader {
     /** Bytes pulled from the underlying source so far. Always starts at 0. */
     public readBytes: number = 0;
 
-    public abstract read(): Promise<Buffer | null>;
-
     /**
-     * Reads the next available chunk of body data into `target`.
-     * Returns the number of bytes written, or null on EOF.
+     * Reads the next available chunk of body data, or null on EOF.
+     * Subclasses implement this to fetch from their underlying source.
      */
-    public abstract readInto(target: Buffer): Promise<number | null>;
+    protected abstract pullBytes(): Promise<Buffer | null>;
+
+    public async read(): Promise<Buffer | null> {
+        const chunk = await this.pullBytes();
+        if (chunk === null) return null;
+        this.readBytes += chunk.length;
+        return chunk;
+    }
+
+    public async readInto(target: Buffer): Promise<number | null> {
+        const chunk = await this.pullBytes();
+        if (chunk === null) return null;
+        const len = Math.min(chunk.length, target.length);
+        chunk.copy(target, 0, 0, len);
+        this.readBytes += len;
+        return len;
+    }
 
     protected checkMaxSize(): void {
         if (this.length !== -1 && this.length > MAX_BODY_LENGTH) {
