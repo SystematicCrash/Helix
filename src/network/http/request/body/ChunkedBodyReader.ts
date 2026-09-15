@@ -29,37 +29,6 @@ export default class ChunkedBodyReader extends BodyReader {
         return r.done ? null : r.value;
     }
 
-    /**
-     * Reads chunk payload bytes into `target`, draining multiple chunk yields
-     * until `target` is full or the body is exhausted. Overrides the base to
-     * avoid leaving slack space in `target` when chunk yields are smaller than it.
-     */
-    async readInto(target: Buffer): Promise<number | null> {
-        let total = 0;
-        let pulledBytes = 0;
-        let anyChunk = false;
-
-        while (total < target.length) {
-            const chunk = await this.pullBytes();
-            if (chunk === null) break;
-            anyChunk = true;
-            pulledBytes += chunk.length;
-
-            const remaining = target.length - total;
-            if (chunk.length <= remaining) {
-                chunk.copy(target, total, 0, chunk.length);
-                total += chunk.length;
-            } else {
-                chunk.copy(target, total, 0, remaining);
-                total = target.length;
-            }
-        }
-
-        if (!anyChunk) return null;
-        this.readBytes += pulledBytes;
-        return total;
-    }
-
     /** Generator that reads all chunks sequentially until the terminal zero chunk. */
     private async* readChunks(): BufferGenerator {
         for (let last = false; !last;) {

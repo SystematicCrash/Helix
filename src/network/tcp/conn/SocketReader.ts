@@ -34,20 +34,7 @@ export default class SocketReader {
     }
 
     /**
-     * Reads the next available chunk from the TCP stream into `target`.
-     * Returns the number of bytes written, or null if EOF was reached.
-     */
-    public async readInto(target: Buffer): Promise<number | null> {
-        const data = await this.readChunk();
-        if (data === null) return null;
-        const len = Math.min(data.length, target.length);
-        data.copy(target, 0, 0, len);
-        return len;
-    }
-
-    /**
      * Waits for the next non-empty chunk from the socket, or null on EOF.
-     * Shared core for `read()` and `readInto()`.
      */
     private async readChunk(): Promise<Buffer | null> {
         if (this.finished) {

@@ -15,17 +15,15 @@ const HEADER_TERMINATOR = Buffer.concat([CRLF, CRLF]);
 /** Handles one accepted connection: reads requests, dispatches them, and streams responses. */
 export async function serveClient(conn: TCPConnection, info: ServerInfo): Promise<void> {
     const buf = new DynamicBuffer();
-    // Scratch buffer for reading to minimize allocation churn
-    const scratch = Buffer.allocUnsafe(16384);
     let request: HttpRequest | null = null;
     try {
         while (true) {
             if (!request) request = cutRequest(buf);
 
             if (!request) {
-                const bytesRead = await conn.readInto(scratch);
+                const data = await conn.read();
 
-                if (bytesRead === null) {
+                if (data === null) {
                     if (!buf.length) {
                         await conn.close(); // EOF
                         return;
@@ -33,7 +31,7 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
                     throw new HttpError(400, 'Unexpected EOF');
                 }
 
-                buf.push(scratch.subarray(0, bytesRead));
+                buf.push(data);
                 request = cutRequest(buf);
                 if (!request) continue;
             }

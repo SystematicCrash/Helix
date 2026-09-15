@@ -23,15 +23,6 @@ export abstract class BodyReader {
         return chunk;
     }
 
-    public async readInto(target: Buffer): Promise<number | null> {
-        const chunk = await this.pullBytes();
-        if (chunk === null) return null;
-        const len = Math.min(chunk.length, target.length);
-        chunk.copy(target, 0, 0, len);
-        this.readBytes += len;
-        return len;
-    }
-
     protected checkMaxSize(): void {
         if (this.length !== -1 && this.length > MAX_BODY_LENGTH) {
             throw new Error('Body length exceeded the maximum number of bytes');

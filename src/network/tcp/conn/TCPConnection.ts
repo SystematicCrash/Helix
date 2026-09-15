@@ -120,27 +120,6 @@ export default class TCPConnection {
     }
 
     /**
-     * Reads the next available chunk from the remote connection into `target`.
-     * Returns the number of bytes written, or null if EOF was reached.
-     */
-    public async readInto(target: Buffer): Promise<number | null> {
-        if (this._error) {
-            throw this._error;
-        }
-
-        if (this.isFullyClosed) {
-            throw TCPError.from(TCPErrCode.READ_AFTER_CLOSE);
-        }
-
-        this.stopIdleTimer();
-        try {
-            return await this.sockReader.readInto(target);
-        } finally {
-            this.startIdleTimer();
-        }
-    }
-
-    /**
      * Writes data to the remote connection.
      */
     public async write(data: Buffer): Promise<void> {
