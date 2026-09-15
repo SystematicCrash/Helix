@@ -127,8 +127,14 @@ describe('FileHandle.read()', () => {
         const handle = await FileHandle.open(p);
 
         const big = Buffer.alloc(10).fill('.');
-        const data = await handle.read({buffer: big, offset: 4, length: 3});
-        expect(data?.toString()).toBe('abc');
+        // Using readInto to write into 'big' starting at offset 4
+        // The implementation of readInto writes from index 0 of the target,
+        // so to test this we need a slice if we want an offset
+        const target = big.subarray(4, 7);
+        const bytesRead = await handle.readInto(target);
+        
+        expect(bytesRead).toBe(3);
+        expect(target.toString()).toBe('abc');
         expect(big.toString()).toBe('....abc...');
         await handle.close();
     });
@@ -190,7 +196,9 @@ describe('FileHandle.stream()', () => {
         const handle = await FileHandle.open(p);
 
         const chunks: Buffer[] = [];
-        for await (const chunk of handle.stream(4)) chunks.push(chunk);
+        for await (const chunk of handle.stream(4, 0)) {
+            chunks.push(chunk);
+        }
 
         expect(chunks.map(c => c.toString())).toEqual(['0123', '4567', '89']);
         await handle.close();
@@ -202,7 +210,10 @@ describe('FileHandle.stream()', () => {
         const handle = await FileHandle.open(p);
 
         const chunks: Buffer[] = [];
-        for await (const chunk of handle.stream()) chunks.push(chunk);
+        for await (const chunk of handle.stream(5, 0)) {
+            // Should not be called
+            chunks.push(Buffer.from('unexpected'));
+        }
 
         expect(chunks).toHaveLength(0);
         await handle.close();
@@ -214,7 +225,9 @@ describe('FileHandle.stream()', () => {
         const handle = await FileHandle.open(p);
 
         const chunks: Buffer[] = [];
-        for await (const chunk of handle.stream(2, 4)) chunks.push(chunk);
+        for await (const chunk of handle.stream(2, 4)) {
+            chunks.push(chunk);
+        }
 
         expect(chunks.map(c => c.toString())).toEqual(['45', '67', '89']);
         await handle.close();
