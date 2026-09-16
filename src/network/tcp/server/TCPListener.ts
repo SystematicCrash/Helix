@@ -35,6 +35,13 @@ export default class TCPListener {
         this.server.listen(port);
     }
 
+    /** Returns the bound address, or null if the server is not listening yet. */
+    public address(): net.AddressInfo | null {
+        const addr = this.server?.address();
+        if (addr && typeof addr === 'object') return addr;
+        return null;
+    }
+
     /** Wraps the incoming conn into a TCPConnection and fulfills the pending accept promise. */
     private onConnection = (socket: net.Socket): void => {
         if (!this.reader) return;

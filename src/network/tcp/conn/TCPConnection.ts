@@ -2,13 +2,11 @@ import {Socket} from 'net';
 import TCPError from "../common/TCPError.js";
 import SocketReader from "./SocketReader.js";
 import SocketWriter from "./SocketWriter.js";
+import Timer from "../../common/Timer.js";
 import {
     Event,
     IDLE_TIMEOUT,
-    MAX_WRITE_BUFFER_SIZE,
-    READ_TIMEOUT,
     TCPErrCode,
-    WRITE_TIMEOUT,
 } from "../common/constants.js";
 
 /**
@@ -23,6 +21,7 @@ import {
  * This class does not provide message framing. TCP data is still a byte stream.
  */
 export default class TCPConnection {
+    private timer: Timer;
     private sockReader: SocketReader;
     private sockWriter: SocketWriter;
     private _error: TCPError | null = null;
@@ -30,18 +29,43 @@ export default class TCPConnection {
     constructor(private readonly socket: Socket) {
         this.sockReader = new SocketReader(socket);
         this.sockWriter = new SocketWriter(socket);
+        this.timer = new Timer(Event.ERROR, IDLE_TIMEOUT, this.handleTimeout);
 
         socket.on(Event.END, this.onEnd);
         socket.on(Event.ERROR, this.onError);
         socket.on(Event.CLOSE, this.onClose);
 
-        socket.setTimeout(
-            IDLE_TIMEOUT,
-            () => this.socket.emit(
-                Event.ERROR,
-                TCPError.from(TCPErrCode.IDLE_TIMEOUT)
-            )
+        this.startIdleTimer();
+    }
+
+    /**
+     * Fires when the connection has been idle (no read AND no write in progress)
+     * for IDLE_TIMEOUT milliseconds.
+     */
+    private handleTimeout = (): void => {
+        this.socket.emit(
+            Event.ERROR,
+            TCPError.from(TCPErrCode.IDLE_TIMEOUT)
         );
+    };
+
+    /**
+     * Starts the idle timer unless a read or write is currently in progress.
+     * Mirrors the SocketReader/SocketWriter timer pattern: armed when the
+     * connection is otherwise quiescent, stopped whenever real I/O begins.
+     */
+    private startIdleTimer(): void {
+        if (this.isFullyClosed) return;
+        if (this.sockReader.hasPendingRead) return;
+        if (this.sockWriter.hasPendingWrite) return;
+        this.timer.start();
+    }
+
+    /**
+     * Stops the idle timer while a read or write operation is in flight.
+     */
+    private stopIdleTimer(): void {
+        this.timer.stop();
     }
 
     /**
@@ -66,11 +90,17 @@ export default class TCPConnection {
      * Retries on backpressure by waiting for the drain event.
      */
     public async flush(): Promise<void> {
-        await this.sockWriter.flush();
+        this.stopIdleTimer();
+        try {
+            await this.sockWriter.flush();
+        } finally {
+            this.startIdleTimer();
+        }
     }
 
     /**
-     * Reads data from remote connection
+     * Reads the next available chunk from the remote connection.
+     * Returns the chunk, or null if EOF was reached.
      */
     public async read(): Promise<Buffer | null> {
         if (this._error) {
@@ -81,7 +111,12 @@ export default class TCPConnection {
             throw TCPError.from(TCPErrCode.READ_AFTER_CLOSE);
         }
 
-        return await this.sockReader.read();
+        this.stopIdleTimer();
+        try {
+            return await this.sockReader.read();
+        } finally {
+            this.startIdleTimer();
+        }
     }
 
     /**
@@ -96,7 +131,12 @@ export default class TCPConnection {
             throw TCPError.from(TCPErrCode.WRITE_AFTER_CLOSE);
         }
 
-        await this.sockWriter.write(data);
+        this.stopIdleTimer();
+        try {
+            await this.sockWriter.write(data);
+        } finally {
+            this.startIdleTimer();
+        }
     }
 
     /**
@@ -108,9 +148,16 @@ export default class TCPConnection {
     public async close(): Promise<void> {
         if (this.sockWriter.isFinished) return;
 
-        await this.sockWriter.flush();
-        this.sockWriter.finish(this._error);
-        this.socket.end();
+        this.stopIdleTimer();
+        try {
+            await this.sockWriter.flush();
+            this.sockWriter.finish(this._error);
+            this.socket.end();
+        } catch (err) {
+            this.sockWriter.finish(this._error);
+            this.socket.destroy();
+            throw err;
+        }
     }
 
     /**
@@ -155,7 +202,7 @@ export default class TCPConnection {
      * Releases resources owned by this connection.
      */
     private cleanup(): void {
-        this.socket.setTimeout(0);
+        this.timer.stop();
 
         this.socket.off(Event.END, this.onEnd);
         this.socket.off(Event.ERROR, this.onError);

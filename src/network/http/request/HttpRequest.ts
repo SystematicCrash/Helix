@@ -1,15 +1,16 @@
-import {splitBuffer, stripBuffer} from "../../mem/bytes.js";
+import {splitBuffer, stripBuffer} from "../../../buffer/bytes.js";
 import {CRLF} from "../../common/constants.js";
 import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
-import {HttpHeader, HttpMethod, MAX_BODY_LENGTH} from "../common/constants.js";
+import {HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
-import {BodyReader, HttpRequest as HttpRequestType} from "../common/types.js";
-import DynamicBuffer from "../../mem/DynamicBuffer.js";
+import {HttpRequest as HttpRequestType} from "../common/types.js";
+import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import FixedBodyReader from "./body/FixedBodyReader.js";
 import ChunkedBodyReader from "./body/ChunkedBodyReader.js";
-import EOFBodyReader from "./body/EOFBodyReader.js";
+import EmptyBodyReader from "./body/EmptyBodyReader.js";
+import {BodyReader} from "./body/BodyReader.js";
 
 /*
  * Parsed HTTP request head value object.
@@ -42,7 +43,7 @@ export default class HttpRequest implements HttpRequestType {
      */
     public getBodyReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
         const bodyLen = this.getBodyLength();
-        const chunked = this.getTransferEncoding() === 'chunked';
+        const chunked = this.getTransferEncoding() === TransferEncoding.CHUNKED;
 
         if (bodyLen > 0 && chunked)
             throw new HttpError(400, 'Bad Request');
@@ -51,7 +52,7 @@ export default class HttpRequest implements HttpRequestType {
 
         if (bodyLen > 0) return new FixedBodyReader(conn, buf, bodyLen);
         else if (chunked) return new ChunkedBodyReader(conn, buf);
-        else return new EOFBodyReader(conn, buf);
+        else return new EmptyBodyReader();
     }
 
     /**

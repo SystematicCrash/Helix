@@ -70,7 +70,7 @@ export default class DynamicBuffer {
 
             while(newCap < newLen) newCap *= 2;
 
-            const grown = Buffer.alloc(newCap);
+            const grown = Buffer.allocUnsafe(newCap);
             this._data.copy(grown, 0, this._start, this.end);
             this._capacity = newCap;
             this._start = 0;

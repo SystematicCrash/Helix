@@ -34,7 +34,7 @@ describe('TCPListener', () => {
             expect((listener as any).server).toBeNull();
         });
 
-        test('should create a net.Server instance after listen()', () => {
+        test('should create a network.Server instance after listen()', () => {
             listener.listen(port);
             expect((listener as any).server).toBeInstanceOf(net.Server);
         });

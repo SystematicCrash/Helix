@@ -1,10 +1,9 @@
-import DynamicBuffer from "../../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../../tcp/conn/TCPConnection.js";
-import {BodyReaderAbs} from "./BodyReaderAbs.js";
+import {BodyReader} from "./BodyReader.js";
 
 /** Reads exactly `length` bytes from the connection, consuming buffered data first. */
-export default class FixedBodyReader extends BodyReaderAbs {
-
+export default class FixedBodyReader extends BodyReader {
     constructor(
         private readonly conn: TCPConnection,
         private readonly buf: DynamicBuffer,
@@ -15,8 +14,8 @@ export default class FixedBodyReader extends BodyReaderAbs {
         this.checkMaxSize();
     }
 
-    async read(): Promise<Buffer | null> {
-        if (this.length === 0) return null; // EOF
+    protected async pullBytes(): Promise<Buffer | null> {
+        if (this.readBytes === this.length) return null; // EOF
 
         if (this.buf.length === 0) {
             const data = await this.conn.read();
@@ -26,8 +25,7 @@ export default class FixedBodyReader extends BodyReaderAbs {
             this.buf.push(data);
         }
 
-        const consume = Math.min(this.buf.length, this.length);
-        this.length -= consume;
+        const consume = Math.min(this.buf.length, this.length - this.readBytes);
         return this.buf.pop(consume);
     }
 }

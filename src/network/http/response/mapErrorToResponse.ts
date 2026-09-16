@@ -1,28 +1,41 @@
 import HttpError from "../common/HttpError.js";
 import {HttpVersion} from "../common/constants.js";
-import {HttpResponse} from "../common/types.js";
+import {HttpRequest, HttpResponse} from "../common/types.js";
 import MemoryBodyReader from "../request/body/MemoryBodyReader.js";
+import {renderHtml} from "../../../infra/index.js";
+import {ServerInfo} from "../../../server/ServerInfo.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
-export function mapErrorToResponse(error: unknown): HttpResponse {
-    let code: number;
-    let body;
+export function mapErrorToResponse(
+    error: unknown,
+    request: HttpRequest | null,
+    info: ServerInfo,
+    code: number = 500,
+): HttpResponse {
+    let body: MemoryBodyReader;
 
     if (error instanceof HttpError) {
-        code = error.status;
-        body = new MemoryBodyReader(Buffer.from(error.message));
-    } else if (error instanceof Error) {
-        code = 500;
-        body = new MemoryBodyReader(Buffer.from(error.message));
+        if (error.status === 404) {
+            const html = renderHtml('notFound', {
+                path: request?.url ?? '',
+                method: request?.method ?? 'UNKNOWN',
+                version: request?.version ?? info.version,
+            });
+            body = new MemoryBodyReader(html);
+            code = 404;
+        } else {
+            body = new MemoryBodyReader(Buffer.from(error.message));
+            code = error.status;
+        }
     } else {
-        code = 500;
-        body = new MemoryBodyReader(Buffer.from("Webserver Internal Error"));
+        body = new MemoryBodyReader(Buffer.from('Internal Server Error'));
     }
+
 
     return {
         code,
-        body,
         version: HttpVersion.HTTP_1_1,
         headers: new Map(),
+        body,
     };
 }

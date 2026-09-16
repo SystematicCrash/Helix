@@ -1,10 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
 import HttpError from '../../../../src/network/http/common/HttpError.js';
 import { mockedTCPConnection } from '../common/utils.js';
-import DynamicBuffer from '../../../../src/network/mem/DynamicBuffer.js';
+import DynamicBuffer from '../../../../src/buffer/DynamicBuffer.js';
 import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
 import {MAX_BODY_LENGTH} from '../../../../src/network/http/common/constants.js';
-import EOFBodyReader from '../../../../src/network/http/request/body/EOFBodyReader.js';
+import EmptyBodyReader from '../../../../src/network/http/request/body/EmptyBodyReader.js';
 
 function fromRaw(head: string): HttpRequest {
     return new HttpRequest(Buffer.from(head));
@@ -198,11 +198,19 @@ describe('createBodyReader()', () => {
     });
 
     describe('no body', () => {
-        test('should return EOF reader when no content-length or transfer-encoding is set', () => {
+        test('should return empty reader when no content-length or transfer-encoding is set', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com');
 
             const reader = request.getBodyReader(mockedTCPConnection(), new DynamicBuffer());
-            expect(reader).toBeInstanceOf(EOFBodyReader);
+            expect(reader).toBeInstanceOf(EmptyBodyReader);
+        });
+
+        test('should return empty reader for GET request without framing', () => {
+            const request = fromRaw('GET /api/users HTTP/1.1\r\nHost: example.com');
+
+            const reader = request.getBodyReader(mockedTCPConnection(), new DynamicBuffer());
+            expect(reader).toBeInstanceOf(EmptyBodyReader);
+            expect(reader.length).toBe(0);
         });
     });
 });

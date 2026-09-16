@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Helix &mdash; HTTP Server</title>
+    <style>
+        :root {
+            --bg: #0b0f17;
+            --surface: #111726;
+            --surface-subtle: #161f33;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.16);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --emerald: #10b981;
+            --emerald-bg: rgba(16, 185, 129, 0.08);
+            --emerald-border: rgba(16, 185, 129, 0.24);
+            --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+            --font-mono: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Courier New", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(ellipse 60% 40% at 50% 0%, rgba(56, 189, 248, 0.08), transparent 70%),
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 48px 48px, 48px 48px;
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 580px;
+            display: flex;
+            flex-direction: column;
+            gap: 2.25rem;
+        }
+
+        /* Top Bar / Identity */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .brand-icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: #38bdf8;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .brand-name {
+            font-weight: 700;
+            font-size: 1.125rem;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .brand-name span {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-size: 0.875rem;
+            margin-left: 0.25rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.3rem 0.75rem;
+            border-radius: 9999px;
+            background: var(--emerald-bg);
+            border: 1px solid var(--emerald-border);
+            color: var(--emerald);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--emerald);
+            box-shadow: 0 0 8px var(--emerald);
+        }
+
+        /* Main Hero Section */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .hero h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            line-height: 1.25;
+            color: var(--text-primary);
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* Telemetry Card */
+        .telemetry-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+        }
+
+        .telemetry-bar {
+            padding: 0.75rem 1.25rem;
+            background: var(--surface-subtle);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .telemetry-bar span:last-child {
+            font-family: var(--font-mono);
+            text-transform: none;
+            font-weight: 400;
+        }
+
+        .telemetry-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .telemetry-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .telemetry-row:last-child {
+            border-bottom: none;
+        }
+
+        .row-label {
+            color: var(--text-secondary);
+            font-weight: 450;
+        }
+
+        .row-value {
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0.2rem 0.5rem;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .row-value.active {
+            color: var(--emerald);
+            background: var(--emerald-bg);
+            border-color: var(--emerald-border);
+        }
+
+        /* Guide / Callout */
+        .info-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.85rem;
+        }
+
+        .info-panel svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .info-panel p {
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .info-panel code {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.07);
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+        }
+
+        /* Footer */
+        .footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <!-- Top Header -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                        <polyline points="2 17 12 22 22 17" />
+                        <polyline points="2 12 12 17 22 12" />
+                    </svg>
+                </div>
+                <div class="brand-name">Helix<span>HTTP</span></div>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                Active
+            </div>
+        </header>
+
+        <!-- Hero text -->
+        <section class="hero">
+            <h1>Server is operational</h1>
+            <p>Helix is bound to the network socket and ready to accept incoming TCP connections and stream requests.</p>
+        </section>
+
+        <!-- Telemetry Card -->
+        <div class="telemetry-card">
+            <div class="telemetry-bar">
+                <span>Runtime Configuration</span>
+                <span>TCP / Ready</span>
+            </div>
+            <div class="telemetry-list">
+                <div class="telemetry-row">
+                    <span class="row-label">Engine Version</span>
+                    <span class="row-value">Helix / <%= it.version %></span>
+                </div>
+                <div class="telemetry-row">
+                    <span class="row-label">Socket Binding</span>
+                    <span class="row-value"><%= it.interface %>:<%= it.port %></span>
+                </div>
+                <div class="telemetry-row">
+                    <span class="row-label">Transport Protocol</span>
+                    <span class="row-value">HTTP/1.1</span>
+                </div>
+                <div class="telemetry-row">
+                    <span class="row-label">Connection State</span>
+                    <span class="row-value active">Keep-Alive Enabled</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Directory / Action Hint -->
+        <div class="info-panel">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <p>To replace this landing page, serve static assets by placing your files inside the configured <code>public</code> or <code>html</code> directory.</p>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <span>Powered by Helix Server</span>
+            <div class="footer-links">
+                <a href="https://github.com" target="_blank" rel="noreferrer">Documentation</a>
+            </div>
+        </footer>
+    </main>
+</body>
+</html>

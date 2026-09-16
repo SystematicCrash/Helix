@@ -33,18 +33,18 @@ async function readAllAsString(reader: GeneratorBodyReader): Promise<string> {
 describe('GeneratorBodyReader', () => {
 
     describe('length', () => {
-        test('should expose length = 0 to signal nothing has been read yet', () => {
+        test('should expose length = -1 to signal an unknown body length', () => {
             const reader = new GeneratorBodyReader(fromChunks(Buffer.from('hello')));
-            expect(reader.length).toBe(0);
+            expect(reader.length).toBe(-1);
         });
 
-        test('should increase the length by the size of a yielded chunk', async () => {
+        test('should keep length = -1 regardless of how much was yielded', async () => {
             const reader = new GeneratorBodyReader(fromChunks(Buffer.from('hello'), Buffer.from(' world')));
             await reader.read();
-            expect(reader.length).toBe(5);
+            expect(reader.length).toBe(-1);
         });
 
-        test('should accumulate length across multiple reads', async () => {
+        test('should keep length = -1 across multiple reads', async () => {
             const reader = new GeneratorBodyReader(
                 fromChunks(
                     Buffer.from('hel'),
@@ -55,20 +55,21 @@ describe('GeneratorBodyReader', () => {
             await reader.read();
             await reader.read();
             await reader.read();
-            expect(reader.length).toBe(11);
+            expect(reader.length).toBe(-1);
         });
 
-        test('should not increase the length on EOF (null) reads', async () => {
+        test('should keep length = -1 after EOF reads', async () => {
             const reader = new GeneratorBodyReader(fromChunks(Buffer.from('hi')));
             await reader.read();
             await reader.read();
             await reader.read();
-            expect(reader.length).toBe(2);
+            expect(reader.length).toBe(-1);
         });
 
-        test('should throw when body length exceeded from max body length threshold', async () => {
+        test('should not throw on oversized yields (length is unknown at construction)', async () => {
+            // length stays -1 throughout, so checkMaxSize never trips on this reader.
             const reader = new GeneratorBodyReader(fromChunks(Buffer.from('x'.repeat(501))));
-            await expect(reader.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
+            await expect(reader.read()).resolves.not.toThrow();
         });
     });
 
@@ -259,17 +260,19 @@ describe('GeneratorBodyReader', () => {
 
             const total = await readAllAsString(reader);
             expect(total.length).toBe(500);
-            expect(reader.length).toBe(500);
+            expect(reader.length).toBe(-1);
         });
 
-        test('should throw as soon as the cumulative length crosses the threshold', async () => {
-            // First chunk fits (250 bytes), second chunk would push us over (501 total).
+        test('should not throw when cumulative yields cross the threshold (length is unknown)', async () => {
+            // First chunk fits (250 bytes), second chunk would push us over (501 total),
+            // but length stays -1 so checkMaxSize never trips on this reader.
             const reader = new GeneratorBodyReader(
                 fromChunks(Buffer.from('x'.repeat(250)), Buffer.from('y'.repeat(251))),
             );
 
-            await reader.read();
-            await expect(reader.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
+            await expect(reader.read()).resolves.not.toThrow();
+            await expect(reader.read()).resolves.not.toThrow();
+            expect(reader.length).toBe(-1);
         });
     });
 });

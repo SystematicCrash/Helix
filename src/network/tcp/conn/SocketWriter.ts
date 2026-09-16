@@ -9,7 +9,7 @@ import {
     WRITE_TIMEOUT
 } from "../common/constants.js";
 import TCPError from "../common/TCPError.js";
-import DynamicBuffer from "../../mem/DynamicBuffer.js";
+import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 
 export default class SocketWriter {
     private timer: Timer;
@@ -32,6 +32,13 @@ export default class SocketWriter {
      */
     public get isFinished(): boolean {
         return this.finished;
+    }
+
+    /**
+     * Returns true if a write promise is currently in flight.
+     */
+    public get hasPendingWrite(): boolean {
+        return this.writer !== null;
     }
 
     /**

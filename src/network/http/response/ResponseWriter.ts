@@ -1,22 +1,24 @@
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import {CRLF} from "../../common/constants.js";
 import {HttpHeader, TransferEncoding} from "../common/constants.js";
-import {BodyReader, HttpResponse} from "../common/types.js";
+import {HttpResponse} from "../common/types.js";
 import {encodeHeaders} from "./encodeHeaders.js";
+import {BodyReader} from "../request/body/BodyReader.js";
 
 /*
  * Serializes and streams HTTP responses to a connection.
- * Picks fixed-length or chunked framing depending on the body length.
+ * Picks fixed-length or chunked framing based on the body's known length
+ * (`length !== -1` ⇒ fixed, `length === -1` ⇒ chunked).
  */
 export class ResponseWriter {
     /*
      * Writes the response header and streams the body to the connection.
      */
     static async write(conn: TCPConnection, response: HttpResponse): Promise<void> {
-        if (response.body.length === -1) {
-            response.headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
-        } else {
+        if (response.body.length !== -1) {
             response.headers.set(HttpHeader.ContentLength, response.body.length.toString());
+        } else {
+            response.headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
         }
         await conn.write(encodeHeaders(response));
 
@@ -33,9 +35,9 @@ export class ResponseWriter {
      */
     private static async fixedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
         while (true) {
-            const data = await body.read();
-            if (!data) break;
-            await conn.write(data);
+            const chunk = await body.read();
+            if (chunk === null) break;
+            await conn.write(chunk);
         }
     }
 
@@ -44,17 +46,17 @@ export class ResponseWriter {
      */
     private static async chunkedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
         while (true) {
-            const data = await body.read();
-            if (!data) break;
+            const chunk = await body.read();
+            if (chunk === null) break;
 
-            const chunk = Buffer.concat([
-                Buffer.from(data.length.toString(16)),
+            const framed = Buffer.concat([
+                Buffer.from(chunk.length.toString(16)),
                 CRLF,
-                data,
+                chunk,
                 CRLF,
             ]);
 
-            await conn.write(chunk);
+            await conn.write(framed);
         }
 
         const terminator = Buffer.concat([Buffer.from('0'), CRLF, CRLF]);

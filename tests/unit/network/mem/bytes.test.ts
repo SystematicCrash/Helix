@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { splitBuffer, stripBuffer } from '../../../../src/network/mem/bytes.js';
+import { splitBuffer, stripBuffer } from '../../../../src/buffer/bytes.js';
 import {CRLF, CR, LF, SP} from '../../../../src/network/common/constants.js';
 
 describe('splitBuffer()', () => {

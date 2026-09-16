@@ -10,7 +10,7 @@ vi.mock('../../../../../../src/network/http/common/constants.js', async (importO
 });
 
 import EOFBodyReader from '../../../../../../src/network/http/request/body/EOFBodyReader.js';
-import DynamicBuffer from '../../../../../../src/network/mem/DynamicBuffer.js';
+import DynamicBuffer from '../../../../../../src/buffer/DynamicBuffer.js';
 
 /** A TCPConnection mock that returns `chunks` on successive `read()` calls, then null (EOF). */
 function mockConn(...chunks: (Buffer | null)[]) {
@@ -31,20 +31,21 @@ async function readAllAsString(reader: EOFBodyReader): Promise<string> {
 describe('EOFBodyReader', () => {
 
     describe('length', () => {
-        test('should expose length = 0 to signal nothing is read at start', () => {
+        test('should expose length = -1 to signal an unknown body length', () => {
             const reader = new EOFBodyReader(mockConn(), new DynamicBuffer());
-            expect(reader.length).toBe(0);
+            expect(reader.length).toBe(-1);
         });
 
-        test('should increase the length after read', async () => {
+        test('should keep length = -1 regardless of how much was read', async () => {
             const reader = new EOFBodyReader(mockConn(Buffer.from('hello')), new DynamicBuffer());
             await reader.read();
-            expect(reader.length).toBe(5);
+            expect(reader.length).toBe(-1);
         });
 
-        test('should throw when body length exceeded from max body length threshold', async () => {
+        test('should not throw on oversized bodies (length is unknown at construction)', async () => {
+            // length stays -1 throughout, so checkMaxSize never trips on this reader.
             const reader = new EOFBodyReader(mockConn(Buffer.from('x'.repeat(501))), new DynamicBuffer());
-            await expect(reader.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
+            await expect(reader.read()).resolves.not.toThrow();
         });
     });
 
