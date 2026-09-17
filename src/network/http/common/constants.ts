@@ -11,6 +11,7 @@ export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]+$/;
 
 /** RFC 7230 §4.1.1 — chunk-size grammar: 1*HEXDIG */
 export const HEX_DIGITS = /^[0-9A-Fa-f]+$/;
+export const DEC_DIGITS = /^\d+$/;
 
 /**
  * RFC 7230 token-char set as a numeric code lookup. Use with `String.charCodeAt(i)`
