@@ -83,7 +83,7 @@ export default class HttpRequest implements HttpRequestType {
         if (!this.isBodyAllowed && (bodyLen > 0 || chunked))
             throw new HttpError(400, 'Http body not allowed');
 
-        if (bodyLen > 0) return new StreamBody(conn.stream());
+        if (bodyLen > 0) return new StreamBody(conn.stream(), bodyLen);
         else if (chunked) return new StreamBody(parseChunks(conn.stream(), buf));
         else return new EmptyBody();
     }

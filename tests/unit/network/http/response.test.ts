@@ -4,8 +4,8 @@ import { mapErrorToResponse } from '../../../../src/network/http/response/mapErr
 import { ResponseWriter } from '../../../../src/network/http/response/ResponseWriter.js';
 import { HttpVersion } from '../../../../src/network/http/common/constants.js';
 import { HttpRequest, HttpResponse } from '../../../../src/network/http/common/types.js';
-import MemoryBodyReader from '../../../../src/network/http/request/body/MemoryBodyReader.js';
-import GeneratorBodyReader from '../../../../src/network/http/request/body/GeneratorBodyReader.js';
+import MemoryBody from '../../../../src/network/http/body/MemoryBody.js';
+import StreamBody from '../../../../src/network/http/body/StreamBody.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import {TCPConnection} from '../../../../src/network/tcp';
 import {ServerInfo} from '../../../../src/server/ServerInfo.js';
@@ -115,7 +115,7 @@ describe('ResponseWriter.write()', () => {
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
-                body: new MemoryBodyReader(Buffer.from('hello')),
+                body: new MemoryBody(Buffer.from('hello')),
                 headers: new Map(),
             };
 
@@ -127,7 +127,7 @@ describe('ResponseWriter.write()', () => {
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
-                body: new MemoryBodyReader(Buffer.from('hello')),
+                body: new MemoryBody(Buffer.from('hello')),
                 headers: new Map(),
             };
 
@@ -139,7 +139,7 @@ describe('ResponseWriter.write()', () => {
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
-                body: new MemoryBodyReader(Buffer.from('hello')),
+                body: new MemoryBody(Buffer.from('hello')),
                 headers: new Map(),
             };
 
@@ -150,13 +150,11 @@ describe('ResponseWriter.write()', () => {
 
     describe('chunked response', () => {
         test('should use chunked transfer-encoding when body has no known length', async () => {
-            // GeneratorBodyReader has unknown length (length === -1); pick an empty generator to
-            // exercise the chunked path without writing any body bytes.
             const response: HttpResponse = {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
                 headers: new Map(),
-                body: new GeneratorBodyReader((async function* () { /* empty */ })()),
+                body: new StreamBody((async function* () { /* empty */ })()),
             };
 
             await expect(ResponseWriter.write(conn, response)).resolves.toBeUndefined();
@@ -173,7 +171,7 @@ describe('ResponseWriter.write()', () => {
                 code: 200,
                 version: HttpVersion.HTTP_1_1,
                 headers: new Map(),
-                body: new GeneratorBodyReader(gen()),
+                body: new StreamBody(gen()),
             };
 
             await ResponseWriter.write(conn, response);

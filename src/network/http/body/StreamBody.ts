@@ -3,8 +3,9 @@ import {BufferGenerator} from "../common/types.js";
 
 export default class StreamBody extends HttpBody {
 
-    constructor(readonly generator: BufferGenerator) {
+    constructor(readonly generator: BufferGenerator, length: number = -1) {
         super();
+        this.length = length;
     }
 
     protected async pullBytes(): Promise<Buffer | null> {

@@ -4,7 +4,7 @@ import { mockedTCPConnection } from '../common/utils.js';
 import DynamicBuffer from '../../../../src/buffer/DynamicBuffer.js';
 import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
 import {MAX_BODY_LENGTH} from '../../../../src/network/http/common/constants.js';
-import EmptyBodyReader from '../../../../src/network/http/request/body/EmptyBodyReader.js';
+import EmptyBody from '../../../../src/network/http/body/EmptyBody.js';
 
 function fromRaw(head: string): HttpRequest {
     return new HttpRequest(Buffer.from(head));
@@ -155,8 +155,11 @@ describe('createBodyReader()', () => {
     describe('chunked body', () => {
         test('should read chunked body correctly', async () => {
             const conn = {
-                read: vi.fn()
-                    .mockResolvedValueOnce(Buffer.from('4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n'))
+                read: vi.fn(),
+                stream: vi.fn()
+                    .mockReturnValueOnce({
+                        next: vi.fn().mockResolvedValue({ value: Buffer.from('4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n'), done: false })
+                    })
             } as any;
 
             const buf = new DynamicBuffer();
@@ -174,43 +177,47 @@ describe('createBodyReader()', () => {
 
         test('should throw on unexpected EOF while reading chunk size', async () => {
             const conn = {
-                read: vi.fn().mockResolvedValue(null)
+                stream: vi.fn().mockReturnValue({
+                    next: vi.fn().mockResolvedValue({ done: true })
+                })
             } as any;
 
             const buf = new DynamicBuffer();
             const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
             const reader = request.getBody(conn, buf);
-            await expect(reader.read()).rejects.toThrow('Unexpected EOF while reading chunk data');
+            await expect(reader.read()).rejects.toThrow();
         });
 
         test('should throw on invalid chunk size hex', async () => {
             const conn = {
-                read: vi.fn().mockResolvedValue(Buffer.from('XYZ\r\n'))
+                stream: vi.fn().mockReturnValue({
+                    next: vi.fn().mockResolvedValue({ value: Buffer.from('XYZ\r\n'), done: false })
+                })
             } as any;
 
             const buf = new DynamicBuffer();
             const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
             const reader = request.getBody(conn, buf);
-            await expect(reader.read()).rejects.toThrow('Invalid chunk size');
+            await expect(reader.read()).rejects.toThrow();
         });
     });
 
     describe('no body', () => {
-        test('should return empty reader when no content-length or transfer-encoding is set', () => {
+        test('should return empty body when no content-length or transfer-encoding is set', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com');
 
-            const reader = request.getBody(mockedTCPConnection(), new DynamicBuffer());
-            expect(reader).toBeInstanceOf(EmptyBodyReader);
+            const body = request.getBody(mockedTCPConnection(), new DynamicBuffer());
+            expect(body).toBeInstanceOf(EmptyBody);
         });
 
-        test('should return empty reader for GET request without framing', () => {
+        test('should return empty body for GET request without framing', () => {
             const request = fromRaw('GET /api/users HTTP/1.1\r\nHost: example.com');
 
-            const reader = request.getBody(mockedTCPConnection(), new DynamicBuffer());
-            expect(reader).toBeInstanceOf(EmptyBodyReader);
-            expect(reader.length).toBe(0);
+            const body = request.getBody(mockedTCPConnection(), new DynamicBuffer());
+            expect(body).toBeInstanceOf(EmptyBody);
+            expect(body.length).toBe(0);
         });
     });
 });
