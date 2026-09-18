@@ -18,4 +18,11 @@ describe('MemoryBody', () => {
             expect(await body.read()).toBeNull();
         });
     });
+
+    describe('max size enforcement', () => {
+        test('should throw if buffer exceeds max size', () => {
+            const largeBuf = Buffer.alloc(1024 * 1024 + 1);
+            expect(() => new MemoryBody(largeBuf)).toThrow('Body length exceeded the maximum number of bytes');
+        });
+    });
 });
