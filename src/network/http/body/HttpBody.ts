@@ -25,8 +25,11 @@ export abstract class HttpBody {
     }
 
     protected checkMaxSize(): void {
-        if (this.length !== -1 && this.length <= MAX_BODY_LENGTH) return;
-        if (this.readBytes <= MAX_BODY_LENGTH) return;
-        throw new Error('Body length exceeded the maximum number of bytes');
+        if (this.length !== -1 && this.length > MAX_BODY_LENGTH) {
+            throw new Error('Body length exceeded the maximum number of bytes');
+        }
+        if (this.readBytes > MAX_BODY_LENGTH) {
+            throw new Error('Body length exceeded the maximum number of bytes');
+        }
     }
 }
