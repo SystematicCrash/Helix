@@ -1,13 +1,13 @@
 import {HttpRequest, HttpResponse} from "../common/types.js";
-import GeneratorBodyReader from "./body/GeneratorBodyReader.js";
-import MemoryBodyReader from "./body/MemoryBodyReader.js";
 import {serveStaticFile} from "../../../fs/index.js";
-import {BodyReader} from "./body/BodyReader.js";
+import {HttpBody} from "../body/HttpBody.js";
 import {renderHtml} from "../../../infra/index.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import HttpError from "../common/HttpError.js";
 import FsError from "../../../fs/common/FsError.js";
-import {FsErrCode} from "../../../fs/common/constants.js";
+import {FsErrCode} from "../../../fs/index.js";
+import MemoryBody from "../body/MemoryBody.js";
+import StreamBody from "../body/StreamBody.js";
 
 type BufferGenerator = AsyncGenerator<Buffer, void, void>;
 
@@ -35,15 +35,15 @@ function rethrowFsNotFound(err: unknown): never {
  */
 export async function handleRequest(
     request: HttpRequest,
-    body: BodyReader,
+    body: HttpBody,
     info: ServerInfo,
 ): Promise<HttpResponse> {
-    let payload: BodyReader;
+    let payload: HttpBody;
 
     if (request.url.startsWith('/files')) {
         const fileUrl = request.url.slice('/files'.length) || '/';
         try {
-            payload = new MemoryBodyReader(await serveStaticFile(fileUrl));
+            payload = new MemoryBody(await serveStaticFile(fileUrl));
         } catch (err) {
             rethrowFsNotFound(err);
         }
@@ -53,14 +53,14 @@ export async function handleRequest(
             interface: info.iface,
             port: info.port,
         });
-        payload = new MemoryBodyReader(html);
+        payload = new MemoryBody(html);
     } else {
         switch (request.url) {
             case '/echo':
                 payload = body;
                 break;
             case '/sheep':
-                payload = new GeneratorBodyReader(countSheep());
+                payload = new StreamBody(countSheep());
                 break;
             default:
                 throw new HttpError(404, 'Resource not found');
