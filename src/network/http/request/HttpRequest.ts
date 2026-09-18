@@ -4,20 +4,21 @@ import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {parseRangeHeader} from "./parser/parseRange.js";
 import {HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
-import {ByteRange, HttpRequest as HttpRequestType} from "../common/types.js";
+import {HttpRequest as HttpRequestType} from "../common/types.js";
 import HttpError from "../common/HttpError.js";
 import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
-import FixedBodyReader from "./body/FixedBodyReader.js";
-import ChunkedBodyReader from "./body/ChunkedBodyReader.js";
-import EmptyBodyReader from "./body/EmptyBodyReader.js";
-import {BodyReader} from "./body/BodyReader.js";
+import {HttpBody} from "../body/HttpBody.js";
+import {ByteRange} from "../../../common/types.js";
+import StreamBody from "../body/StreamBody.js";
+import {parseChunks} from "./parser/parseChunks.js";
+import EmptyBody from "../body/EmptyBody.js";
 
 /*
  * Parsed HTTP request head value object.
  * Holds the method, URL, version, and headers, and validates them on construction.
  * The body is deliberately not stored on this object: it can be arbitrarily large
- * or chunked, so it is streamed lazily via a BodyReader created by
+ * or chunked, so it is streamed lazily via a HttpBody created by
  * createBodyReader() below once the head has been parsed.
  */
 export default class HttpRequest implements HttpRequestType {
@@ -38,7 +39,7 @@ export default class HttpRequest implements HttpRequestType {
     }
 
     /** Parsed range if present. */
-    get range(): ByteRange | null {
+    get rangeSet(): ByteRange[] | null {
         const range = this.headers.get(HttpHeader.Range);
         return range ? parseRangeHeader(range) : null;
     }
@@ -69,11 +70,11 @@ export default class HttpRequest implements HttpRequestType {
     }
 
     /**
-     * Creates the lazy BodyReader that streams this request's body.
+     * Creates the lazy HttpBody that streams this request's body.
      * Selects the concrete reader based on Content-Length, Transfer-Encoding,
      * or connection-close framing, validating the head-to-body contract first.
      */
-    public getBodyReader(conn: TCPConnection, buf: DynamicBuffer): BodyReader {
+    public getBody(conn: TCPConnection, buf: DynamicBuffer): HttpBody {
         const bodyLen = this.contentLength;
         const chunked = this.transferEncoding === TransferEncoding.CHUNKED;
 
@@ -82,9 +83,9 @@ export default class HttpRequest implements HttpRequestType {
         if (!this.isBodyAllowed && (bodyLen > 0 || chunked))
             throw new HttpError(400, 'Http body not allowed');
 
-        if (bodyLen > 0) return new FixedBodyReader(conn, buf, bodyLen);
-        else if (chunked) return new ChunkedBodyReader(conn, buf);
-        else return new EmptyBodyReader();
+        if (bodyLen > 0) return new StreamBody(conn.stream());
+        else if (chunked) return new StreamBody(parseChunks(conn.stream(), buf));
+        else return new EmptyBody();
     }
 
     /**
