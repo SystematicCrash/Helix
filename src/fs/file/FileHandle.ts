@@ -25,6 +25,7 @@ type Tail = Promise<unknown> | undefined;
 export default class FileHandle {
     private _closed = false;
     private inFlight: Tail = undefined;
+    private _stats: FileStats | null = null;
 
     private constructor(
         private readonly handle: import("node:fs/promises").FileHandle,
@@ -61,11 +62,14 @@ export default class FileHandle {
     }
 
     /** Returns the file's metadata. Serializes through the in-flight lock. */
-    public async stat(): Promise<FileStats> {
+    public async getStats(): Promise<FileStats> {
         return this.runExclusive(async () => {
             this.assertNotClosed(FsOperation.STAT);
             try {
-                return FileStats.from(await this.handle.stat());
+                if (!this._stats) {
+                    this._stats = FileStats.from(await this.handle.stat());
+                }
+                return this._stats;
             } catch (err) {
                 throw this.wrap(err, FsErrCode.STAT_FAILED);
             }
