@@ -5,6 +5,7 @@
 node_modules
 .hermes
 .codegraph
+repomix-output.xml
 
 # Secret
 .env

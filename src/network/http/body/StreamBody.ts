@@ -1,5 +1,5 @@
 import {HttpBody} from "./HttpBody.js";
-import {BufferGenerator} from "../../common/types.js";
+import {BufferGenerator} from "../common/types.js";
 
 export default class StreamBody extends HttpBody {
 
