@@ -1,9 +1,9 @@
 import HttpError from "../common/HttpError.js";
 import {HttpVersion} from "../common/constants.js";
 import {HttpRequest, HttpResponse} from "../common/types.js";
-import MemoryBodyReader from "../request/body/MemoryBodyReader.js";
 import {renderHtml} from "../../../infra/index.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
+import MemoryBody from "../body/MemoryBody.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
 export function mapErrorToResponse(
@@ -12,7 +12,7 @@ export function mapErrorToResponse(
     info: ServerInfo,
     code: number = 500,
 ): HttpResponse {
-    let body: MemoryBodyReader;
+    let body: MemoryBody;
 
     if (error instanceof HttpError) {
         if (error.status === 404) {
@@ -21,14 +21,14 @@ export function mapErrorToResponse(
                 method: request?.method ?? 'UNKNOWN',
                 version: request?.version ?? info.version,
             });
-            body = new MemoryBodyReader(html);
+            body = new MemoryBody(html);
             code = 404;
         } else {
-            body = new MemoryBodyReader(Buffer.from(error.message));
+            body = new MemoryBody(Buffer.from(error.message));
             code = error.status;
         }
     } else {
-        body = new MemoryBodyReader(Buffer.from('Internal Server Error'));
+        body = new MemoryBody(Buffer.from('Internal Server Error'));
     }
 
 
