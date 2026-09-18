@@ -5,12 +5,12 @@ import {
     DEFAULT_READ_CHUNK_SIZE,
     FsErrCode,
     FsOperation,
-    errnoToFsErrCode,
-    CALLER_BUFFER_SIZE
+    errnoToFsErrCode
 } from "../common/constants.js";
 import FsError from "../common/FsError.js";
 import {resolveIOOptions} from "./IOOptions.js";
 import {IOOptions, RawIOOptions} from "../common/types.js";
+import {BufferGenerator} from "../../network/http/common/types.js";
 
 /** Resolves a value from the previous in-flight operation, or undefined if none. */
 type Tail = Promise<unknown> | undefined;
@@ -104,7 +104,7 @@ export default class FileHandle {
      * Holds the in-flight lock for the lifetime of the stream so concurrent reads/stat/close
      * on the same handle wait until iteration finishes.
      */
-    public async* stream(chunkSize: number = DEFAULT_READ_CHUNK_SIZE, position?: number): AsyncGenerator<Buffer> {
+    public async* stream(chunkSize: number = DEFAULT_READ_CHUNK_SIZE, position?: number): BufferGenerator {
         if (chunkSize <= 0 || !Number.isInteger(chunkSize)) {
             throw FsError.from(FsErrCode.INVALID_ARGUMENT, 'Chunk size must be a positive integer');
         }
