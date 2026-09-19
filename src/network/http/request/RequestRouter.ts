@@ -1,4 +1,4 @@
-import {HttpRequest, HttpResponse} from "../common/types.js";
+import {HttpResponse} from "../common/types.js";
 import {serveStaticFile} from "../../../fs/index.js";
 import {HttpBody} from "../body/HttpBody.js";
 import {renderHtml} from "../../../infra/index.js";
@@ -8,6 +8,8 @@ import FsError from "../../../fs/common/FsError.js";
 import {FsErrCode} from "../../../fs/index.js";
 import MemoryBody from "../body/MemoryBody.js";
 import StreamBody from "../body/StreamBody.js";
+import {HttpHeader} from "../common/constants.js";
+import HttpRequest from "./HttpRequest.js";
 
 type BufferGenerator = AsyncGenerator<Buffer, void, void>;
 
@@ -33,17 +35,23 @@ function rethrowFsNotFound(err: unknown): never {
 /**
  * Routes the request to the appropriate handler and returns an HTTP response.
  */
-export async function handleRequest(
-    request: HttpRequest,
-    body: HttpBody,
-    info: ServerInfo,
-): Promise<HttpResponse> {
+export async function handleRequest(request: HttpRequest, body: HttpBody, info: ServerInfo): Promise<HttpResponse> {
     let payload: HttpBody;
+    let statusCode: number = 200;
+    const headers = new Map<string, string>();
 
     if (request.url.startsWith('/files')) {
         const fileUrl = request.url.slice('/files'.length) || '/';
         try {
-            payload = new MemoryBody(await serveStaticFile(fileUrl));
+            const file = await serveStaticFile(fileUrl, request.rangeSet ?? []);
+
+            payload = new StreamBody(file.stream, file.size);
+            statusCode = file.status;
+
+            headers.set(HttpHeader.AcceptRange, 'bytes');
+            if (file.contentRange) {
+                headers.set('content-range', file.contentRange);
+            }
         } catch (err) {
             rethrowFsNotFound(err);
         }
@@ -68,9 +76,9 @@ export async function handleRequest(
     }
 
     return {
-        code: 200,
+        code: statusCode,
         version: request.version,
-        headers: new Map([['Server', 'Helix WebServer']]),
+        headers,
         body: payload,
     };
 }
