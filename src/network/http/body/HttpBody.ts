@@ -1,4 +1,5 @@
-import {MAX_BODY_LENGTH} from "../common/constants.js";
+import {HTTP_STATUS, MAX_BODY_LENGTH} from "../common/constants.js";
+import HttpError from "../common/HttpError.js";
 
 export abstract class HttpBody {
     /**
@@ -26,10 +27,10 @@ export abstract class HttpBody {
 
     protected checkMaxSize(): void {
         if (this.length !== -1 && this.length > MAX_BODY_LENGTH) {
-            throw new Error('Body length exceeded the maximum number of bytes');
+            throw HttpError.contentTooLarge();
         }
         if (this.readBytes > MAX_BODY_LENGTH) {
-            throw new Error('Body length exceeded the maximum number of bytes');
+            throw HttpError.contentTooLarge();
         }
     }
 }

@@ -21,7 +21,7 @@ export default class HttpError extends Error {
         return new HttpError(404, msg, false);
     }
 
-    static methodNotAllowed(allowed: string[]): HttpError {
+    static methodNotAllowed(): HttpError {
         return new HttpError(405, 'Method Not Allowed', false);
     }
 
@@ -29,7 +29,15 @@ export default class HttpError extends Error {
         return new HttpError(416, 'Range Not Satisfiable', false);
     }
 
-    static payloadTooLarge(msg = 'Payload Too Large'): HttpError {
+    static contentTooLarge(msg = 'Content Too Large'): HttpError {
         return new HttpError(413, msg, true);
+    }
+
+    static invalidHeaders(): HttpError {
+        return HttpError.badRequest('Invalid headers format');
+    }
+
+    static invalidRequestLine(): HttpError {
+        return HttpError.badRequest('Malformed request Line');
     }
 }

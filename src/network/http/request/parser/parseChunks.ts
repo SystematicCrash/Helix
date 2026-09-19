@@ -26,7 +26,7 @@ export async function* parseChunks(source: BufferGenerator, buff: DynamicBuffer,
 async function pullFromSource(source: BufferGenerator, buff: DynamicBuffer): Promise<void> {
     const result = await source.next();
     if (result.done || result.value === null) {
-        throw new HttpError(400, "Unexpected EOF while reading chunk data");
+        throw HttpError.badRequest("Unexpected EOF", true);
     }
     buff.push(result.value);
 }
@@ -45,7 +45,7 @@ async function readChunkSize(source: BufferGenerator, buff: DynamicBuffer): Prom
         const size = parseChunkSizeLine(line);
 
         if (size > MAX_CHUNK_SIZE) {
-            throw new HttpError(413, `Exceeded chunk size: "${size}"`);
+            throw HttpError.contentTooLarge(`Chunk size exceeded ${MAX_CHUNK_SIZE}`);
         }
 
         buff.clear(idx + CRLF.length);
@@ -74,7 +74,7 @@ async function skipCRLF(source: BufferGenerator, buff: DynamicBuffer): Promise<v
     }
 
     if (!buff.getView(CRLF.length).equals(CRLF)) {
-        throw new HttpError(400, "Invalid chunk framing: missing CRLF after chunk data");
+        throw HttpError.badRequest('Invalid chunk framing');
     }
 
     buff.clear(CRLF.length);
@@ -86,12 +86,12 @@ function parseChunkSizeLine(line: string): number {
     const sizePart = (semi < 0 ? line : line.slice(0, semi)).trim();
 
     if (sizePart.length === 0 || !HEX_DIGITS.test(sizePart)) {
-        throw new HttpError(400, `Invalid chunk size: "${line}"`);
+        throw HttpError.badRequest('Invalid chunk framing');
     }
 
     const size = parseInt(sizePart, 16);
     if (!Number.isFinite(size) || size < 0) {
-        throw new HttpError(400, `Invalid chunk size: "${line}"`);
+        throw HttpError.badRequest('Invalid chunk framing');
     }
     return size;
 }

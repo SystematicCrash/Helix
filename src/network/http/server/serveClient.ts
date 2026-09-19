@@ -28,7 +28,7 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
                         await conn.close(); // EOF
                         return;
                     }
-                    throw new HttpError(400, 'Unexpected EOF');
+                    throw HttpError.badRequest("Unexpected EOF", true);
                 }
 
                 buf.push(data);
@@ -63,7 +63,7 @@ function cutRequest(buf: DynamicBuffer): HttpRequest | null {
 
     if (idx < 0) {
         if (buf.length > MAX_HEADER_LENGTH) {
-            throw new HttpError(413, 'Too long header');
+            throw HttpError.contentTooLarge('Headers too large');
         }
         return null;
     }

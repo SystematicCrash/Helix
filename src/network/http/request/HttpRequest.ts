@@ -49,12 +49,15 @@ export default class HttpRequest {
         const contentLen = this.headers.get(HttpHeader.ContentLength);
         if (!contentLen) return -1;
 
-        if (!/^\d+$/.test(contentLen))
-            throw new HttpError(400, 'Invalid Content-Length');
+        if (!/^\d+$/.test(contentLen)) {
+            throw HttpError.invalidHeaders();
+        }
 
         const bodyLen = Number(contentLen);
-        if (bodyLen > MAX_BODY_LENGTH)
-            throw new HttpError(413, 'Content Too Large');
+        if (bodyLen > MAX_BODY_LENGTH) {
+            throw HttpError.contentTooLarge();
+        }
+
         return bodyLen;
     }
 
@@ -77,10 +80,12 @@ export default class HttpRequest {
         const bodyLen = this.contentLength;
         const chunked = this.transferEncoding === TransferEncoding.CHUNKED;
 
-        if (bodyLen > 0 && chunked)
-            throw new HttpError(400, 'Bad Request');
-        if (!this.isBodyAllowed && (bodyLen > 0 || chunked))
-            throw new HttpError(400, 'Http body not allowed');
+        if (bodyLen > 0 && chunked) {
+            throw HttpError.invalidHeaders();
+        }
+        if (!this.isBodyAllowed && (bodyLen > 0 || chunked)) {
+            throw HttpError.badRequest("Request body not allowed");
+        }
 
         if (bodyLen > 0) return new StreamBody(conn.stream(), bodyLen);
         else if (chunked) return new StreamBody(parseChunks(conn.stream(), buf));
@@ -94,14 +99,16 @@ export default class HttpRequest {
         data = stripBuffer(data, CRLF);
         const lines = splitBuffer(data, CRLF);
 
-        if (!lines.length) throw new HttpError(400, "lines cannot be empty");
+        if (!lines.length) {
+            throw HttpError.badRequest();
+        }
 
         const firstLine = lines[0];
-        if (!firstLine)
-            throw new HttpError(400, "empty request line");
+        if (!firstLine) {
+            throw HttpError.invalidRequestLine();
+        }
 
         const {method, url, version} = parseRequestLine(firstLine);
-
         this.headers = parseHeaders(lines.slice(1, lines.length));
         this.url = url;
         this.method = method;

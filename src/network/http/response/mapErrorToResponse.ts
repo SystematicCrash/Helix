@@ -1,9 +1,10 @@
 import HttpError from "../common/HttpError.js";
 import {HttpVersion} from "../common/constants.js";
-import {HttpRequest, HttpResponse} from "../common/types.js";
+import {HttpResponse} from "../common/types.js";
 import {renderHtml} from "../../../infra/index.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import MemoryBody from "../body/MemoryBody.js";
+import HttpRequest from "../request/HttpRequest.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
 export function mapErrorToResponse(

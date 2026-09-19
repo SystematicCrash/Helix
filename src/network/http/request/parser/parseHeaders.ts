@@ -27,13 +27,13 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
 
         const entry = parseHeaderLine(header);
         if (!isValidHeader(entry)) {
-            throw new HttpError(400, 'Bad Headers');
+            throw HttpError.invalidHeaders();
         }
 
         const existing = parsed.get(entry[0]);
         if (existing !== undefined) {
             if (UNIQUE_HEADERS.includes(entry[0] as HttpHeader)) {
-                throw new HttpError(400, 'Bad Headers');
+                throw HttpError.invalidHeaders();
             }
             entry[1] = concatenateValues(entry[0], existing, entry[1]);
         }
@@ -52,12 +52,12 @@ export function parseHeaders(rawHeaders: Buffer[]): Map<string, string> {
  * no prior header, has no content, or produces an invalid value. */
 function applyObsFold(current: [string, string] | null, header: Buffer): string {
     if (current === null || header.toString('latin1').trim().length === 0) {
-        throw new HttpError(400, 'Bad Headers');
+        throw HttpError.invalidHeaders();
     }
 
     const unfolded = `${current[1]} ${trimValue(header)}`;
     if (!isValidValue(unfolded)) {
-        throw new HttpError(400, 'Bad Headers');
+        throw HttpError.invalidHeaders();
     }
 
     return unfolded;
@@ -86,9 +86,9 @@ function concatenateValues(name: string, value: string, newValue: string): strin
 /** Splits a single raw header buffer on the first colon into a normalized name/value pair. */
 function parseHeaderLine(rawHeader: Buffer): [string, string] {
     const idx = rawHeader.indexOf(':');
-    if (idx === -1) throw new HttpError(400, 'Bad Headers');
+    if (idx === -1) throw HttpError.invalidHeaders();
 
-    const name   = rawHeader.subarray(0, idx).toString().trim().toLowerCase();
+    const name = rawHeader.subarray(0, idx).toString().trim().toLowerCase();
     const value = rawHeader.subarray(idx + 1).toString('latin1').trim();
 
     return [name, value];
@@ -111,6 +111,6 @@ function isValidValue(value: string): boolean {
 function checkMandatories(headers: Map<string, string>): void {
     for (const mandatory of MANDATORY_HEADERS) {
         if (!headers.has(mandatory as string))
-            throw new HttpError(400, `${mandatory} header must be present`);
+            throw HttpError.invalidHeaders();
     }
 }

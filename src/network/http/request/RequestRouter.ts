@@ -27,7 +27,7 @@ async function* countSheep(): BufferGenerator {
  */
 function rethrowFsNotFound(err: unknown): never {
     if (err instanceof FsError && FsError.is(err, FsErrCode.NOT_FOUND)) {
-        throw new HttpError(404, 'Resource not found');
+        throw HttpError.notFound();
     }
     throw err;
 }
@@ -71,7 +71,7 @@ export async function handleRequest(request: HttpRequest, body: HttpBody, info: 
                 payload = new StreamBody(countSheep());
                 break;
             default:
-                throw new HttpError(404, 'Resource not found');
+                throw HttpError.notFound();
         }
     }
 
