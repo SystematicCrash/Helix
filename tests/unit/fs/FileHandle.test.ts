@@ -251,7 +251,7 @@ describe('FileHandle.stat()', () => {
         await writeFile(p, '0123456789');
         const handle = await FileHandle.open(p);
 
-        const stats = await handle.stat();
+        const stats = await handle.getStats();
         expect(stats).toBeInstanceOf(FileStats);
         expect(stats.size).toBe(10);
         expect(stats.isFile).toBe(true);
@@ -265,7 +265,7 @@ describe('FileHandle.stat()', () => {
         await writeFile(p, 'meta');
         const handle = await FileHandle.open(p);
 
-        const stats = await handle.stat();
+        const stats = await handle.getStats();
         expect(stats.mode).toBeGreaterThan(0);
         expect(stats.uid).toBeGreaterThanOrEqual(0);
         expect(stats.gid).toBeGreaterThanOrEqual(0);
@@ -312,7 +312,7 @@ describe('operations on a closed handle', () => {
         const handle = await FileHandle.open(p);
         await handle.close();
 
-        await expect(handle.stat()).rejects.toThrow(FsError);
+        await expect(handle.getStats()).rejects.toThrow(FsError);
     });
 });
 
@@ -397,7 +397,7 @@ describe('FileHandle concurrent operation serialization', () => {
         const handle = await FileHandle.open(p);
 
         const [stats, data] = await Promise.all([
-            handle.stat(),
+            handle.getStats(),
             handle.read({length: 3}),
         ]);
         expect(stats.size).toBe(3);

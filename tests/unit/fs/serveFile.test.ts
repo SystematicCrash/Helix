@@ -28,25 +28,35 @@ afterAll(async () => {
 describe('serveStaticFile()', () => {
     test('should return the file contents for an existing file', async () => {
         await writeFile(join(publicDir, 'hello.txt'), 'file content');
-        const content = await serveStaticFile('/hello.txt');
-        expect(content.toString()).toBe('file content');
+        const result = await serveStaticFile('/hello.txt');
+        const chunks = [];
+        for await (const chunk of result.stream) chunks.push(chunk);
+        expect(Buffer.concat(chunks).toString()).toBe('file content');
     });
 
     test('should serve index.html for the root url', async () => {
         await writeFile(join(publicDir, 'index.html'), 'home');
-        expect((await serveStaticFile('/')).toString()).toBe('home');
+        const result = await serveStaticFile('/');
+        const chunks = [];
+        for await (const chunk of result.stream) chunks.push(chunk);
+        expect(Buffer.concat(chunks).toString()).toBe('home');
     });
 
     test('should serve nested paths', async () => {
         await mkdir(join(publicDir, 'assets'));
         await writeFile(join(publicDir, 'assets', 'app.js'), 'js');
-        expect((await serveStaticFile('/assets/app.js')).toString()).toBe('js');
+        const result = await serveStaticFile('/assets/app.js');
+        const chunks = [];
+        for await (const chunk of result.stream) chunks.push(chunk);
+        expect(Buffer.concat(chunks).toString()).toBe('js');
     });
 
     test('should strip query strings and fragments from the url', async () => {
         await writeFile(join(publicDir, 'query.txt'), 'q');
-        const content = await serveStaticFile('/query.txt?x=1#frag');
-        expect(content.toString()).toBe('q');
+        const result = await serveStaticFile('/query.txt?x=1#frag');
+        const chunks = [];
+        for await (const chunk of result.stream) chunks.push(chunk);
+        expect(Buffer.concat(chunks).toString()).toBe('q');
     });
 
     test('should reject path traversal with FsError INVALID_PATH', async () => {
@@ -66,14 +76,19 @@ describe('serveStaticFile()', () => {
 
     test('should read an empty file as an empty buffer', async () => {
         await writeFile(join(publicDir, 'empty.txt'), '');
-        const content = await serveStaticFile('/empty.txt');
-        expect(content.length).toBe(0);
+        const result = await serveStaticFile('/empty.txt');
+        const chunks = [];
+        for await (const chunk of result.stream) chunks.push(chunk);
+        expect(Buffer.concat(chunks).length).toBe(0);
     });
 
     test('should read a file larger than one chunk', async () => {
         const content = 'x'.repeat(200_000);
         await writeFile(join(publicDir, 'large.txt'), content);
-        expect((await serveStaticFile('/large.txt')).toString()).toBe(content);
+        const result = await serveStaticFile('/large.txt');
+        const chunks = [];
+        for await (const chunk of result.stream) chunks.push(chunk);
+        expect(Buffer.concat(chunks).toString()).toBe(content);
     });
 });
 
