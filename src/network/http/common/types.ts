@@ -6,13 +6,6 @@ export interface ChunkExtension {
     readonly value: string | null;
 }
 
-export interface HttpRequest {
-    method: string;
-    url: string;
-    version: string;
-    headers: Map<string, string>;
-}
-
 export interface HttpResponse {
     code: number;
     version: string;

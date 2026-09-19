@@ -4,7 +4,6 @@ import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {parseRangeHeader} from "./parser/parseRange.js";
 import {HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
-import {HttpRequest as HttpRequestType} from "../common/types.js";
 import HttpError from "../common/HttpError.js";
 import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
@@ -21,7 +20,7 @@ import EmptyBody from "../body/EmptyBody.js";
  * or chunked, so it is streamed lazily via a HttpBody created by
  * createBodyReader() below once the head has been parsed.
  */
-export default class HttpRequest implements HttpRequestType {
+export default class HttpRequest {
     public method!: string;
     public url!: string;
     public version!: string;
