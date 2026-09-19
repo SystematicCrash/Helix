@@ -13,5 +13,5 @@ repomix-output.xml
 # Build
 dist
 
-# CodeGraph — local index/daemon state, regenerated per machine
-.codegraph/
+# Assets
+public
