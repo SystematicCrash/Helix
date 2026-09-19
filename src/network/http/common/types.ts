@@ -20,4 +20,11 @@ export interface HttpResponse {
     body: HttpBody;
 }
 
+export interface StaticFileStream {
+    stream: BufferGenerator;
+    size: number;
+    status: number;
+    contentRange?: string;
+}
+
 export type BufferGenerator = AsyncGenerator<Buffer, void, void>;
