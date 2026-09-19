@@ -57,6 +57,7 @@ export enum HttpHeader {
     Accept            = 'accept',
     AcceptEncoding    = 'accept-encoding',
     AcceptLanguage    = 'accept-language',
+    AcceptRange       = 'accept-range',
     Authorization     = 'authorization',
     ContentType       = 'content-type',
     ContentLength     = 'content-length',
