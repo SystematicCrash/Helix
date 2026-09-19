@@ -10,6 +10,7 @@ export default class FsError extends Error {
             message = typeof cause === 'string' ? cause : (cause.message || message);
         }
         super(message);
+        this.name = 'FsError';
     }
 
     static from(code: FsErrCode, cause?: Error | string): FsError {
