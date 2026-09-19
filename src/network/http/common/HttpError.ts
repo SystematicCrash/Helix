@@ -8,7 +8,6 @@ export default class HttpError extends Error {
         readonly status: number,
         message: string,
         readonly fatal: boolean = false,
-        readonly headers: Map<string, string> = new Map()
     ) {
         super(message);
         this.name = 'HttpError';
@@ -23,13 +22,11 @@ export default class HttpError extends Error {
     }
 
     static methodNotAllowed(allowed: string[]): HttpError {
-        const headers = new Map([['Allow', allowed.join(', ')]]);
-        return new HttpError(405, 'Method Not Allowed', false, headers);
+        return new HttpError(405, 'Method Not Allowed', false);
     }
 
     static rangeNotSatisfiable(totalLength: number): HttpError {
-        const headers = new Map([['Content-Range', `bytes */${totalLength}`]]);
-        return new HttpError(416, 'Range Not Satisfiable', false, headers);
+        return new HttpError(416, 'Range Not Satisfiable', false);
     }
 
     static payloadTooLarge(msg = 'Payload Too Large'): HttpError {
