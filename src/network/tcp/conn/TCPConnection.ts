@@ -8,6 +8,7 @@ import {
     IDLE_TIMEOUT,
     TCPErrCode,
 } from "../common/constants.js";
+import {BufferGenerator} from "../../http/common/types.js";
 
 /**
  * Provides a high-level promise-based wrapper around a Node.js TCP conn.
@@ -170,6 +171,14 @@ export default class TCPConnection {
         this.sockReader.finish(this._error);
         this.sockWriter.finish(this._error);
         this.socket.destroy();
+    }
+
+    public async* stream(): BufferGenerator {
+        while (true) {
+            const data = await this.read();
+            if (data === null) break;
+            yield data;
+        }
     }
 
     /**

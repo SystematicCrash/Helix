@@ -36,7 +36,7 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
                 if (!request) continue;
             }
 
-            const body = request.getBodyReader(conn, buf);
+            const body = request.getBody(conn, buf);
             const response = await handleRequest(request, body, info);
             await ResponseWriter.write(conn, response);
 

@@ -1,13 +1,15 @@
-import {HttpRequest, HttpResponse} from "../common/types.js";
-import GeneratorBodyReader from "./body/GeneratorBodyReader.js";
-import MemoryBodyReader from "./body/MemoryBodyReader.js";
+import {HttpResponse} from "../common/types.js";
 import {serveStaticFile} from "../../../fs/index.js";
-import {BodyReader} from "./body/BodyReader.js";
+import {HttpBody} from "../body/HttpBody.js";
 import {renderHtml} from "../../../infra/index.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import HttpError from "../common/HttpError.js";
 import FsError from "../../../fs/common/FsError.js";
-import {FsErrCode} from "../../../fs/common/constants.js";
+import {FsErrCode} from "../../../fs/index.js";
+import MemoryBody from "../body/MemoryBody.js";
+import StreamBody from "../body/StreamBody.js";
+import {HttpHeader} from "../common/constants.js";
+import HttpRequest from "./HttpRequest.js";
 
 type BufferGenerator = AsyncGenerator<Buffer, void, void>;
 
@@ -33,17 +35,23 @@ function rethrowFsNotFound(err: unknown): never {
 /**
  * Routes the request to the appropriate handler and returns an HTTP response.
  */
-export async function handleRequest(
-    request: HttpRequest,
-    body: BodyReader,
-    info: ServerInfo,
-): Promise<HttpResponse> {
-    let payload: BodyReader;
+export async function handleRequest(request: HttpRequest, body: HttpBody, info: ServerInfo): Promise<HttpResponse> {
+    let payload: HttpBody;
+    let statusCode: number = 200;
+    const headers = new Map<string, string>();
 
     if (request.url.startsWith('/files')) {
         const fileUrl = request.url.slice('/files'.length) || '/';
         try {
-            payload = new MemoryBodyReader(await serveStaticFile(fileUrl));
+            const file = await serveStaticFile(fileUrl, request.rangeSet ?? []);
+
+            payload = new StreamBody(file.stream, file.size);
+            statusCode = file.status;
+
+            headers.set(HttpHeader.AcceptRange, 'bytes');
+            if (file.contentRange) {
+                headers.set('content-range', file.contentRange);
+            }
         } catch (err) {
             rethrowFsNotFound(err);
         }
@@ -53,14 +61,14 @@ export async function handleRequest(
             interface: info.iface,
             port: info.port,
         });
-        payload = new MemoryBodyReader(html);
+        payload = new MemoryBody(html);
     } else {
         switch (request.url) {
             case '/echo':
                 payload = body;
                 break;
             case '/sheep':
-                payload = new GeneratorBodyReader(countSheep());
+                payload = new StreamBody(countSheep());
                 break;
             default:
                 throw new HttpError(404, 'Resource not found');
@@ -68,9 +76,9 @@ export async function handleRequest(
     }
 
     return {
-        code: 200,
+        code: statusCode,
         version: request.version,
-        headers: new Map([['Server', 'Helix WebServer']]),
+        headers,
         body: payload,
     };
 }

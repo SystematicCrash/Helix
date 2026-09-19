@@ -5,6 +5,7 @@
 node_modules
 .hermes
 .codegraph
+repomix-output.xml
 
 # Secret
 .env
@@ -12,5 +13,5 @@ node_modules
 # Build
 dist
 
-# CodeGraph — local index/daemon state, regenerated per machine
-.codegraph/
+# Assets
+public

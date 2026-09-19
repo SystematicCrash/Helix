@@ -1,5 +1,5 @@
-import {HTTP_STATUS} from "../common/constants.js";
-import {HttpResponse} from "../common/types.js";
+import {HTTP_STATUS} from "../../common/constants.js";
+import {HttpResponse} from "../../common/types.js";
 
 /** Serializes the response status line and header into a buffer. */
 export function encodeHeaders(response: HttpResponse): Buffer {

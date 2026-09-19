@@ -5,12 +5,14 @@ export const MAX_HEADER_LENGTH = 8 * 1024;
 export const MAX_REQUEST_LINE_LENGTH    = 8000;
 export const MAX_CHUNK_SIZE = 64 * 1024;
 export const MAX_BODY_LENGTH = 1024 * 1024;
+export const MAX_RANGES_LIMIT = 10;
 
 export const HEADER_NAME_REGEX = /^[-a-zA-Z0-9!#$%&'*+.^_`|~]+$/;
 export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]+$/;
 
 /** RFC 7230 §4.1.1 — chunk-size grammar: 1*HEXDIG */
 export const HEX_DIGITS = /^[0-9A-Fa-f]+$/;
+export const DEC_DIGITS = /^\d+$/;
 
 /**
  * RFC 7230 token-char set as a numeric code lookup. Use with `String.charCodeAt(i)`
@@ -55,6 +57,7 @@ export enum HttpHeader {
     Accept            = 'accept',
     AcceptEncoding    = 'accept-encoding',
     AcceptLanguage    = 'accept-language',
+    AcceptRange       = 'accept-range',
     Authorization     = 'authorization',
     ContentType       = 'content-type',
     ContentLength     = 'content-length',

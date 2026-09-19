@@ -5,6 +5,9 @@ import {spyOn} from "@vitest/spy";
 export function mockedTCPConnection(): TCPConnection {
     return {
         read: vi.fn().mockResolvedValue(Buffer.from('')),
+        stream: vi.fn().mockReturnValue({
+            next: vi.fn().mockResolvedValue({ done: true })
+        }),
         write: vi.fn().mockResolvedValue(undefined),
         flush: vi.fn().mockResolvedValue(undefined),
         close: vi.fn().mockResolvedValue(undefined),

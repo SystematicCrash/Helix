@@ -1,9 +1,9 @@
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
-import {CRLF} from "../../common/constants.js";
 import {HttpHeader, TransferEncoding} from "../common/constants.js";
 import {HttpResponse} from "../common/types.js";
-import {encodeHeaders} from "./encodeHeaders.js";
-import {BodyReader} from "../request/body/BodyReader.js";
+import {encodeHeaders} from "./encoder/encodeHeaders.js";
+import {HttpBody} from "../body/HttpBody.js";
+import {encodeChunk} from "./encoder/encodeChunk.js";
 
 /*
  * Serializes and streams HTTP responses to a connection.
@@ -33,7 +33,7 @@ export class ResponseWriter {
     /*
      * Streams a body of known length by writing each read chunk directly.
      */
-    private static async fixedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
+    private static async fixedWriter(conn: TCPConnection, body: HttpBody): Promise<void> {
         while (true) {
             const chunk = await body.read();
             if (chunk === null) break;
@@ -44,22 +44,13 @@ export class ResponseWriter {
     /*
      * Streams a body using chunked transfer encoding.
      */
-    private static async chunkedWriter(conn: TCPConnection, body: BodyReader): Promise<void> {
+    private static async chunkedWriter(conn: TCPConnection, body: HttpBody): Promise<void> {
         while (true) {
             const chunk = await body.read();
             if (chunk === null) break;
-
-            const framed = Buffer.concat([
-                Buffer.from(chunk.length.toString(16)),
-                CRLF,
-                chunk,
-                CRLF,
-            ]);
-
-            await conn.write(framed);
+            await conn.write(encodeChunk(chunk));
         }
 
-        const terminator = Buffer.concat([Buffer.from('0'), CRLF, CRLF]);
-        await conn.write(terminator);
+        await conn.write(encodeChunk(Buffer.alloc(0)));
     }
 }
