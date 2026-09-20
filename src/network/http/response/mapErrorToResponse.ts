@@ -8,7 +8,6 @@ import HttpResponse from "./HttpResponse.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
 export function mapErrorToResponse(error: HttpError, info: ServerInfo, request: HttpRequest | null): HttpResponse {
-    let body: MemoryBody;
     let response: HttpResponse;
 
     if (error.status === 404) {
