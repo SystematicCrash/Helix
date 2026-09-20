@@ -10,6 +10,9 @@ import {BUFFER_TO_HTTP_STATUS, FS_TO_HTTP_STATUS, TCP_TO_HTTP_STATUS} from "./co
  * FsError / BufferError / TCPError.
  */
 export function mapToHttpError(error: unknown): HttpError {
+    if (error instanceof HttpError) {
+        return error;
+    }
     if (error instanceof FsError) {
         const status = FS_TO_HTTP_STATUS[error.code] ?? 500;
         return new HttpError(status, error.message, true);
