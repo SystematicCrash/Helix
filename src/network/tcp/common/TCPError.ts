@@ -10,6 +10,7 @@ export default class TCPError extends Error {
             message = typeof cause === 'string' ? cause : (cause.message || message);
         }
         super(message);
+        this.name = 'TCPError';
     }
 
     static from(code: TCPErrCode, cause?: Error | string): TCPError {

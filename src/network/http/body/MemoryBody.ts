@@ -2,11 +2,17 @@ import {HttpBody} from "./HttpBody.js";
 
 export default class MemoryBody extends HttpBody {
     private done = false;
+    readonly buffer: Buffer;
 
-    constructor(readonly buffer: Buffer) {
+    constructor(data: Buffer | string) {
         super();
-        this.length = buffer.length;
+        this.buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+        this.length = data.length;
         this.checkMaxSize();
+    }
+
+    static from(data: Buffer | string): MemoryBody {
+        return new MemoryBody(Buffer.isBuffer(data) ? data : Buffer.from(data));
     }
 
     protected async pullBytes(): Promise<Buffer | null> {

@@ -30,7 +30,7 @@ Layered, protocol-only — **no Express, no frameworks:**
 
 ```text
 index.ts
-  └─ TCPListener  (port 1234, pauseOnConnect, max 100 connections)
+  └─ TCPServer  (port 1234, pauseOnConnect, max 100 connections)
       └─ TCPConnection  (read / write / flush / close / forceClose)
           ├─ SocketReader    (single pending read, timeout, zero-length filter)
           └─ SocketWriter    (buffered writes, 1 MB backpressure, flush retry)
@@ -43,7 +43,7 @@ http/server/serveClient.ts
 | Path                         | Contents                                                            |
 |------------------------------|---------------------------------------------------------------------|
 | 📦 `src/network/mem/`        | `DynamicBuffer`, `BufferError`, byte helpers (`splitBuffer`, `stripBuffer`) |
-| 🔌 `src/network/tcp/`        | `TCPListener`, `TCPConnection`, `SocketReader`, `SocketWriter`     |
+| 🔌 `src/network/tcp/`        | `TCPServer`, `TCPConnection`, `SocketReader`, `SocketWriter`     |
 | 🌐 `src/network/http/`       | Request parsing, body readers, response writer, routing             |
 
 ---

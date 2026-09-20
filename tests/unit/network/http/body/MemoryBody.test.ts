@@ -22,7 +22,7 @@ describe('MemoryBody', () => {
     describe('max size enforcement', () => {
         test('should throw if buffer exceeds max size', () => {
             const largeBuf = Buffer.alloc(1024 * 1024 + 1);
-            expect(() => new MemoryBody(largeBuf)).toThrow('Body length exceeded the maximum number of bytes');
+            expect(() => new MemoryBody(largeBuf)).toThrow('Content Too Large');
         });
     });
 });

@@ -20,6 +20,6 @@ describe('StreamBody', () => {
         })();
 
         const body = new StreamBody(generator);
-        await expect(body.read()).rejects.toThrow('Body length exceeded the maximum number of bytes');
+        await expect(body.read()).rejects.toThrow('Content Too Large');
     });
 });

@@ -1,3 +1,12 @@
+import HttpError from "./HttpError.js";
+import FsError from "../../../fs/common/FsError.js";
+import BufferError from "../../../buffer/BufferError.js";
+import TCPError from "../../tcp/common/TCPError.js";
+import {FsErrCode} from "../../../fs/index.js";
+import {BufferErrCode} from "../../../buffer/constants.js";
+import {TCPErrCode} from "../../tcp/index.js";
+import {CRLF} from "../../common/constants.js";
+
 export const MAX_HEADER_COUNT           = 100;
 export const MAX_HEADER_NAME_LENGTH     = 100;
 export const MAX_HEADER_VALUE_LENGTH    = 8000;
@@ -174,6 +183,52 @@ export const HTTP_STATUS: Record<number, string> = {
     511: 'Network Authentication Required',
 } as const;
 
+export const FS_TO_HTTP_STATUS: Record<FsErrCode, number> = {
+    [FsErrCode.NOT_FOUND]:             404,
+    [FsErrCode.PERMISSION_DENIED]:     403,
+    [FsErrCode.IS_DIRECTORY]:          400,
+    [FsErrCode.NOT_DIRECTORY]:         400,
+    [FsErrCode.ALREADY_EXISTS]:        409,
+    [FsErrCode.READ_FAILED]:           500,
+    [FsErrCode.OPEN_FAILED]:           500,
+    [FsErrCode.CLOSE_FAILED]:          500,
+    [FsErrCode.SEEK_FAILED]:           500,
+    [FsErrCode.STAT_FAILED]:           500,
+    [FsErrCode.PATH_TOO_LONG]:         400,
+    [FsErrCode.INVALID_PATH]:          400,
+    [FsErrCode.INVALID_ARGUMENT]:      400,
+    [FsErrCode.OUT_OF_SPACE]:          507,
+    [FsErrCode.SYMLINK_NOT_ALLOWED]:   403,
+    [FsErrCode.PATH_OUTSIDE_ROOT]:     403,
+    [FsErrCode.UNEXPECTED_ERROR]:      500,
+};
+
+export const BUFFER_TO_HTTP_STATUS: Record<BufferErrCode, number> = {
+    [BufferErrCode.MAX_SIZE_EXCEEDED]: 413,
+    [BufferErrCode.VIEW_EXCEEDED]:     500,
+    [BufferErrCode.CLEAR_EXCEEDED]:    500,
+};
+
+export const TCP_TO_HTTP_STATUS: Record<TCPErrCode, number> = {
+    [TCPErrCode.READ_AFTER_EOF]:            400,
+    [TCPErrCode.WRITE_AFTER_EOF]:           400,
+    [TCPErrCode.READ_AFTER_CLOSE]:          400,
+    [TCPErrCode.WRITE_AFTER_CLOSE]:         400,
+    [TCPErrCode.WRITE_BACKPRESSURE]:        503,
+    [TCPErrCode.EMPTY_DATA_BUFFER]:         400,
+    [TCPErrCode.SIMULTANEOUS_READ]:         500,
+    [TCPErrCode.SIMULTANEOUS_WRITE]:        500,
+    [TCPErrCode.IDLE_TIMEOUT]:              408,
+    [TCPErrCode.WRITE_TIMEOUT]:             504,
+    [TCPErrCode.READ_TIMEOUT]:              504,
+    [TCPErrCode.UNKNOWN_TIMEOUT]:           500,
+    [TCPErrCode.UNEXPECTED_ERROR]:          500,
+    [TCPErrCode.FORCED_CLOSE]:              503,
+    [TCPErrCode.CLOSED_WHILE_WRITE]:        503,
+    [TCPErrCode.MAXIMUM_CONNECTIONS_EXCEEDED]: 503,
+};
+
 export const MANDATORY_HEADERS = [HttpHeader.Host] as const;
 export const UNIQUE_HEADERS = [HttpHeader.Host, HttpHeader.ContentLength, HttpHeader.TransferEncoding];
 export const SUPPORTED_VERSIONS = [HttpVersion.HTTP_1_1];
+export const HEADER_TERMINATOR = Buffer.concat([CRLF, CRLF]);

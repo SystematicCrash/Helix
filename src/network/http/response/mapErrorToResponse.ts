@@ -1,41 +1,33 @@
 import HttpError from "../common/HttpError.js";
-import {HttpVersion} from "../common/constants.js";
-import {HttpRequest, HttpResponse} from "../common/types.js";
-import {renderHtml} from "../../../infra/index.js";
+import {HttpHeader, HttpVersion} from "../common/constants.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import MemoryBody from "../body/MemoryBody.js";
+import HttpRequest from "../request/HttpRequest.js";
+import {internalErrorPage, notFoundPage} from "./pages.js";
+import HttpResponse from "./HttpResponse.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
-export function mapErrorToResponse(
-    error: unknown,
-    request: HttpRequest | null,
-    info: ServerInfo,
-    code: number = 500,
-): HttpResponse {
-    let body: MemoryBody;
+export function mapErrorToResponse(error: HttpError, info: ServerInfo, request: HttpRequest | null): HttpResponse {
+    try {
+        let response: HttpResponse;
 
-    if (error instanceof HttpError) {
         if (error.status === 404) {
-            const html = renderHtml('notFound', {
-                path: request?.url ?? '',
-                method: request?.method ?? 'UNKNOWN',
-                version: request?.version ?? info.version,
-            });
-            body = new MemoryBody(html);
-            code = 404;
+            response = HttpResponse.html(error.status, notFoundPage(request, info));
+        } else if (error.status >= 500) {
+            response = HttpResponse.html(error.status, internalErrorPage(error.status, request, info));
         } else {
-            body = new MemoryBody(Buffer.from(error.message));
-            code = error.status;
+            response = HttpResponse.from(error.status, MemoryBody.from(error.message));
         }
-    } else {
-        body = new MemoryBody(Buffer.from('Internal Server Error'));
+
+        if (error.fatal) {
+            response.setHeader(HttpHeader.Connection, 'close');
+        }
+
+        return response;
+    } catch (error) {
+        return HttpResponse.from(500, MemoryBody.from('Internal server error'));
     }
-
-
-    return {
-        code,
-        version: HttpVersion.HTTP_1_1,
-        headers: new Map(),
-        body,
-    };
 }
+
+
+

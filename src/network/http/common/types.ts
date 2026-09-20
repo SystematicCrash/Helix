@@ -6,13 +6,6 @@ export interface ChunkExtension {
     readonly value: string | null;
 }
 
-export interface HttpResponse {
-    code: number;
-    version: string;
-    headers: Map<string, string>;
-    body: HttpBody;
-}
-
 export interface StaticFileStream {
     stream: BufferGenerator;
     size: number;

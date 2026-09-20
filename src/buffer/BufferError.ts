@@ -10,6 +10,7 @@ export default class BufferError extends Error {
             message = typeof cause === 'string' ? cause : (cause.message || message);
         }
         super(message);
+        this.name = 'BufferError';
     }
 
     static from(code: BufferErrCode, cause?: Error | string): BufferError {

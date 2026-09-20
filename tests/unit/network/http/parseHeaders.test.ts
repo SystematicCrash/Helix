@@ -28,24 +28,24 @@ describe('parseHeaders()', () => {
 
         test('should throw 400 when the mandatory Host header is missing', () => {
             expect(() => parseHeaders(raw('Accept: application/json')))
-                .toThrow(new HttpError(400, 'host header must be present'));
+                .toThrow(HttpError.invalidHeaders());
         });
     });
 
     describe('duplicated unique headers', () => {
         test('should throw 400 when a unique header is duplicated', () => {
             expect(() => parseHeaders(raw('Host: a', 'Host: b')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when Content-Length is duplicated', () => {
             expect(() => parseHeaders(raw('Content-Length: 5', 'Content-Length: 6')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when Transfer-Encoding is duplicated', () => {
             expect(() => parseHeaders(raw('Transfer-Encoding: chunked', 'Transfer-Encoding: chunked')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
     });
 
@@ -100,17 +100,17 @@ describe('parseHeaders()', () => {
 
         test('should throw 400 when the first header line is a continuation', () => {
             expect(() => parseHeaders(raw(' continued-value')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when the first line is a tab continuation', () => {
             expect(() => parseHeaders(raw('\tcontinued-value')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when a continuation line contains only whitespace', () => {
             expect(() => parseHeaders(raw('Host: example.com', 'X-Foo: first', '   ')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should treat a colon inside a continuation as value data, not a new header', () => {
@@ -122,7 +122,7 @@ describe('parseHeaders()', () => {
         test('should throw 400 when the unfolded value exceeds MAX_HEADER_VALUE_LENGTH', () => {
             const base = 'x'.repeat(MAX_HEADER_VALUE_LENGTH);
             expect(() => parseHeaders(raw('Host: example.com', 'X-Foo: ' + base, ' x')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should accept an unfolded value exactly at MAX_HEADER_VALUE_LENGTH', () => {
@@ -153,29 +153,29 @@ describe('parseHeaders()', () => {
     describe('invalid headers', () => {
         test('should throw 400 when a header line has no colon', () => {
             expect(() => parseHeaders(raw('NoColonHere')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when the header name is empty', () => {
             expect(() => parseHeaders(raw(': value')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when the header value is empty', () => {
             expect(() => parseHeaders(raw('Accept:')))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when the header name is too long', () => {
             const longName = 'x'.repeat(101);
             expect(() => parseHeaders(raw(`${longName}: value`)))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when the header value is too long', () => {
             const longValue = 'x'.repeat(8001);
             expect(() => parseHeaders(raw(`X-Foo: ${longValue}`)))
-                .toThrow(new HttpError(400, 'Bad Headers'));
+                .toThrow(HttpError.invalidHeaders());
         });
     });
 });

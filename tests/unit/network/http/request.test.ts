@@ -41,51 +41,51 @@ describe('new HttpRequest()', () => {
     describe('invalid method', () => {
         test('should throw 405 when method is not allowed', () => {
             expect(() => fromRaw('INVALID /user/messages HTTP/1.1\r\nHost: example.com'))
-                .toThrow(new HttpError(405, 'Method not allowed'));
+                .toThrow(HttpError.methodNotAllowed());
         });
 
         test('should throw 405 when method is lowercase', () => {
             expect(() => fromRaw('get /user/messages HTTP/1.1\r\nHost: example.com'))
-                .toThrow(new HttpError(405, 'Method not allowed'));
+                .toThrow(HttpError.methodNotAllowed());
         });
     });
 
     describe('invalid version', () => {
-        test('should throw 501 when HTTP version is not supported', () => {
+        test('should throw 505 when HTTP version is not supported', () => {
             expect(() => fromRaw('POST /user/messages HTTP/3\r\nHost: example.com'))
-                .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
+                .toThrow(new HttpError(505, 'HTTP Version Not Supported', true));
         });
 
-        test('should throw 501 when HTTP version is malformed', () => {
+        test('should throw 505 when HTTP version is malformed', () => {
             expect(() => fromRaw('POST /user/messages INVALID\r\nHost: example.com'))
-                .toThrow(new HttpError(501, 'Http version not supported. supported version: 1.1'));
+                .toThrow(new HttpError(505, 'HTTP Version Not Supported', true));
         });
     });
 
     describe('malformed request line', () => {
         test('should throw 400 when there are double spaces between fields', () => {
             expect(() => fromRaw('GET  /api/users HTTP/1.1\r\nHost: example.com'))
-                .toThrow(new HttpError(400, 'Malformed request line'));
+                .toThrow(HttpError.invalidRequestLine());
         });
 
         test('should throw 400 when there is a trailing space after the version', () => {
             expect(() => fromRaw('GET /api/users HTTP/1.1 \r\nHost: example.com'))
-                .toThrow(new HttpError(400, 'Malformed request line'));
+                .toThrow(HttpError.invalidRequestLine());
         });
 
         test('should throw 400 when the request line has a leading space', () => {
             expect(() => fromRaw(' GET /api/users HTTP/1.1\r\nHost: example.com'))
-                .toThrow(new HttpError(400, 'Malformed request line'));
+                .toThrow(HttpError.invalidRequestLine());
         });
 
         test('should throw 400 when the request line has only two fields', () => {
             expect(() => fromRaw('GET /api/users\r\nHost: example.com'))
-                .toThrow(new HttpError(400, 'Malformed request line'));
+                .toThrow(HttpError.invalidRequestLine());
         });
 
         test('should throw 400 when the request line uses tabs as separators', () => {
             expect(() => fromRaw('GET\t/api/users\tHTTP/1.1\r\nHost: example.com'))
-                .toThrow(new HttpError(400, 'Malformed request line'));
+                .toThrow(HttpError.invalidRequestLine());
         });
     });
 });
@@ -112,37 +112,37 @@ describe('createBodyReader()', () => {
         test('should throw 400 when content-length is not a number', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: abc');
             expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when content-length is negative', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: -1');
             expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when content-length is a float', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 12.5');
             expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when content-length has a leading plus sign', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: +100');
             expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 400 when content-length is hex', () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0x10');
             expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(new HttpError(400, 'Invalid Content-Length'));
+                .toThrow(HttpError.invalidHeaders());
         });
 
         test('should throw 413 when content-length exceeds MAX_BODY_LENGTH', () => {
             const request = fromRaw(`POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: ${MAX_BODY_LENGTH + 1}`);
             expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(new HttpError(413, 'Content Too Large'));
+                .toThrow(HttpError.contentTooLarge());
         });
 
         test('should accept content-length exactly at MAX_BODY_LENGTH', () => {
