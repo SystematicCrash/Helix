@@ -59,6 +59,13 @@ export default class HttpResponse {
         return this;
     }
 
+    setHeaders(headers: Map<string, string>): this {
+        for (const header of headers) {
+            this.headers.set(header[0], header[1]);
+        }
+        return this;
+    }
+
     hasHeader(name: string): boolean {
         return this.headers.has(name);
     }
