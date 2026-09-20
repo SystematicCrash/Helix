@@ -73,8 +73,13 @@ export class HttpConnection {
             const httpErr = mapToHttpError(error);
             const response = mapErrorToResponse(httpErr, this.info, request);
             await ResponseWriter.write(this.conn, response);
-            body && await this.drainBody(body);
-            return !httpErr.fatal && !this.clientWantsClose(request);
+
+            const keepAlive = !httpErr.fatal && !this.clientWantsClose(request);
+
+            if (keepAlive && body) {
+                await this.drainBody(body);
+            }
+            return keepAlive;
         } catch {
             return false;
         }
