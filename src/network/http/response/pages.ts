@@ -6,7 +6,7 @@ import {HTTP_STATUS} from "../common/constants.js";
 export function indexPage(info: ServerInfo): Buffer {
     return renderHtml('index', {
         version: info.version,
-        interface: info.iFace,
+        interface: info.iface,
         port: info.port,
     });
 }

@@ -3,8 +3,6 @@ import {HttpBody} from "../body/HttpBody.js";
 import {renderHtml} from "../../../infra/index.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import HttpError from "../common/HttpError.js";
-import FsError from "../../../fs/common/FsError.js";
-import {FsErrCode} from "../../../fs/index.js";
 import MemoryBody from "../body/MemoryBody.js";
 import StreamBody from "../body/StreamBody.js";
 import {HttpHeader} from "../common/constants.js";
@@ -34,7 +32,7 @@ export async function handleRequest(request: HttpRequest, body: HttpBody, info: 
     } else if (request.url === '/' || request.url === '/index.html') {
         const html = renderHtml('index', {
             version: info.version,
-            interface: info.iFace,
+            interface: info.iface,
             port: info.port,
         });
         payload = new MemoryBody(html);
