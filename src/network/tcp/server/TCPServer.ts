@@ -4,7 +4,6 @@ import {ConnectionReader} from "../common/types.js";
 import {MAXIMUM_ALIVE_CONNECTIONS, TCPErrCode} from "../common/constants.js";
 import TCPError from "../common/TCPError.js";
 
-
 /** A TCP server with a single pending accept slot for the next incoming connection. */
 export default class TCPServer {
     private reader: null|ConnectionReader = null;

@@ -21,6 +21,9 @@ export default class HttpServer {
         return this._info;
     }
 
+    /**
+     * Starts the HTTP server listening on the specified port.
+     */
     public async listen(port: number): Promise<void> {
         this.tcpServer.listen(port);
         const addr = this.tcpServer.address();
@@ -46,10 +49,16 @@ export default class HttpServer {
         }
     }
 
+    /**
+     * Stops the server from accepting further connections.
+     */
     public close(): void {
         this.isRunning = false;
     }
 
+    /**
+     * Handles the lifecycle of a client connection, processing HTTP requests until EOF.
+     */
     private async serveClient(conn: TCPConnection): Promise<void> {
         const buf = new DynamicBuffer();
         let request: HttpRequest | null = null;
