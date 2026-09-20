@@ -16,6 +16,7 @@ export class HttpConnection {
 
     constructor(private conn: TCPConnection, private info: ServerInfo) {}
 
+    /** Handles the client connection lifecycle, processing requests until EOF. */
     public async handle(): Promise<void> {
         try {
             while (true) {
@@ -27,6 +28,7 @@ export class HttpConnection {
         }
     }
 
+    /** Processes a single HTTP request and returns true if the connection should stay open. */
     private async processRequest(): Promise<boolean> {
         let body: HttpBody | null = null;
         let request: HttpRequest | null = null;
@@ -47,6 +49,7 @@ export class HttpConnection {
         }
     }
 
+    /** Reads and parses the next incoming HTTP request from the connection. */
     private async readNextRequest(): Promise<HttpRequest | null> {
         let request = parseRequest(this.buf);
         while (!request) {
@@ -61,6 +64,7 @@ export class HttpConnection {
         return request;
     }
 
+    /** Drains any remaining bytes from the request body stream. */
     private async drainBody(body: HttpBody): Promise<void> {
         while (true) {
             const chunk = await body.read();
@@ -68,6 +72,7 @@ export class HttpConnection {
         }
     }
 
+    /** Normalizes errors and sends an appropriate HTTP response. */
     private async handleError(error: unknown, body: HttpBody | null, request: HttpRequest | null): Promise<boolean> {
         try {
             const httpErr = mapToHttpError(error);
@@ -85,6 +90,7 @@ export class HttpConnection {
         }
     }
 
+    /** Checks if the client requested the connection to be closed. */
     private clientWantsClose(request: HttpRequest | null): boolean {
         return request === null || request.headers.get(HttpHeader.Connection)?.toLowerCase() === 'close';
     }
