@@ -11,7 +11,7 @@ export function indexPage(info: ServerInfo): Buffer {
     });
 }
 
-export function notFoundPage(request: HttpRequest, info: ServerInfo): Buffer {
+export function notFoundPage(request: HttpRequest | null, info: ServerInfo): Buffer {
     return renderHtml('notFound', {
         path: request?.url ?? '',
         method: request?.method ?? 'UNKNOWN',
@@ -19,7 +19,7 @@ export function notFoundPage(request: HttpRequest, info: ServerInfo): Buffer {
     });
 }
 
-export function internalErrorPage(status: number, request: HttpRequest, info: ServerInfo): Buffer {
+export function internalErrorPage(status: number, request: HttpRequest | null, info: ServerInfo): Buffer {
     return renderHtml('internalError', {
         status,
         path: request?.url ?? '',

@@ -113,7 +113,7 @@ export default class HttpServer {
     private async handleError(conn: TCPConnection, error: unknown, request: HttpRequest | null): Promise<void> {
         try {
             const httpErr = mapToHttpError(error);
-            const response = mapErrorToResponse(httpErr, request, this._info);
+            const response = mapErrorToResponse(httpErr, this._info!, request);
             await ResponseWriter.write(conn, response);
         } catch {}
         finally {
