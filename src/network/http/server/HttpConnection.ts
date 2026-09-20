@@ -76,7 +76,7 @@ export class HttpConnection {
 
             const keepAlive = !httpErr.fatal && !this.clientWantsClose(request);
 
-            if (keepAlive && body) {
+            if (!httpErr.fatal && body) {
                 await this.drainBody(body);
             }
             return keepAlive;
