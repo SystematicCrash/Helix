@@ -10,6 +10,7 @@ import { mapErrorToResponse } from "../response/mapErrorToResponse.js";
 import { mapToHttpError } from "../common/mappers.js";
 import { parseRequest } from "../request/parser/parseRequest.js";
 import { HttpBody } from "../body/HttpBody.js";
+import {HttpHeader} from "../common/constants.js";
 
 export default class HttpServer {
     private _info: ServerInfo | null = null;
@@ -30,7 +31,7 @@ export default class HttpServer {
 
         this._info = {
             port,
-            iFace: addr?.address ?? "0.0.0.0",
+            iface: addr?.address ?? "0.0.0.0",
             version: "1.0.0", // TODO: read version from package.json
         };
 
@@ -61,22 +62,32 @@ export default class HttpServer {
      */
     private async serveClient(conn: TCPConnection): Promise<void> {
         const buf = new DynamicBuffer();
-        let request: HttpRequest | null = null;
 
         try {
             while (true) {
-                request = await this.readNextRequest(conn, buf);
-                if (!request) return;
-
-                const body = request.getBody(conn, buf);
-                const response = await handleRequest(request, body, this._info!);
-                await ResponseWriter.write(conn, response);
-
-                await this.drainBody(body);
-                request = null;
+                const keepAlive = await this.handleRequest(conn, buf);
+                if (!keepAlive) break;
             }
+        } finally {
+            await conn.close();
+        }
+    }
+
+    private async handleRequest(conn: TCPConnection, buf: DynamicBuffer): Promise<boolean> {
+        let request: HttpRequest | null = null;
+        let body: HttpBody | null = null;
+        try {
+            request = await this.readNextRequest(conn, buf);
+            if (!request) return false;
+
+            body = request.getBody(conn, buf);
+            const response = await handleRequest(request, body, this._info!);
+            await ResponseWriter.write(conn, response);
+
+            await this.drainBody(body);
+            return !this.clientWantsClose(request);
         } catch (error: unknown) {
-            await this.handleError(conn, error, request);
+            return await this.handleError(conn, error, body, request);
         }
     }
 
@@ -92,10 +103,7 @@ export default class HttpServer {
             const data = await conn.read();
 
             if (data === null) {
-                if (buf.length === 0) {
-                    await conn.close();
-                    return null;
-                }
+                if (buf.length === 0) return null;
                 throw HttpError.badRequest("Unexpected EOF", true);
             }
 
@@ -119,14 +127,20 @@ export default class HttpServer {
     /**
      * Normalizes errors, renders the corresponding response, and ensures the socket closes.
      */
-    private async handleError(conn: TCPConnection, error: unknown, request: HttpRequest | null): Promise<void> {
+    private async handleError(conn: TCPConnection, error: unknown, body: HttpBody | null, request: HttpRequest | null): Promise<boolean> {
         try {
             const httpErr = mapToHttpError(error);
             const response = mapErrorToResponse(httpErr, this._info!, request);
             await ResponseWriter.write(conn, response);
-        } catch {}
-        finally {
-            await conn.close();
+
+            body && await this.drainBody(body);
+            return !httpErr.fatal && !this.clientWantsClose(request);
+        } catch {
+            return false;
         }
+    }
+
+    private clientWantsClose(request: HttpRequest | null): boolean {
+        return request === null || request.headers.get(HttpHeader.Connection)?.toLowerCase() === 'close';
     }
 }
