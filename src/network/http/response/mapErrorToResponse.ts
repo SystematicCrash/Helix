@@ -1,5 +1,5 @@
 import HttpError from "../common/HttpError.js";
-import {HttpVersion} from "../common/constants.js";
+import {HttpHeader, HttpVersion} from "../common/constants.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import MemoryBody from "../body/MemoryBody.js";
 import HttpRequest from "../request/HttpRequest.js";
@@ -16,6 +16,10 @@ export function mapErrorToResponse(error: HttpError, info: ServerInfo, request: 
         response = HttpResponse.html(error.status, internalErrorPage(error.status, request, info));
     } else {
         response = HttpResponse.from(error.status, MemoryBody.from(error.message));
+    }
+
+    if (error.fatal) {
+        response.setHeader(HttpHeader.Connection, 'close');
     }
 
     return response;
