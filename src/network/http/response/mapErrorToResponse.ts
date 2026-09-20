@@ -8,21 +8,25 @@ import HttpResponse from "./HttpResponse.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
 export function mapErrorToResponse(error: HttpError, info: ServerInfo, request: HttpRequest | null): HttpResponse {
-    let response: HttpResponse;
+    try {
+        let response: HttpResponse;
 
-    if (error.status === 404) {
-        response = HttpResponse.html(error.status, notFoundPage(request, info));
-    } else if (error.status >= 500) {
-        response = HttpResponse.html(error.status, internalErrorPage(error.status, request, info));
-    } else {
-        response = HttpResponse.from(error.status, MemoryBody.from(error.message));
+        if (error.status === 404) {
+            response = HttpResponse.html(error.status, notFoundPage(request, info));
+        } else if (error.status >= 500) {
+            response = HttpResponse.html(error.status, internalErrorPage(error.status, request, info));
+        } else {
+            response = HttpResponse.from(error.status, MemoryBody.from(error.message));
+        }
+
+        if (error.fatal) {
+            response.setHeader(HttpHeader.Connection, 'close');
+        }
+
+        return response;
+    } catch (error) {
+        return HttpResponse.from(500, MemoryBody.from('Internal server error'));
     }
-
-    if (error.fatal) {
-        response.setHeader(HttpHeader.Connection, 'close');
-    }
-
-    return response;
 }
 
 
