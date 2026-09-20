@@ -1,5 +1,5 @@
 import HttpError from "../common/HttpError.js";
-import {MAX_HEADER_LENGTH} from "../common/constants.js";
+import {HEADER_TERMINATOR, MAX_HEADER_LENGTH} from "../common/constants.js";
 import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import HttpRequest from "../request/HttpRequest.js";
@@ -8,9 +8,6 @@ import {ResponseWriter} from "../response/ResponseWriter.js";
 import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
 import {CRLF} from "../../common/constants.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
-
-/** Terminator marking the end of the header block: an empty line (CRLF CRLF). */
-const HEADER_TERMINATOR = Buffer.concat([CRLF, CRLF]);
 
 /** Handles one accepted connection: reads requests, dispatches them, and streams responses. */
 export async function serveClient(conn: TCPConnection, info: ServerInfo): Promise<void> {
@@ -48,7 +45,7 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
             request = null;
         }
     } catch (error: unknown) {
-        const response = mapErrorToResponse(error, request, info, 500);
+        const response = mapErrorToResponse(error, request, info);
         await ResponseWriter.write(conn, response);
         await conn.close();
     }
@@ -58,14 +55,14 @@ export async function serveClient(conn: TCPConnection, info: ServerInfo): Promis
  * Scans the buffer for a complete HTTP header block (CRLF * 2) and returns a parsed request.
  * Throws HttpError(413) if the buffered header data exceeds the maximum allowed length.
  */
-function cutRequest(buf: DynamicBuffer): HttpRequest | null {
+function cutRequest(buf: DynamicBuffer): HttpRequest {
     const idx = buf.getView(buf.length).indexOf(HEADER_TERMINATOR);
 
     if (idx < 0) {
         if (buf.length > MAX_HEADER_LENGTH) {
             throw HttpError.contentTooLarge('Headers too large');
         }
-        return null;
+        throw HttpError.invalidHeaders();
     }
 
     const msg = HttpRequest.from(buf.getView(idx));

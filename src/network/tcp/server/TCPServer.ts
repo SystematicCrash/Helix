@@ -6,7 +6,7 @@ import TCPError from "../common/TCPError.js";
 
 
 /** A TCP server with a single pending accept slot for the next incoming connection. */
-export default class TCPListener {
+export default class TCPServer {
     private reader: null|ConnectionReader = null;
     private server: net.Server|null = null;
     private aliveConnections: number = 0;

@@ -13,6 +13,10 @@ export default class HttpError extends Error {
         this.name = 'HttpError';
     }
 
+    static internalError(msg = 'Internal server error'): HttpError {
+        return new HttpError(500, msg, true);
+    }
+
     static badRequest(msg = 'Bad Request', fatal = false): HttpError {
         return new HttpError(400, msg, fatal);
     }

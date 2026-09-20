@@ -9,6 +9,10 @@ export default class MemoryBody extends HttpBody {
         this.checkMaxSize();
     }
 
+    static from(buffer: Buffer): MemoryBody {
+        return new MemoryBody(buffer);
+    }
+
     protected async pullBytes(): Promise<Buffer | null> {
         if (this.done) return null;
         this.done = true;

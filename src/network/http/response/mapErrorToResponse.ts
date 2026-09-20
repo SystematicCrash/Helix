@@ -5,38 +5,28 @@ import {renderHtml} from "../../../infra/index.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import MemoryBody from "../body/MemoryBody.js";
 import HttpRequest from "../request/HttpRequest.js";
+import {internalErrorPage, notFoundPage} from "./pages.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
-export function mapErrorToResponse(
-    error: unknown,
-    request: HttpRequest | null,
-    info: ServerInfo,
-    code: number = 500,
-): HttpResponse {
+export function mapErrorToResponse(error: HttpError, info: ServerInfo, request: HttpRequest): HttpResponse {
     let body: MemoryBody;
+    let payload: Buffer;
 
-    if (error instanceof HttpError) {
-        if (error.status === 404) {
-            const html = renderHtml('notFound', {
-                path: request?.url ?? '',
-                method: request?.method ?? 'UNKNOWN',
-                version: request?.version ?? info.version,
-            });
-            body = new MemoryBody(html);
-            code = 404;
-        } else {
-            body = new MemoryBody(Buffer.from(error.message));
-            code = error.status;
-        }
+    if (error.status === 404) {
+        payload = notFoundPage(request, info);
+    } else if (error.status >= 500) {
+        payload = internalErrorPage(error.status, request, info);
     } else {
-        body = new MemoryBody(Buffer.from('Internal Server Error'));
+        payload = Buffer.from(error.message);
     }
 
-
     return {
-        code,
+        code: error.status,
+        body: MemoryBody.from(payload),
         version: HttpVersion.HTTP_1_1,
         headers: new Map(),
-        body,
     };
 }
+
+
+

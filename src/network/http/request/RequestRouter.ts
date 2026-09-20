@@ -58,7 +58,7 @@ export async function handleRequest(request: HttpRequest, body: HttpBody, info: 
     } else if (request.url === '/' || request.url === '/index.html') {
         const html = renderHtml('index', {
             version: info.version,
-            interface: info.iface,
+            interface: info.iFace,
             port: info.port,
         });
         payload = new MemoryBody(html);

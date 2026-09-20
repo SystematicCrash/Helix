@@ -5,6 +5,7 @@ import TCPError from "../../tcp/common/TCPError.js";
 import {FsErrCode} from "../../../fs/index.js";
 import {BufferErrCode} from "../../../buffer/constants.js";
 import {TCPErrCode} from "../../tcp/index.js";
+import {CRLF} from "../../common/constants.js";
 
 export const MAX_HEADER_COUNT           = 100;
 export const MAX_HEADER_NAME_LENGTH     = 100;
@@ -230,3 +231,4 @@ export const TCP_TO_HTTP_STATUS: Record<TCPErrCode, number> = {
 export const MANDATORY_HEADERS = [HttpHeader.Host] as const;
 export const UNIQUE_HEADERS = [HttpHeader.Host, HttpHeader.ContentLength, HttpHeader.TransferEncoding];
 export const SUPPORTED_VERSIONS = [HttpVersion.HTTP_1_1];
+export const HEADER_TERMINATOR = Buffer.concat([CRLF, CRLF]);

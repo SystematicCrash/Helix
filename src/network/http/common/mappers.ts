@@ -9,7 +9,7 @@ import {BUFFER_TO_HTTP_STATUS, FS_TO_HTTP_STATUS, TCP_TO_HTTP_STATUS} from "./co
  * status code. Returns `null` when the error is not a recognized
  * FsError / BufferError / TCPError.
  */
-export function mapToHttpError(error: unknown): HttpError | null {
+export function mapToHttpError(error: unknown): HttpError {
     if (error instanceof FsError) {
         const status = FS_TO_HTTP_STATUS[error.code] ?? 500;
         return new HttpError(status, error.message, true);
@@ -26,5 +26,5 @@ export function mapToHttpError(error: unknown): HttpError | null {
         return new HttpError(500, 'Internal Server Error', true);
     }
 
-    return null;
+    return HttpError.internalError();
 }

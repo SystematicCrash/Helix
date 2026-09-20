@@ -17,7 +17,7 @@ const PLACEHOLDER_REQUEST: HttpRequest = {
     headers: new Map(),
 };
 
-const INFO: ServerInfo = {port: 1234, iface: '0.0.0.0', version: '1.0.0'};
+const INFO: ServerInfo = {port: 1234, iFace: '0.0.0.0', version: '1.0.0'};
 
 describe('mapErrorToResponse()', () => {
 
