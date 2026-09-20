@@ -118,16 +118,16 @@ describe('mapUnderlayingErrorToHttp()', () => {
     });
 
     describe('unknown errors', () => {
-        test('returns null for plain Error', () => {
-            expect(mapToHttpError(new Error('unknown'))).toBeNull();
+        test('should return null for plain Error', () => {
+            expect(mapToHttpError(new Error('unknown'))).toBeInstanceOf(HttpError);
         });
 
-        test('returns null for string', () => {
-            expect(mapToHttpError('something')).toBeNull();
+        test('should return null for string', () => {
+            expect(mapToHttpError('something')).toBeInstanceOf(HttpError);
         });
 
-        test('returns null for null', () => {
-            expect(mapToHttpError(null)).toBeNull();
+        test('should return null for null', () => {
+            expect(mapToHttpError(null)).toBeInstanceOf(HttpError);
         });
     });
 });

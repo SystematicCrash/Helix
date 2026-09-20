@@ -1,5 +1,5 @@
 import HttpError from "../common/HttpError.js";
-import {HttpHeader, HttpVersion} from "../common/constants.js";
+import {HttpHeader} from "../common/constants.js";
 import {ServerInfo} from "../../../server/ServerInfo.js";
 import MemoryBody from "../body/MemoryBody.js";
 import HttpRequest from "../request/HttpRequest.js";
