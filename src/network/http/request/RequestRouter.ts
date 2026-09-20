@@ -1,4 +1,3 @@
-import {HttpResponse} from "../common/types.js";
 import {serveStaticFile} from "../../../fs/index.js";
 import {HttpBody} from "../body/HttpBody.js";
 import {renderHtml} from "../../../infra/index.js";
@@ -10,27 +9,7 @@ import MemoryBody from "../body/MemoryBody.js";
 import StreamBody from "../body/StreamBody.js";
 import {HttpHeader} from "../common/constants.js";
 import HttpRequest from "./HttpRequest.js";
-
-type BufferGenerator = AsyncGenerator<Buffer, void, void>;
-
-async function* countSheep(): BufferGenerator {
-    for (let i = 1; i <= 10; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        yield Buffer.from(`count: ${i}\n`);
-    }
-}
-
-/**
- * Maps a filesystem NOT_FOUND to an HttpError(404) so the error pipeline can
- * render the not-found page. Any other filesystem error is rethrown as-is and
- * surfaces as a 500.
- */
-function rethrowFsNotFound(err: unknown): never {
-    if (err instanceof FsError && FsError.is(err, FsErrCode.NOT_FOUND)) {
-        throw HttpError.notFound();
-    }
-    throw err;
-}
+import HttpResponse from "../response/HttpResponse.js";
 
 /**
  * Routes the request to the appropriate handler and returns an HTTP response.
@@ -42,19 +21,16 @@ export async function handleRequest(request: HttpRequest, body: HttpBody, info: 
 
     if (request.url.startsWith('/files')) {
         const fileUrl = request.url.slice('/files'.length) || '/';
-        try {
-            const file = await serveStaticFile(fileUrl, request.rangeSet ?? []);
+        const file = await serveStaticFile(fileUrl, request.rangeSet ?? []);
 
-            payload = new StreamBody(file.stream, file.size);
-            statusCode = file.status;
+        payload = new StreamBody(file.stream, file.size);
+        statusCode = file.status;
 
-            headers.set(HttpHeader.AcceptRange, 'bytes');
-            if (file.contentRange) {
-                headers.set('content-range', file.contentRange);
-            }
-        } catch (err) {
-            rethrowFsNotFound(err);
+        headers.set(HttpHeader.AcceptRange, 'bytes');
+        if (file.contentRange) {
+            headers.set('content-range', file.contentRange);
         }
+
     } else if (request.url === '/' || request.url === '/index.html') {
         const html = renderHtml('index', {
             version: info.version,
@@ -67,18 +43,12 @@ export async function handleRequest(request: HttpRequest, body: HttpBody, info: 
             case '/echo':
                 payload = body;
                 break;
-            case '/sheep':
-                payload = new StreamBody(countSheep());
-                break;
             default:
                 throw HttpError.notFound();
         }
     }
 
-    return {
-        code: statusCode,
-        version: request.version,
-        headers,
-        body: payload,
-    };
+    const response = HttpResponse.from(statusCode, payload);
+    response.setHeaders(headers);
+    return response;
 }
