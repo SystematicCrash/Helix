@@ -1,7 +1,7 @@
 import HttpRequest from "../request/HttpRequest.js";
 import {renderHtml} from "../../../infra/index.js";
-import {ServerInfo} from "../../../server/ServerInfo.js";
 import {HTTP_STATUS} from "../common/constants.js";
+import {ServerInfo} from "../../../common/types.js";
 
 export function indexPage(info: ServerInfo): Buffer {
     return renderHtml('index', {

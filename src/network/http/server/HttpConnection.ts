@@ -7,9 +7,9 @@ import { handleRequest } from "../request/RequestRouter.js";
 import { ResponseWriter } from "../response/ResponseWriter.js";
 import { mapErrorToResponse } from "../response/mapErrorToResponse.js";
 import { mapToHttpError } from "../common/mappers.js";
-import { ServerInfo } from "../../../server/ServerInfo.js";
 import HttpError from "../common/HttpError.js";
 import { HttpHeader } from "../common/constants.js";
+import {ServerInfo} from "../../../common/types.js";
 
 export class HttpConnection {
     private buf = new DynamicBuffer();

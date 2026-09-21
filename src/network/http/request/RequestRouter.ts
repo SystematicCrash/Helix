@@ -1,13 +1,13 @@
 import {serveStaticFile} from "../../../fs/index.js";
 import {HttpBody} from "../body/HttpBody.js";
 import {renderHtml} from "../../../infra/index.js";
-import {ServerInfo} from "../../../server/ServerInfo.js";
 import HttpError from "../common/HttpError.js";
 import MemoryBody from "../body/MemoryBody.js";
 import StreamBody from "../body/StreamBody.js";
 import {HttpHeader} from "../common/constants.js";
 import HttpRequest from "./HttpRequest.js";
 import HttpResponse from "../response/HttpResponse.js";
+import {ServerInfo} from "../../../common/types.js";
 
 /**
  * Routes the request to the appropriate handler and returns an HTTP response.

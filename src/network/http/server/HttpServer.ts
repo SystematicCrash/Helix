@@ -1,6 +1,6 @@
-import { ServerInfo } from "../../../server/ServerInfo.js";
 import TCPServer from "../../tcp/server/TCPServer.js";
 import { HttpConnection } from "./HttpConnection.js";
+import {ServerInfo} from "../../../common/types.js";
 
 export default class HttpServer {
     private _info: ServerInfo | null = null;
