@@ -3,12 +3,13 @@ import HttpError from '../../../../src/network/http/common/HttpError.js';
 import { mapErrorToResponse } from '../../../../src/network/http/response/mapErrorToResponse.js';
 import { ResponseWriter } from '../../../../src/network/http/response/ResponseWriter.js';
 import { HttpVersion } from '../../../../src/network/http/common/constants.js';
-import { HttpRequest, HttpResponse } from '../../../../src/network/http/common/types.js';
 import MemoryBody from '../../../../src/network/http/body/MemoryBody.js';
 import StreamBody from '../../../../src/network/http/body/StreamBody.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import {TCPConnection} from '../../../../src/network/tcp';
 import {ServerInfo} from '../../../../src/server/ServerInfo.js';
+import HttpRequest from "../../../../src/network/http/request/HttpRequest.js";
+import HttpResponse from "../../../../src/network/http/response/HttpResponse.js";
 
 const PLACEHOLDER_REQUEST: HttpRequest = {
     method: 'GET',
