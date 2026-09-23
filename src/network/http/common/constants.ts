@@ -100,6 +100,7 @@ export enum HttpMethod {
     OPTIONS = 'OPTIONS',
     HEAD = 'HEAD',
     GET = 'GET',
+    ANY = 'ANY',
 }
 
 export const VALID_METHODS = new Set([

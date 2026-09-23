@@ -40,6 +40,10 @@ export default class Router {
         return this.add(HttpMethod.OPTIONS, path, handler);
     }
 
+    public any(path: string, handler: RouteHandler): this {
+        return this.add(HttpMethod.ANY, path, handler);
+    }
+
     public group(prefix: string): Group {
         return new Group(this._routes, prefix);
     }

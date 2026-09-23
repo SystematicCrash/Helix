@@ -65,7 +65,9 @@ export default class RadixNode {
         params: Record<string, string> = {},
     ): LookupResult {
         if (index === segments.length) {
-            const handler = this.handlers.get(method);
+            const handler = this.handlers.get(method)
+                ?? this.handlers.get(HttpMethod.ANY);
+
             if (handler) {
                 return {kind: "found", handler, params: {...params}};
             }

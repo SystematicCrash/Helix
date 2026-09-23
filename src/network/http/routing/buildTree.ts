@@ -93,6 +93,8 @@ export function buildTree(routes: ReadonlyArray<RouteSpec>): RouteTree {
 
         if (node.handlers.has(spec.method)) {
             throw new Error(`Duplicate route: ${spec.method} ${spec.path}`);
+        } else if (spec.method === HttpMethod.ANY) {
+            node.handlers.clear();
         }
         node.handlers.set(spec.method, spec.handler);
     }
