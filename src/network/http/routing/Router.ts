@@ -15,21 +15,27 @@ export default class Router {
     public get(path: string, handler: RouteHandler): this {
         return this.add(HttpMethod.GET, path, handler);
     }
+
     public post(path: string, handler: RouteHandler): this {
         return this.add(HttpMethod.POST, path, handler);
     }
+
     public put(path: string, handler: RouteHandler): this {
         return this.add(HttpMethod.PUT, path, handler);
     }
+
     public patch(path: string, handler: RouteHandler): this {
         return this.add(HttpMethod.PATCH, path, handler);
     }
+
     public delete(path: string, handler: RouteHandler): this {
         return this.add(HttpMethod.DELETE, path, handler);
     }
+
     public head(path: string, handler: RouteHandler): this {
         return this.add(HttpMethod.HEAD, path, handler);
     }
+
     public options(path: string, handler: RouteHandler): this {
         return this.add(HttpMethod.OPTIONS, path, handler);
     }

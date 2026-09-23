@@ -11,7 +11,7 @@ export default class RadixNode {
     public wildcardName: string | null = null;
 
     /** Inserts `segment` and returns the child node for the next segment in the path. */
-    public insert(segment: string, kind: SegmentKind): RadixNode {
+    public insert(kind: SegmentKind): RadixNode {
         if (kind.kind === "static") {
             const existing = this.staticChildren.get(kind.name);
             if (existing) return existing;
@@ -107,7 +107,6 @@ export default class RadixNode {
                     allowed: [...this.wildcardChild.handlers.keys()],
                 };
             }
-            return {kind: "notFound"};
         }
 
         return {kind: "notFound"};

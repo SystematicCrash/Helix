@@ -11,10 +11,7 @@ export class RouteTree {
         Object.freeze(this);
     }
 
-    public lookup(
-        method: HttpMethod,
-        segments: ReadonlyArray<string>,
-    ): LookupResult {
+    public lookup(method: HttpMethod, segments: ReadonlyArray<string>): LookupResult {
         return this.root.lookup(method, segments, 0, {});
     }
 }
@@ -85,7 +82,7 @@ export function buildTree(routes: ReadonlyArray<RouteSpec>): RouteTree {
 
         let node: RadixNode = root;
         for (const segment of segments) {
-            node = node.insert(segment.name, segment);
+            node = node.insert(segment);
         }
 
         if (node.handlers.has(spec.method)) {

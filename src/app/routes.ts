@@ -1,5 +1,5 @@
-import Router from "./Router.js";
-import {indexPageHandler, echoHandler, filesHandler} from "../handlers.js";
+import Router from "../network/http/routing/Router.js";
+import {indexPageHandler, echoHandler, filesHandler} from "./handlers.js";
 
 /** Concrete URL ↔ handler table consumed by `HttpServer.listen`. */
 export default (router: Router): void => {

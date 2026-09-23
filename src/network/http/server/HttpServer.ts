@@ -1,7 +1,7 @@
 import TCPServer from "../../tcp/server/TCPServer.js";
 import { HttpConnection } from "./HttpConnection.js";
 import Router from "../routing/Router.js";
-import routes from "../routing/routes.js";
+import routes from "../../../app/routes.js";
 import {ServerInfo} from "../../../common/types.js";
 
 export default class HttpServer {
@@ -16,9 +16,6 @@ export default class HttpServer {
 
     /**
      * Starts the HTTP server listening on the specified port.
-     * @param port - The TCP port to listen on.
-     * @param routeTable - Registers routes on a fresh Router before the tree
-     *                     is compiled. Defaults to the built-in `routes`.
      */
     public async listen(port: number, routeTable: (router: Router) => void = routes): Promise<void> {
         this.tcpServer.listen(port);

@@ -9,8 +9,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8')) as {version: string};
 
 async function main(): Promise<void> {
-    const httpServer = new HttpServer(new TCPServer());
-    await httpServer.listen(PORT);
+    let httpServer: HttpServer;
+    try {
+        httpServer = new HttpServer(new TCPServer());
+        await httpServer.listen(PORT);
+    } finally {
+        httpServer!.close();
+    }
+
 }
 
 main().catch(console.error);
