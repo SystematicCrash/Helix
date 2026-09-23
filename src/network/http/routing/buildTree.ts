@@ -1,6 +1,6 @@
 import {HttpMethod, IDENT_REGEX} from "../common/constants.js";
-import RadixNode, {type LookupResult, type SegmentKind} from "./RadixNode.js";
-import type {RouteSpec} from "./Route.js";
+import RadixNode from "./RadixNode.js";
+import {LookupResult, RouteSpec, SegmentKind} from "./types.js";
 
 /** Compiled, immutable routing tree. Returned by `buildTree`. */
 export class RouteTree {

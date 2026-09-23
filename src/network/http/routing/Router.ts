@@ -1,10 +1,10 @@
 import {HttpMethod} from "../common/constants.js";
-import {Route, type RouteSpec} from "./Route.js";
+import {Route} from "./Route.js";
 import {Group} from "./Group.js";
 import {buildTree, RouteTree} from "./buildTree.js";
-import type {RouteHandler} from "./RouteHandler.js";
+import {RouteHandler, RouteSpec} from "./types.js";
 
-/** Top-level router. Build once at server start; the tree is frozen afterwards. */
+/** Top-level router. Build once at server start; the tree is frozen afterward. */
 export default class Router {
     private _routes: RouteSpec[] = [];
 

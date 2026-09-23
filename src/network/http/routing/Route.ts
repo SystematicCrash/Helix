@@ -1,12 +1,5 @@
 import {HttpMethod} from "../common/constants.js";
-import type {RouteHandler} from "./RouteHandler.js";
-
-/** Frozen (path, method, handler) triple consumed by `buildTree`. */
-export interface RouteSpec {
-    readonly path: string;
-    readonly method: HttpMethod;
-    readonly handler: RouteHandler;
-}
+import {RouteHandler, RouteSpec} from "./types.js";
 
 /** Fluent builder for one route. `toSpec()` throws if method or handler is missing. */
 export class Route {

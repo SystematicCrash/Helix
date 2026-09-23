@@ -1,17 +1,5 @@
 import {HttpMethod} from "../common/constants.js";
-import type {RouteHandler} from "./RouteHandler.js";
-
-/** Result of a tree lookup: handler + params, no match, or path-matched-but-wrong-method. */
-export type LookupResult =
-    | {kind: "found"; handler: RouteHandler; params: Record<string, string>}
-    | {kind: "notFound"}
-    | {kind: "methodNotAllowed"; allowed: ReadonlyArray<HttpMethod>};
-
-/** Segment kinds accepted by `RadixNode.insert`: literal, `:name` param, or terminal `*name` wildcard. */
-export type SegmentKind =
-    | {kind: "static"; name: string}
-    | {kind: "param"; name: string}
-    | {kind: "wildcard"; name: string};
+import {LookupResult, RouteHandler, SegmentKind} from "./types.js";
 
 /** One node in the radix tree. Built once by `buildTree` and then frozen. */
 export default class RadixNode {

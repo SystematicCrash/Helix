@@ -1,6 +1,6 @@
 import {HttpMethod} from "../common/constants.js";
-import {Route, type RouteSpec} from "./Route.js";
-import type {RouteHandler} from "./RouteHandler.js";
+import {Route} from "./Route.js";
+import {RouteHandler, RouteSpec} from "./types.js";
 
 /** Prefix-aware sub-router sharing the parent router's backing route list. */
 export class Group {
