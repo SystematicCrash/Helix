@@ -1,7 +1,9 @@
 import EmptyBody from '../body/EmptyBody.js';
 import MemoryBody from '../body/MemoryBody.js';
+import StreamBody from '../body/StreamBody.js';
 import { HttpBody } from '../body/HttpBody.js';
-import { HTTP_STATUS, HttpVersion } from '../common/constants.js';
+import { HTTP_STATUS, HttpHeader, HttpVersion } from '../common/constants.js';
+import type { StaticFileStream } from '../common/types.js';
 
 export default class HttpResponse {
     public code: number;
@@ -43,6 +45,15 @@ export default class HttpResponse {
     static redirect(code: number, location: string): HttpResponse {
         const response = HttpResponse.html(code, `<a href="${location}">Redirecting...</a>`);
         response.headers.set('location', location);
+        return response;
+    }
+
+    static file(result: StaticFileStream): HttpResponse {
+        const response = new HttpResponse(result.status, new StreamBody(result.stream, result.size));
+        response.headers.set(HttpHeader.AcceptRange, 'bytes');
+        if (result.contentRange) {
+            response.headers.set('content-range', result.contentRange);
+        }
         return response;
     }
 
