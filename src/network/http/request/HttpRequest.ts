@@ -21,7 +21,7 @@ import EmptyBody from "../body/EmptyBody.js";
  * createBodyReader() below once the head has been parsed.
  */
 export default class HttpRequest {
-    public method!: string;
+    public method!: HttpMethod;
     public url!: string;
     public version!: string;
     public headers: Map<string, string> = new Map();
@@ -109,9 +109,9 @@ export default class HttpRequest {
         }
 
         const {method, url, version} = parseRequestLine(firstLine);
-        this.headers = parseHeaders(lines.slice(1, lines.length));
         this.url = url;
-        this.method = method;
         this.version = version;
+        this.method = method as HttpMethod;
+        this.headers = parseHeaders(lines.slice(1, lines.length));
     }
 }
