@@ -1,52 +1,61 @@
-import {serveStaticFile} from "../../../fs/index.js";
-import {HttpBody} from "../body/HttpBody.js";
-import {renderHtml} from "../../../infra/index.js";
 import HttpError from "../common/HttpError.js";
-import MemoryBody from "../body/MemoryBody.js";
-import StreamBody from "../body/StreamBody.js";
-import {HttpHeader} from "../common/constants.js";
-import HttpRequest from "./HttpRequest.js";
+import {HttpHeader, HttpMethod} from "../common/constants.js";
+import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
 import HttpResponse from "../response/HttpResponse.js";
-import {ServerInfo} from "../../../common/types.js";
+import HttpRequest from "./HttpRequest.js";
+import type {HttpBody} from "../body/HttpBody.js";
+import type {ServerInfo} from "../../../common/types.js";
+import type {RouteTree} from "../routing/buildTree.js";
 
 /**
- * Routes the request to the appropriate handler and returns an HTTP response.
+ * Routes a single HTTP request through the compiled radix tree and produces
+ * an `HttpResponse`. Three branches:
+ *
+ *   - `found`:            invoke the matching handler and return its response.
+ *   - `methodNotAllowed`: produce a 405 via `mapErrorToResponse` and attach
+ *                         an `Allow` header listing every method registered
+ *                         at the matched terminal node.
+ *   - `notFound`:         produce a 404 via `mapErrorToResponse`.
+ *
+ * Errors thrown from a handler propagate up; the per-connection error path
+ * in `HttpConnection.handleError` maps them via `mapErrorToResponse` /
+ * `mapToHttpError`. No try/catch is needed inside this function.
  */
-export async function handleRequest(request: HttpRequest, body: HttpBody, info: ServerInfo): Promise<HttpResponse> {
-    let payload: HttpBody;
-    let statusCode: number = 200;
-    const headers = new Map<string, string>();
+export async function handleRequest(
+    request: HttpRequest,
+    body: HttpBody,
+    info: ServerInfo,
+    tree: RouteTree,
+): Promise<HttpResponse> {
+    const segments = splitPath(request.url);
+    const result = tree.lookup(request.method as HttpMethod, segments);
 
-    if (request.url.startsWith('/files')) {
-        const fileUrl = request.url.slice('/files'.length) || '/';
-        const file = await serveStaticFile(fileUrl, request.rangeSet ?? []);
+    switch (result.kind) {
+        case "found":
+            return result.handler(request, body, info, result.params);
 
-        payload = new StreamBody(file.stream, file.size);
-        statusCode = file.status;
-
-        headers.set(HttpHeader.AcceptRange, 'bytes');
-        if (file.contentRange) {
-            headers.set('content-range', file.contentRange);
+        case "methodNotAllowed": {
+            const response = mapErrorToResponse(
+                HttpError.methodNotAllowed(),
+                info,
+                request,
+            );
+            response.headers.set(HttpHeader.Allow, result.allowed.join(", "));
+            return response;
         }
 
-    } else if (request.url === '/' || request.url === '/index.html') {
-        const html = renderHtml('index', {
-            version: info.version,
-            interface: info.iface,
-            port: info.port,
-        });
-        payload = new MemoryBody(html);
-    } else {
-        switch (request.url) {
-            case '/echo':
-                payload = body;
-                break;
-            default:
-                throw HttpError.notFound();
-        }
+        case "notFound":
+        default:
+            return mapErrorToResponse(HttpError.notFound(), info, request);
     }
+}
 
-    const response = HttpResponse.from(statusCode, payload);
-    response.setHeaders(headers);
-    return response;
+/**
+ * Splits a request URL into radix-friendly path segments. The root path
+ * (`/`) and an empty string both yield an empty segment list; everything
+ * else is split on `/`, with empty pieces removed (so `//` collapses cleanly).
+ */
+function splitPath(url: string): string[] {
+    if (url === "/" || url === "") return [];
+    return url.split("/").filter((s) => s !== "");
 }

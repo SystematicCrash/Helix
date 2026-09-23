@@ -10,11 +10,16 @@ import { mapToHttpError } from "../common/mappers.js";
 import HttpError from "../common/HttpError.js";
 import { HttpHeader } from "../common/constants.js";
 import {ServerInfo} from "../../../common/types.js";
+import type {RouteTree} from "../routing/buildTree.js";
 
 export class HttpConnection {
     private buf = new DynamicBuffer();
 
-    constructor(private conn: TCPConnection, private info: ServerInfo) {}
+    constructor(
+        private conn: TCPConnection,
+        private info: ServerInfo,
+        private tree: RouteTree,
+    ) {}
 
     /** Handles the client connection lifecycle, processing requests until EOF. */
     public async handle(): Promise<void> {
@@ -39,7 +44,7 @@ export class HttpConnection {
 
 
             body = request.getBody(this.conn, this.buf);
-            const response = await handleRequest(request, body, this.info);
+            const response = await handleRequest(request, body, this.info, this.tree);
             await ResponseWriter.write(this.conn, response);
 
             await this.drainBody(body);
