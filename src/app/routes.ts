@@ -1,5 +1,5 @@
 import Router from "../network/http/routing/Router.js";
-import {indexPageHandler, echoHandler, filesHandler} from "./handlers.js";
+import {indexPageHandler, echoHandler, filesHandler, filesOptionsHandler, filesHeadHandler} from "./handlers.js";
 
 /** Concrete URL ↔ handler table consumed by `HttpServer.listen`. */
 export default (router: Router): void => {
@@ -8,5 +8,8 @@ export default (router: Router): void => {
         .get("/index.html", indexPageHandler)
         .get("/echo", echoHandler);
 
-    router.group("/files").get("/*filepath", filesHandler);
+    router.group("/files")
+        .get("/*filepath", filesHandler)
+        .head('/*filepath', filesHeadHandler)
+        .options('/*filepath', filesOptionsHandler)
 };

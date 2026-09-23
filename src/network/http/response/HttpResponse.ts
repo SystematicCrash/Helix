@@ -50,10 +50,13 @@ export default class HttpResponse {
 
     static file(result: StaticFileStream): HttpResponse {
         const response = new HttpResponse(result.status, new StreamBody(result.stream, result.size));
-        response.headers.set(HttpHeader.AcceptRange, 'bytes');
-        if (result.contentRange) {
-            response.headers.set('content-range', result.contentRange);
-        }
+        response.addFileHeaders(result);
+        return response;
+    }
+
+    static headFile(result: StaticFileStream): HttpResponse {
+        const response = new HttpResponse(result.status, new EmptyBody());
+        response.addFileHeaders(result);
         return response;
     }
 
@@ -111,6 +114,14 @@ export default class HttpResponse {
     private validateVersion(version: string): void {
         if (version.length === 0) {
             throw new RangeError('HTTP version cannot be empty');
+        }
+    }
+
+    private addFileHeaders(result: StaticFileStream): void {
+        this.setHeader(HttpHeader.ContentLength, result.size.toString());
+        this.setHeader(HttpHeader.AcceptRange, 'bytes');
+        if (result.contentRange) {
+            this.setHeader('content-range', result.contentRange);
         }
     }
 }
