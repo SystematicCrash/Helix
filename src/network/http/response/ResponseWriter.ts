@@ -1,6 +1,6 @@
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import {HttpHeader, TransferEncoding} from "../common/constants.js";
-import {HttpResponse} from "../common/types.js";
+import type HttpResponse from "./HttpResponse.js";
 import {encodeHeaders} from "./encoder/encodeHeaders.js";
 import {HttpBody} from "../body/HttpBody.js";
 import {encodeChunk} from "./encoder/encodeChunk.js";
