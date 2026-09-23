@@ -5,10 +5,12 @@ import HttpRequest from "../request/HttpRequest.js";
 import {internalErrorPage, notFoundPage} from "./pages.js";
 import HttpResponse from "./HttpResponse.js";
 import {ServerInfo} from "../../../common/types.js";
+import {getServerInfo} from "../../../common/serverInfo.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */
-export function mapErrorToResponse(error: HttpError, info: ServerInfo, request: HttpRequest | null): HttpResponse {
+export function mapErrorToResponse(error: HttpError, request: HttpRequest | null): HttpResponse {
     try {
+        const info = getServerInfo();
         let response: HttpResponse;
 
         if (error.status === 404) {

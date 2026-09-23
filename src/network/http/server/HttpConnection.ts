@@ -3,23 +3,18 @@ import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import HttpRequest from "../request/HttpRequest.js";
 import { HttpBody } from "../body/HttpBody.js";
 import { parseRequest } from "../request/parser/parseRequest.js";
-import { handleRequest } from "../request/RequestRouter.js";
+import { handleRequest } from "../request/handleRequest.js";
 import { ResponseWriter } from "../response/ResponseWriter.js";
 import { mapErrorToResponse } from "../response/mapErrorToResponse.js";
 import { mapToHttpError } from "../common/mappers.js";
 import HttpError from "../common/HttpError.js";
-import { HttpHeader } from "../common/constants.js";
-import {ServerInfo} from "../../../common/types.js";
+import {HttpHeader, HttpMethod} from "../common/constants.js";
 import type {RouteTree} from "../routing/buildTree.js";
 
 export class HttpConnection {
     private buf = new DynamicBuffer();
 
-    constructor(
-        private conn: TCPConnection,
-        private info: ServerInfo,
-        private tree: RouteTree,
-    ) {}
+    constructor(private conn: TCPConnection, private tree: RouteTree) {}
 
     /** Handles the client connection lifecycle, processing requests until EOF. */
     public async handle(): Promise<void> {
@@ -44,7 +39,8 @@ export class HttpConnection {
 
 
             body = request.getBody(this.conn, this.buf);
-            const response = await handleRequest(request, body, this.info, this.tree);
+            const result = this.tree.lookup(request.method as HttpMethod, request.url)
+            const response = await handleRequest(request, body, result);
             await ResponseWriter.write(this.conn, response);
 
             await this.drainBody(body);
@@ -81,7 +77,7 @@ export class HttpConnection {
     private async handleError(error: unknown, body: HttpBody | null, request: HttpRequest | null): Promise<boolean> {
         try {
             const httpErr = mapToHttpError(error);
-            const response = mapErrorToResponse(httpErr, this.info, request);
+            const response = mapErrorToResponse(httpErr, request);
             await ResponseWriter.write(this.conn, response);
 
             const keepAlive = !httpErr.fatal && !this.clientWantsClose(request);

@@ -11,8 +11,8 @@ export class RouteTree {
         Object.freeze(this);
     }
 
-    public lookup(method: HttpMethod, segments: ReadonlyArray<string>): LookupResult {
-        return this.root.lookup(method, segments, 0, {});
+    public lookup(method: HttpMethod, path: string): LookupResult {
+        return this.root.lookup(method, splitPath(path), 0, {});
     }
 }
 
@@ -70,6 +70,12 @@ function validateName(name: string, prefix: ":" | "*", path: string): void {
             `(must match ${IDENT_REGEX})`,
         );
     }
+}
+
+/** Splits a URL into segments; `''` and `'/'` yield `[]`, otherwise split on `/` and drop empties. */
+function splitPath(url: string): string[] {
+    if (url === "/" || url === "") return [];
+    return url.split("/").filter((s) => s !== "");
 }
 
 /** Compiles routes into the immutable tree; throws on path errors or duplicate (method, path). */

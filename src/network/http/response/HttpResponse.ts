@@ -9,7 +9,7 @@ export default class HttpResponse {
     public code: number;
     public body: HttpBody;
     public version: string;
-    public headers: Map<string, string> = new Map();
+    private headers: Map<string, string> = new Map();
 
     constructor(code: number, body: HttpBody, version: string = HttpVersion.HTTP_1_1) {
         this.validateCode(code);

@@ -16,13 +16,13 @@ export class ResponseWriter {
      */
     static async write(conn: TCPConnection, response: HttpResponse): Promise<void> {
         if (response.body.length !== -1) {
-            response.headers.set(HttpHeader.ContentLength, response.body.length.toString());
+            response.setHeader(HttpHeader.ContentLength, response.body.length.toString());
         } else {
-            response.headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
+            response.setHeader(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
         }
         await conn.write(encodeHeaders(response));
 
-        if (response.headers.get(HttpHeader.TransferEncoding) === TransferEncoding.CHUNKED) {
+        if (response.getHeader(HttpHeader.TransferEncoding) === TransferEncoding.CHUNKED) {
             await this.chunkedWriter(conn, response.body);
         } else {
             await this.fixedWriter(conn, response.body);

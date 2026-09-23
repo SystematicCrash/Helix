@@ -1,42 +1,25 @@
 import TCPServer from "../../tcp/server/TCPServer.js";
-import { HttpConnection } from "./HttpConnection.js";
-import Router from "../routing/Router.js";
-import routes from "../../../app/routes.js";
-import {ServerInfo} from "../../../common/types.js";
+import {HttpConnection} from "./HttpConnection.js";
+import {RouteTree} from "../routing/buildTree.js";
 
 export default class HttpServer {
-    private _info: ServerInfo | null = null;
     private isRunning = false;
 
-    constructor(private tcpServer: TCPServer) {}
-
-    get info(): ServerInfo | null {
-        return this._info;
-    }
+    constructor(
+        private tcpServer: TCPServer,
+        private routeTree: RouteTree
+    ) {}
 
     /**
      * Starts the HTTP server listening on the specified port.
      */
-    public async listen(port: number, routeTable: (router: Router) => void = routes): Promise<void> {
-        this.tcpServer.listen(port);
-        const addr = this.tcpServer.address();
-
-        this._info = {
-            port,
-            iface: addr?.address ?? "0.0.0.0",
-            version: "1.0.0", // TODO: read version from package.json
-        };
-
-        const router = new Router();
-        routeTable(router);
-        const tree = router.build();
-
+    public async run(): Promise<void> {
         this.isRunning = true;
 
         while (this.isRunning) {
             try {
                 const conn = await this.tcpServer.accept();
-                const httpConn = new HttpConnection(conn, this._info!, tree);
+                const httpConn = new HttpConnection(conn, this.routeTree);
                 httpConn.handle().catch((err) => {
                     console.error("[HttpServer] Unhandled client failure:", err);
                 });

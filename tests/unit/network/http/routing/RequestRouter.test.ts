@@ -1,5 +1,5 @@
 import {describe, test, expect} from 'vitest';
-import {handleRequest} from '../../../../../src/network/http/request/RequestRouter.js';
+import {handleRequest} from '../../../../../src/network/http/request/handleRequest.js';
 import Router from '../../../../../src/network/http/routing/Router.js';
 import HttpResponse from '../../../../../src/network/http/response/HttpResponse.js';
 import HttpRequest from '../../../../../src/network/http/request/HttpRequest.js';

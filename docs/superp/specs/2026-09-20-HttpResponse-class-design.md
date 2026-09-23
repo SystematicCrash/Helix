@@ -124,7 +124,7 @@ Mirrors `HttpRequest`: parsed values are required, headers default to empty.
 1. **New** `src/network/http/response/HttpResponse.ts` — the class above.
 2. **Edit** `src/network/http/common/types.ts` — remove `HttpResponse` interface; keep `ChunkExtension`, `StaticFileStream`, `BufferGenerator`.
 3. **Edit** `src/network/http/response/mapErrorToResponse.ts` — `import HttpResponse from "./HttpResponse.js"`; return `new HttpResponse(error.status, MemoryBody.from(payload), HttpVersion.HTTP_1_1)`; remove the now-dead `renderHtml` import.
-4. **Edit** `src/network/http/request/RequestRouter.ts` — `import HttpResponse from "../response/HttpResponse.js"`; index branch becomes `payload = new MemoryBody(indexPage(info))` and the route returns `HttpResponse.html(200, indexPage(info), request.version)`; other branches use the appropriate factory or `new HttpResponse(...)`.
+4. **Edit** `src/network/http/request/handleRequest.ts` — `import HttpResponse from "../response/HttpResponse.js"`; index branch becomes `payload = new MemoryBody(indexPage(info))` and the route returns `HttpResponse.html(200, indexPage(info), request.version)`; other branches use the appropriate factory or `new HttpResponse(...)`.
 5. **Edit** `src/network/http/response/ResponseWriter.ts` — `import HttpResponse from "./HttpResponse.js"`; use `response.contentLength` getter where it's clearer than `response.body.length`; signature otherwise unchanged.
 6. **Edit** `src/network/http/response/encoder/encodeHeaders.ts` — `import HttpResponse from "../HttpResponse.js"`; signature otherwise unchanged (it reads `response.code`, `response.version`, `response.headers`).
 7. **New** `tests/unit/network/http/HttpResponse.test.ts` — see Testing.

@@ -3,7 +3,7 @@
 - **Date:** 2026-09-23
 - **Status:** Design approved; implementation pending
 - **Branch:** `improve/routing-system`
-- **Scope:** Single cohesive redesign of the routing subsystem — six new/replaced files under `src/network/http/routing/`, the dispatcher in `src/network/http/request/RequestRouter.ts` rewired to use the compiled tree, scratch content of `src/network/http/routing/routes.ts` replaced, four new unit test files. No decomposition needed.
+- **Scope:** Single cohesive redesign of the routing subsystem — six new/replaced files under `src/network/http/routing/`, the dispatcher in `src/network/http/request/handleRequest.ts` rewired to use the compiled tree, scratch content of `src/network/http/routing/routes.ts` replaced, four new unit test files. No decomposition needed.
 
 ## Problem
 
@@ -16,8 +16,8 @@ The current routing layer is half-built and broken in several distinct ways. Eac
 - **`src/network/http/routing/RadixNode.ts`** — single nullable `handler` per node. Two routes at the same path with different methods would clobber each other. No `insert`/`build` method. `find()` cannot distinguish 404 (no path match) from 405 (path matched, method not allowed) — both return `null`.
 - **`src/network/http/routing/routes.ts`** — scratch code: `setRoute('mamad')` (path without leading `/`), `.handler(null)` (silently passes null), `setGroup()` called with no callback despite the typed `(router: Router) => void` parameter, `.setRoute()` called with no arguments.
 - **`Group.prefix`** in `Route.ts` — naive string concatenation. `prefix + '/' + path` produces double slashes when the inner path already starts with `/`, and never normalizes trailing slashes on the prefix itself.
-- **`src/network/http/request/RequestRouter.ts`** — completely bypasses the radix tree. Uses an inline `if/else`/`switch` chain on `request.url`. The whole routing subsystem is currently dead code.
-- **No tests** on any file under `src/network/http/routing/` or on `RequestRouter.ts`.
+- **`src/network/http/request/handleRequest.ts`** — completely bypasses the radix tree. Uses an inline `if/else`/`switch` chain on `request.url`. The whole routing subsystem is currently dead code.
+- **No tests** on any file under `src/network/http/routing/` or on `handleRequest.ts`.
 
 The net result: the radix tree that was just merged (commit `eec8817 feat: implement RadixNode class`) is not consumed anywhere. Every request falls into a hand-written dispatch chain.
 
@@ -65,7 +65,7 @@ src/network/http/routing/
 └── buildTree.ts        # validates the route list + compiles into the radix tree
 ```
 
-`src/network/http/request/RequestRouter.ts` becomes the dispatcher.
+`src/network/http/request/handleRequest.ts` becomes the dispatcher.
 `src/network/http/routing/routes.ts` becomes the real route definitions file (replaces scratch).
 
 ### Handler type (`RouteHandler.ts`)
@@ -287,7 +287,7 @@ After build, `Object.freeze` is applied to the returned `RouteTree` wrapper as w
 ### `RequestRouter` becomes the dispatcher
 
 ```ts
-// src/network/http/request/RequestRouter.ts
+// src/network/http/request/handleRequest.ts
 import type RouteTree from '../routing/Router.js';
 
 export async function handleRequest(
@@ -389,7 +389,7 @@ Tests use the existing test conventions (vitest, no new deps, no new helpers). T
 
 1. Land the new files under `src/network/http/routing/`.
 2. Rewrite `routes.ts` to use the new pattern.
-3. Rewire `RequestRouter.ts` to use the tree; `HttpConnection.ts` carries the tree alongside `info`.
+3. Rewire `handleRequest.ts` to use the tree; `HttpConnection.ts` carries the tree alongside `info`.
 4. Delete the old `Route.ts` `Base`/`Router`/`Group` exporting class triple and the old scratch `.setRoute()` API.
 5. Add the four test files.
 

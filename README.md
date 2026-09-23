@@ -57,7 +57,7 @@ npx tsx index.ts          # listens on 127.0.0.1:1234
 
 ### 🎯 Toy routes
 
-> Defined in `src/network/http/request/RequestRouter.ts`
+> Defined in `src/network/http/request/handleRequest.ts`
 
 | Path      | Response                                       |
 |-----------|------------------------------------------------|
