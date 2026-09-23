@@ -1,42 +1,19 @@
 import {HttpMethod} from "../common/constants.js";
 import type {RouteHandler} from "./RouteHandler.js";
 
-/**
- * The discriminator returned from `RadixNode.lookup`.
- * - `found` carries the handler plus the path parameters extracted during traversal.
- * - `notFound` means no path in the tree matched.
- * - `methodNotAllowed` means a path matched but for a different method; `allowed`
- *    lists every method registered at the matched terminal node, used by the
- *    dispatcher to set the `Allow` response header.
- */
+/** Result of a tree lookup: handler + params, no match, or path-matched-but-wrong-method. */
 export type LookupResult =
     | {kind: "found"; handler: RouteHandler; params: Record<string, string>}
     | {kind: "notFound"}
     | {kind: "methodNotAllowed"; allowed: ReadonlyArray<HttpMethod>};
 
-/**
- * Segment descriptor used during tree insertion.
- * - `static`: a literal segment that must match exactly.
- * - `param`: a `:name` segment that binds `params.name` to whatever value the
- *    request carried in that position (URI-decoded).
- * - `wildcard`: a `*name` terminal segment that greedily consumes the rest of
- *    the path and binds `params.name` to the remaining joined string.
- */
+/** Segment kinds accepted by `RadixNode.insert`: literal, `:name` param, or terminal `*name` wildcard. */
 export type SegmentKind =
     | {kind: "static"; name: string}
     | {kind: "param"; name: string}
     | {kind: "wildcard"; name: string};
 
-/**
- * One node in the radix tree. Each node holds:
- * - per-method handlers for the path that terminates at this node,
- * - static children keyed by segment name,
- * - at most one `:param` child,
- * - at most one `*wildcard` child.
- *
- * The tree is built once by `buildTree` and frozen. Handlers are looked up via
- * `lookup`, which traverses segments with backtracking across siblings.
- */
+/** One node in the radix tree. Built once by `buildTree` and then frozen. */
 export default class RadixNode {
     public readonly handlers: Map<HttpMethod, RouteHandler> = new Map();
     public readonly staticChildren: Map<string, RadixNode> = new Map();
@@ -45,11 +22,7 @@ export default class RadixNode {
     public wildcardChild: RadixNode | null = null;
     public wildcardName: string | null = null;
 
-    /**
-     * Inserts a segment into the tree and returns the node that now represents
-     * the next segment after `segment`. The caller (buildTree) walks the route
-     * one segment at a time and then registers the handler on the final node.
-     */
+    /** Inserts `segment` and returns the child node for the next segment in the path. */
     public insert(segment: string, kind: SegmentKind): RadixNode {
         if (kind.kind === "static") {
             const existing = this.staticChildren.get(kind.name);
@@ -75,7 +48,6 @@ export default class RadixNode {
             return node;
         }
 
-        // wildcard
         if (this.wildcardChild) {
             if (this.wildcardName !== kind.name) {
                 throw new Error(
@@ -97,13 +69,7 @@ export default class RadixNode {
         return node;
     }
 
-    /**
-     * Walks the tree from this node matching `segments[index..]` for `method`.
-     *
-     * `params` is mutated during recursion and restored on backtrack — the
-     * returned `LookupResult` carries a fresh copy so callers never see
-     * partial bindings from a sibling branch.
-     */
+    /** Walks the tree matching `segments[index..]` for `method`, with backtracking across siblings. */
     public lookup(
         method: HttpMethod,
         segments: ReadonlyArray<string>,
@@ -136,9 +102,6 @@ export default class RadixNode {
             params[this.paramName] = decodeURIComponent(segment);
             const result = this.paramChild.lookup(method, segments, index + 1, params);
             delete params[this.paramName];
-            // `result.params` (if found) is already a fresh copy taken inside the
-            // deeper call — spreading the (now-restored) `params` here would
-            // lose the binding.
             if (result.kind !== "notFound") return result;
         }
 
@@ -162,10 +125,7 @@ export default class RadixNode {
         return {kind: "notFound"};
     }
 
-    /**
-     * Recursively freezes this node and every descendant so the tree cannot
-     * be mutated after `buildTree` finishes compiling routes.
-     */
+    /** Recursively freezes this node and every descendant so the tree can't be mutated. */
     public freeze(): void {
         Object.freeze(this.handlers);
         for (const child of this.staticChildren.values()) child.freeze();

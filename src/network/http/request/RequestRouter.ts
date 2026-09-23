@@ -7,20 +7,7 @@ import type {HttpBody} from "../body/HttpBody.js";
 import type {ServerInfo} from "../../../common/types.js";
 import type {RouteTree} from "../routing/buildTree.js";
 
-/**
- * Routes a single HTTP request through the compiled radix tree and produces
- * an `HttpResponse`. Three branches:
- *
- *   - `found`:            invoke the matching handler and return its response.
- *   - `methodNotAllowed`: produce a 405 via `mapErrorToResponse` and attach
- *                         an `Allow` header listing every method registered
- *                         at the matched terminal node.
- *   - `notFound`:         produce a 404 via `mapErrorToResponse`.
- *
- * Errors thrown from a handler propagate up; the per-connection error path
- * in `HttpConnection.handleError` maps them via `mapErrorToResponse` /
- * `mapToHttpError`. No try/catch is needed inside this function.
- */
+/** Dispatches a request through the routing tree: handler, 405 + Allow, or 404. */
 export async function handleRequest(
     request: HttpRequest,
     body: HttpBody,
@@ -50,11 +37,7 @@ export async function handleRequest(
     }
 }
 
-/**
- * Splits a request URL into radix-friendly path segments. The root path
- * (`/`) and an empty string both yield an empty segment list; everything
- * else is split on `/`, with empty pieces removed (so `//` collapses cleanly).
- */
+/** Splits a URL into segments; `''` and `'/'` yield `[]`, otherwise split on `/` and drop empties. */
 function splitPath(url: string): string[] {
     if (url === "/" || url === "") return [];
     return url.split("/").filter((s) => s !== "");

@@ -1,25 +1,14 @@
 import {HttpMethod} from "../common/constants.js";
 import type {RouteHandler} from "./RouteHandler.js";
 
-/**
- * The fully-described, immutable form of a single route, produced by the
- * `Route` fluent builder when both `.method()` and `.handler()` have been
- * called. The router collects `RouteSpec` values and hands them to
- * `buildTree` for compilation.
- */
+/** Frozen (path, method, handler) triple consumed by `buildTree`. */
 export interface RouteSpec {
     readonly path: string;
     readonly method: HttpMethod;
     readonly handler: RouteHandler;
 }
 
-/**
- * Fluent builder for a single route. The builder is intentionally *not* the
- * value passed to `buildTree` — `toSpec()` seals the path/method/handler
- * triple into a `RouteSpec` and throws if anything is missing. This means a
- * router that forgets to call `.handler()` fails loud at build time instead
- * of silently registering a route with `handler === undefined`.
- */
+/** Fluent builder for one route. `toSpec()` throws if method or handler is missing. */
 export class Route {
     private _method: HttpMethod | null = null;
     private _handler: RouteHandler | null = null;

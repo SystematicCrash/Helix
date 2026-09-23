@@ -4,20 +4,10 @@ import {Group} from "./Group.js";
 import {buildTree, RouteTree} from "./buildTree.js";
 import type {RouteHandler} from "./RouteHandler.js";
 
-/**
- * The top-level router. Holds the backing route list, exposes chainable
- * method shortcuts (same surface as `Group`, without prefix joining), opens
- * nested `Group`s via `.group(prefix)`, and compiles the whole route table
- * into a frozen `RouteTree` via `.build()`.
- *
- * Build once at server start, then hand the tree to the dispatcher. Adding
- * routes after `.build()` does not retroactively recompile the tree; the
- * pattern is: register everything, then call `.build()` exactly once.
- */
+/** Top-level router. Build once at server start; the tree is frozen afterwards. */
 export default class Router {
     private _routes: RouteSpec[] = [];
 
-    /** Read-only view of every route registered so far, in registration order. */
     public get routes(): ReadonlyArray<RouteSpec> {
         return this._routes;
     }
