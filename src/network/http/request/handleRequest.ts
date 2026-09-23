@@ -6,14 +6,15 @@ import HttpRequest from "./HttpRequest.js";
 import type {HttpBody} from "../body/HttpBody.js";
 import type {ServerInfo} from "../../../common/types.js";
 import type {RouteTree} from "../routing/buildTree.js";
+import {getServerInfo} from "../../../common/serverInfo.js";
 
 /** Dispatches a request through the routing tree: handler, 405 + Allow, or 404. */
 export async function handleRequest(
     request: HttpRequest,
     body: HttpBody,
-    info: ServerInfo,
     tree: RouteTree,
 ): Promise<HttpResponse> {
+    const info = getServerInfo();
     const segments = splitPath(request.url);
     const result = tree.lookup(request.method as HttpMethod, segments);
 
@@ -24,7 +25,6 @@ export async function handleRequest(
         case "methodNotAllowed": {
             const response = mapErrorToResponse(
                 HttpError.methodNotAllowed(),
-                info,
                 request,
             );
             response.headers.set(HttpHeader.Allow, result.allowed.join(", "));
@@ -33,7 +33,7 @@ export async function handleRequest(
 
         case "notFound":
         default:
-            return mapErrorToResponse(HttpError.notFound(), info, request);
+            return mapErrorToResponse(HttpError.notFound(), request);
     }
 }
 

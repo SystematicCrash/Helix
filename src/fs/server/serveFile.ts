@@ -7,7 +7,6 @@ import {ByteRange} from "../../common/types.js";
 import {rangeToIOOptions} from "../common/utils.js";
 import HttpError from "../../network/http/common/HttpError.js";
 
-
 export async function serveStaticFile(
     url: string,
     rangeSet: ByteRange[] = []
@@ -89,9 +88,7 @@ function resolvePath(url: string): string {
     const clean = url.split('?')[0]?.split('#')[0] ?? url;
     if (clean.includes('..'))
         throw FsError.from(FsErrCode.INVALID_PATH, 'Path traversal is not allowed');
-    if (clean.startsWith('/'))
-        return `${DOCUMENT_ROOT}${clean === '/' ? '/index.html' : clean}`;
-    return clean || 'index.html';
+    return `${DOCUMENT_ROOT}/${clean}`;
 }
 
 /**
