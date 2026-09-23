@@ -13,16 +13,18 @@ export const echoHandler: RouteHandler = (_req, body) =>
     HttpResponse.from(200, body);
 
 /** Serves files under `/files/*filepath` via `HttpResponse.file`; range requests honored. */
-export const filesHandler: RouteHandler = async (req, _body, _info, params) =>
-    HttpResponse.file(await serveStaticFile(params.filepath ?? "", req.rangeSet ?? []));
-
-export const filesHeadHandler: RouteHandler = async (req, _body, _info, params) =>
-    HttpResponse.headFile(await serveStaticFile(params.filepath ?? "", req.rangeSet ?? []));
-
-export const filesOptionsHandler: RouteHandler = (req, _body, _info, params) => {
-    const response = HttpResponse.empty(204);
-    const allowed = [HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS].join(', ');
-    response.setHeader(HttpHeader.Allow, allowed);
-    response.setHeader(HttpHeader.AcceptRange, 'bytes');
-    return response;
+export const filesHandler: RouteHandler = async (req, _body, _info, params) => {
+    switch (req.method) {
+        case HttpMethod.GET:
+            return HttpResponse.file(await serveStaticFile(params.filepath ?? "", req.rangeSet ?? []));
+        case HttpMethod.HEAD:
+            return HttpResponse.headFile(await serveStaticFile(params.filepath ?? "", req.rangeSet ?? []));
+        default: {
+            const response = HttpResponse.empty(204);
+            const allowed = [HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS].join(', ');
+            response.setHeader(HttpHeader.Allow, allowed);
+            response.setHeader(HttpHeader.AcceptRange, 'bytes');
+            return response;
+        }
+    }
 }
