@@ -41,6 +41,10 @@ export class Group {
         return this.add(path, handler, HttpMethod.OPTIONS);
     }
 
+    public setRoute(path: string, handler: RouteHandler, methods: HttpMethod[]): this {
+        return this.add(path, handler, ...methods);
+    }
+
     /** Opens a nested group; the new prefix is this group's prefix joined with `prefix`. */
     public group(prefix: string): Group {
         return new Group(this._routes, this.join(prefix));
