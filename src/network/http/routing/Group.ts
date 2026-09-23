@@ -1,53 +1,20 @@
 import {HttpMethod} from "../common/constants.js";
 import {Route} from "./Route.js";
 import {RouteHandler, RouteSpec} from "./types.js";
+import {RouteBuilder} from "./RouteBuilder.js";
 
 /** Prefix-aware sub-router sharing the parent router's backing route list. */
-export class Group {
+export class Group extends RouteBuilder {
     constructor(
-        private readonly _routes: RouteSpec[],
+        public readonly routes: RouteSpec[],
         private readonly prefix: string,
-    ) {}
-
-    public get routes(): ReadonlyArray<RouteSpec> {
-        return this._routes;
-    }
-
-    public get(path: string, handler: RouteHandler): this {
-        return this.add(path, handler, HttpMethod.GET);
-    }
-
-    public post(path: string, handler: RouteHandler): this {
-        return this.add(path, handler, HttpMethod.POST);
-    }
-
-    public put(path: string, handler: RouteHandler): this {
-        return this.add(path, handler, HttpMethod.PUT);
-    }
-
-    public patch(path: string, handler: RouteHandler): this {
-        return this.add(path, handler, HttpMethod.PATCH);
-    }
-
-    public delete(path: string, handler: RouteHandler): this {
-        return this.add(path, handler, HttpMethod.DELETE);
-    }
-
-    public head(path: string, handler: RouteHandler): this {
-        return this.add(path, handler, HttpMethod.HEAD);
-    }
-
-    public options(path: string, handler: RouteHandler): this {
-        return this.add(path, handler, HttpMethod.OPTIONS);
-    }
-
-    public setRoute(path: string, handler: RouteHandler, methods: HttpMethod[]): this {
-        return this.add(path, handler, ...methods);
+    ) {
+        super();
     }
 
     /** Opens a nested group; the new prefix is this group's prefix joined with `prefix`. */
     public group(prefix: string): Group {
-        return new Group(this._routes, this.join(prefix));
+        return new Group(this.routes, this.join(prefix));
     }
 
     /** Joins `path` onto `prefix` with exactly one `/` between them. */
@@ -59,12 +26,12 @@ export class Group {
         return left + right;
     }
 
-    private add(path: string, handler: RouteHandler, ...method: HttpMethod[]): this {
+    protected add(path: string, handler: RouteHandler, ...method: HttpMethod[]): this {
         const spec = new Route(this.join(path))
             .methods(method)
             .handler(handler)
             .toSpec();
-        this._routes.push(spec);
+        this.routes.push(spec);
         return this;
     }
 }

@@ -23,7 +23,7 @@ describe('Router method shortcuts', () => {
         expect(router.routes).toHaveLength(1);
         const spec = router.routes[0];
         expect(spec?.path).toBe('/target');
-        expect(spec?.methods).toBe(method);
+        expect(spec?.methods).toContain(method);
         expect(typeof spec?.handler).toBe('function');
     });
 
@@ -31,7 +31,7 @@ describe('Router method shortcuts', () => {
         const router = new Router();
         const ret = router.get('/a', handler()).post('/b', handler());
         expect(ret).toBe(router);
-        expect(router.routes).toHaveLength(2);
+        expect(router.routes.length).toBe(2);
     });
 
     test('paths on the top-level router are taken verbatim (no prefix joining)', () => {
@@ -40,16 +40,17 @@ describe('Router method shortcuts', () => {
 
         expect(router.routes[0]?.path).toBe('/users/:id');
     });
+
+    test('group returns a Group instance sharing the same route list as the router', () => {
+        const router = new Router();
+        const group = router.group('/api');
+
+        expect(group).toBeInstanceOf(Group);
+        expect(group.routes).toBe(router.routes);
+    });
 });
 
 describe('Group prefix joining', () => {
-    const join = (prefix: string, path: string): string => {
-        const router = new Router();
-        const group = router.group(prefix);
-        group.get(path, handler());
-        return router.routes[0]?.path;
-    };
-
     test.each([
         ['/api', '/users', '/api/users'],
         ['/api', 'users', '/api/users'],
@@ -57,7 +58,10 @@ describe('Group prefix joining', () => {
         ['/api/', 'users', '/api/users'],
         ['', '/users', '/users'],
     ])('group(%j).get(%j) → %s', (prefix, path, expected) => {
-        expect(join(prefix, path)).toBe(expected);
+        const router = new Router();
+        const group = router.group(prefix);
+        group.get(path, handler());
+        expect(router.routes[0]?.path).toBe(expected);
     });
 
     test('a nested group composes its parent prefix', () => {
@@ -67,14 +71,6 @@ describe('Group prefix joining', () => {
         v1.get('/ping', handler());
 
         expect(router.routes[0]?.path).toBe('/api/v1/ping');
-    });
-
-    test('group returns a Group instance sharing the same route list as the router', () => {
-        const router = new Router();
-        const group = router.group('/api');
-
-        expect(group).toBeInstanceOf(Group);
-        expect(group.routes).toBe(router.routes);
     });
 });
 

@@ -1,6 +1,6 @@
 import TCPServer from "../../tcp/server/TCPServer.js";
 import {HttpConnection} from "./HttpConnection.js";
-import {RouteTree} from "../routing/buildTree.js";
+import {buildTree, RouteTree} from "../routing/buildTree.js";
 
 export default class HttpServer {
     private isRunning = false;

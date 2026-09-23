@@ -4,6 +4,7 @@ import {fileURLToPath} from 'url';
 import TCPServer from "./src/network/tcp/server/TCPServer.js";
 import HttpServer from "./src/network/http/server/HttpServer.js";
 import Router from "./src/network/http/routing/Router.js";
+import {RouteSpec} from "./src/network/http/routing/types.js";
 import defineRoutes from "./src/app/routes.js";
 import {setServerInfo} from "./src/common/serverInfo.js";
 
