@@ -30,7 +30,7 @@ export type SegmentKind =
 /** Frozen (path, method, handler) triple consumed by `buildTree`. */
 export interface RouteSpec {
     readonly path: string;
-    readonly method: HttpMethod;
+    readonly methods: HttpMethod[];
     readonly handler: RouteHandler;
 }
 

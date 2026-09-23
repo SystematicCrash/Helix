@@ -23,7 +23,7 @@ describe('Router method shortcuts', () => {
         expect(router.routes).toHaveLength(1);
         const spec = router.routes[0];
         expect(spec?.path).toBe('/target');
-        expect(spec?.method).toBe(method);
+        expect(spec?.methods).toBe(method);
         expect(typeof spec?.handler).toBe('function');
     });
 

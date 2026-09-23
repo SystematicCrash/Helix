@@ -13,35 +13,39 @@ export default class Router {
     }
 
     public get(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.GET, path, handler);
+        return this.add(path, handler, HttpMethod.GET);
     }
 
     public post(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.POST, path, handler);
+        return this.add(path, handler, HttpMethod.POST);
     }
 
     public put(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.PUT, path, handler);
+        return this.add(path, handler, HttpMethod.PUT);
     }
 
     public patch(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.PATCH, path, handler);
+        return this.add(path, handler, HttpMethod.PATCH);
     }
 
     public delete(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.DELETE, path, handler);
+        return this.add(path, handler, HttpMethod.DELETE);
     }
 
     public head(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.HEAD, path, handler);
+        return this.add(path, handler, HttpMethod.HEAD);
     }
 
     public options(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.OPTIONS, path, handler);
+        return this.add(path, handler, HttpMethod.OPTIONS);
     }
 
     public any(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.ANY, path, handler);
+        return this.add(path, handler, HttpMethod.ANY);
+    }
+
+    public setRoute(path: string, handler: RouteHandler, methods: HttpMethod[]): this {
+        return this.add(path, handler, ...methods);
     }
 
     public group(prefix: string): Group {
@@ -52,8 +56,8 @@ export default class Router {
         return buildTree(this._routes);
     }
 
-    private add(method: HttpMethod, path: string, handler: RouteHandler): this {
-        const spec = new Route(path).method(method).handler(handler).toSpec();
+    private add(path: string, handler: RouteHandler, ...methods: HttpMethod[]): this {
+        const spec = new Route(path).methods(methods).handler(handler).toSpec();
         this._routes.push(spec);
         return this;
     }

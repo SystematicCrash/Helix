@@ -91,12 +91,17 @@ export function buildTree(routes: ReadonlyArray<RouteSpec>): RouteTree {
             node = node.insert(segment);
         }
 
-        if (node.handlers.has(spec.method)) {
-            throw new Error(`Duplicate route: ${spec.method} ${spec.path}`);
-        } else if (spec.method === HttpMethod.ANY) {
-            node.handlers.clear();
+        for (const method of spec.methods) {
+            if (method === HttpMethod.ANY) {
+                node.handlers.clear();
+                node.handlers.set(method, spec.handler);
+                break;
+            }
+            if (node.handlers.has(method)) {
+                throw new Error(`Duplicate route: ${spec.methods} ${spec.path}`);
+            }
+            node.handlers.set(method, spec.handler);
         }
-        node.handlers.set(spec.method, spec.handler);
     }
 
     root.freeze();

@@ -14,31 +14,31 @@ export class Group {
     }
 
     public get(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.GET, path, handler);
+        return this.add(path, handler, HttpMethod.GET);
     }
 
     public post(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.POST, path, handler);
+        return this.add(path, handler, HttpMethod.POST);
     }
 
     public put(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.PUT, path, handler);
+        return this.add(path, handler, HttpMethod.PUT);
     }
 
     public patch(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.PATCH, path, handler);
+        return this.add(path, handler, HttpMethod.PATCH);
     }
 
     public delete(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.DELETE, path, handler);
+        return this.add(path, handler, HttpMethod.DELETE);
     }
 
     public head(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.HEAD, path, handler);
+        return this.add(path, handler, HttpMethod.HEAD);
     }
 
     public options(path: string, handler: RouteHandler): this {
-        return this.add(HttpMethod.OPTIONS, path, handler);
+        return this.add(path, handler, HttpMethod.OPTIONS);
     }
 
     /** Opens a nested group; the new prefix is this group's prefix joined with `prefix`. */
@@ -55,9 +55,9 @@ export class Group {
         return left + right;
     }
 
-    private add(method: HttpMethod, path: string, handler: RouteHandler): this {
+    private add(path: string, handler: RouteHandler, ...method: HttpMethod[]): this {
         const spec = new Route(this.join(path))
-            .method(method)
+            .methods(method)
             .handler(handler)
             .toSpec();
         this._routes.push(spec);
