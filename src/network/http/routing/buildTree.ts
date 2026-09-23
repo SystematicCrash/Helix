@@ -1,4 +1,4 @@
-import {HttpMethod} from "../common/constants.js";
+import {HttpMethod, IDENT_REGEX} from "../common/constants.js";
 import RadixNode, {type LookupResult, type SegmentKind} from "./RadixNode.js";
 import type {RouteSpec} from "./Route.js";
 
@@ -18,8 +18,6 @@ export class RouteTree {
         return this.root.lookup(method, segments, 0, {});
     }
 }
-
-const IDENT_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
 /** Normalizes a path: must start with `/`; `''` and `'/'` collapse to root; trailing slashes stripped. */
 export function normalizePath(path: string): string {

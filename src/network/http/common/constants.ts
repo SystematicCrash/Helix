@@ -23,6 +23,9 @@ export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]+$/;
 export const HEX_DIGITS = /^[0-9A-Fa-f]+$/;
 export const DEC_DIGITS = /^\d+$/;
 
+/** Validates param/wildcard names in route paths (`:name`, `*name`) — must be a JS identifier. */
+export const IDENT_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
 /**
  * RFC 7230 token-char set as a numeric code lookup. Use with `String.charCodeAt(i)`
  * to avoid `noUncheckedIndexedAccess`-induced undefined values when indexing a string.
