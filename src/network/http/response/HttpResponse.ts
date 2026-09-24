@@ -25,16 +25,15 @@ export default class HttpResponse {
     }
 
     static html(code: number, content: string | Buffer): HttpResponse {
-        const response = new HttpResponse(code, new MemoryBody(
-            Buffer.isBuffer(content) ? content : Buffer.from(content),
-        ));
-        response.headers.set('content-type', 'text/html; charset=utf-8');
+        const response = new HttpResponse(code, new MemoryBody(content));
+        response.setHeader(HttpHeader.ContentLength, String(response.body.length));
+        response.setHeader(HttpHeader.ContentType, 'text/html; charset=utf-8');
         return response;
     }
 
     static json(code: number, value: unknown): HttpResponse {
         const response = new HttpResponse(code, new MemoryBody(Buffer.from(JSON.stringify(value))));
-        response.headers.set('content-type', 'application/json');
+        response.setHeader(HttpHeader.ContentType, 'application/json');
         return response;
     }
 
@@ -44,7 +43,7 @@ export default class HttpResponse {
 
     static redirect(code: number, location: string): HttpResponse {
         const response = HttpResponse.html(code, `<a href="${location}">Redirecting...</a>`);
-        response.headers.set('location', location);
+        response.setHeader(HttpHeader.Location, location);
         return response;
     }
 
