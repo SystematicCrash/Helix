@@ -33,6 +33,7 @@ export default class HttpResponse {
 
     static json(code: number, value: unknown): HttpResponse {
         const response = new HttpResponse(code, new MemoryBody(Buffer.from(JSON.stringify(value))));
+        response.setHeader(HttpHeader.ContentLength, String(response.body.length));
         response.setHeader(HttpHeader.ContentType, 'application/json');
         return response;
     }
