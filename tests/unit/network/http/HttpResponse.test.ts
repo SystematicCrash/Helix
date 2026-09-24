@@ -12,7 +12,7 @@ describe('new HttpResponse()', () => {
         expect(response.code).toBe(200);
         expect(response.body).toBe(body);
         expect(response.version).toBe('HTTP/1.1');
-        expect(response.headers).toEqual(new Map());
+        expect(response.getHeader('content-length')).toBe('0');
 
         const otherResponse = new HttpResponse(200, new EmptyBody());
         expect(response.headers).not.toBe(otherResponse.headers);

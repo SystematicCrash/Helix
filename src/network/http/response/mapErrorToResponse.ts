@@ -70,7 +70,7 @@ export function mapErrorToResponse(error: HttpError, request: HttpRequest | null
         }
 
         return response;
-    } catch {
+    } catch(error) {
         return HttpResponse.from(500, MemoryBody.from("Internal server error"));
     }
 }
