@@ -88,6 +88,46 @@ export enum HttpHeader {
     RetryAfter        = 'retry-after',
 }
 
+export enum ContentType {
+    // Application
+    Json = 'application/json',
+    JsonUtf8 = 'application/json; charset=utf-8',
+    OctetStream = 'application/octet-stream',
+    FormUrlEncoded = 'application/x-www-form-urlencoded',
+    Pdf = 'application/pdf',
+    Xml = 'application/xml',
+    Zip = 'application/zip',
+    Gzip = 'application/gzip',
+
+    // Text
+    TextPlain = 'text/plain',
+    TextPlainUtf8 = 'text/plain; charset=utf-8',
+    TextHtml = 'text/html',
+    TextHtmlUtf8 = 'text/html; charset=utf-8',
+    TextCss = 'text/css',
+    TextJavascript = 'text/javascript',
+    TextCsv = 'text/csv',
+    TextEventStream = 'text/event-stream',
+
+    // Multipart
+    MultipartFormData = 'multipart/form-data',
+    MultipartByteRanges = 'multipart/byteranges',
+
+    // Images
+    ImagePng = 'image/png',
+    ImageJpeg = 'image/jpeg',
+    ImageGif = 'image/gif',
+    ImageWebp = 'image/webp',
+    ImageSvg = 'image/svg+xml',
+    ImageIcon = 'image/x-icon',
+
+    // Audio & Video
+    AudioMpeg = 'audio/mpeg',
+    AudioOgg = 'audio/ogg',
+    VideoMp4 = 'video/mp4',
+    VideoWebm = 'video/webm',
+}
+
 export enum HttpMethod {
     POST = 'POST',
     PUT = 'PUT',

@@ -3,7 +3,7 @@ import Router from '../../../../../src/network/http/routing/Router.js';
 import {Group} from '../../../../../src/network/http/routing/Group.js';
 import {HttpMethod} from '../../../../../src/network/http/common/constants.js';
 import HttpResponse from '../../../../../src/network/http/response/HttpResponse.js';
-import type {RouteHandler} from '../../../../../src/network/http/routing/RouteHandler.js';
+import type {RouteHandler} from '../../../../../src/network/http/routing/types.js';
 
 const handler = (label = 'test'): RouteHandler => () => HttpResponse.html(200, label);
 

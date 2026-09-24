@@ -1,16 +1,15 @@
 import {describe, test, expect} from 'vitest';
 import {buildTree, normalizePath, parseSegments} from '../../../../../src/network/http/routing/buildTree.js';
 import Router from '../../../../../src/network/http/routing/Router.js';
-import type {RouteSpec} from '../../../../../src/network/http/routing/Route.js';
 import {HttpMethod} from '../../../../../src/network/http/common/constants.js';
 import HttpResponse from '../../../../../src/network/http/response/HttpResponse.js';
-import type {RouteHandler} from '../../../../../src/network/http/routing/RouteHandler.js';
+import type {RouteHandler, RouteSpec} from '../../../../../src/network/http/routing/types.js';
 
 const handler = (label = 'test'): RouteHandler => () => HttpResponse.html(200, label);
 
 const spec = (path: string, method: HttpMethod = HttpMethod.GET): RouteSpec => ({
     path,
-    method,
+    methods: [method],
     handler: handler(`${method}-${path}`),
 });
 
@@ -82,10 +81,10 @@ describe('buildTree', () => {
             spec('/files/*filepath'),
         ]);
 
-        expect(tree.lookup(HttpMethod.GET, ['users']).kind).toBe('found');
-        expect(tree.lookup(HttpMethod.GET, ['users', '42']).kind).toBe('found');
-        expect(tree.lookup(HttpMethod.GET, ['files', 'a', 'b.txt']).kind).toBe('found');
-        expect(tree.lookup(HttpMethod.GET, ['nonexistent']).kind).toBe('notFound');
+        expect(tree.lookup(HttpMethod.GET, '/users').kind).toBe('found');
+        expect(tree.lookup(HttpMethod.GET, '/users/42').kind).toBe('found');
+        expect(tree.lookup(HttpMethod.GET, '/files/a/b.txt').kind).toBe('found');
+        expect(tree.lookup(HttpMethod.GET, '/nonexistent').kind).toBe('notFound');
     });
 
     test('throws on a duplicate (method, path) pair', () => {
@@ -142,9 +141,9 @@ describe('Router.build()', () => {
 
         const tree = router.build();
 
-        expect(tree.lookup(HttpMethod.GET, ['hello']).kind).toBe('found');
-        expect(tree.lookup(HttpMethod.POST, ['api', 'users']).kind).toBe('found');
-        expect(tree.lookup(HttpMethod.GET, ['api', 'users']).kind).toBe('methodNotAllowed');
+        expect(tree.lookup(HttpMethod.GET, '/hello').kind).toBe('found');
+        expect(tree.lookup(HttpMethod.POST, '/api/users').kind).toBe('found');
+        expect(tree.lookup(HttpMethod.GET, '/api/users').kind).toBe('methodNotAllowed');
     });
 
     test('the built tree is stable: adding routes after build does not mutate it', () => {
@@ -154,8 +153,8 @@ describe('Router.build()', () => {
 
         router.get('/second', handler());
 
-        expect(tree.lookup(HttpMethod.GET, ['first']).kind).toBe('found');
-        expect(tree.lookup(HttpMethod.GET, ['second']).kind).toBe('notFound');
+        expect(tree.lookup(HttpMethod.GET, '/first').kind).toBe('found');
+        expect(tree.lookup(HttpMethod.GET, '/second').kind).toBe('notFound');
     });
 
     test('routes added through nested groups land under the joined prefix', () => {
@@ -165,7 +164,7 @@ describe('Router.build()', () => {
         v1.get('/ping', handler('ping'));
 
         const tree = router.build();
-        const result = tree.lookup(HttpMethod.GET, ['api', 'v1', 'ping']);
+        const result = tree.lookup(HttpMethod.GET, '/api/v1/ping');
         expect(result.kind).toBe('found');
     });
 });

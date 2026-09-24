@@ -4,7 +4,6 @@ import MemoryBody from "../body/MemoryBody.js";
 import HttpRequest from "../request/HttpRequest.js";
 import {internalErrorPage, notFoundPage} from "./pages.js";
 import HttpResponse from "./HttpResponse.js";
-import {ServerInfo} from "../../../common/types.js";
 import {getServerInfo} from "../../../common/serverInfo.js";
 
 /** Converts any thrown error into an HttpResponse with an appropriate status code. */

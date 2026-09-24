@@ -7,7 +7,6 @@ import MemoryBody from '../../../../src/network/http/body/MemoryBody.js';
 import StreamBody from '../../../../src/network/http/body/StreamBody.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import {TCPConnection} from '../../../../src/network/tcp';
-import {ServerInfo} from '../../../../src/server/ServerInfo.js';
 import HttpRequest from "../../../../src/network/http/request/HttpRequest.js";
 import HttpResponse from "../../../../src/network/http/response/HttpResponse.js";
 
@@ -25,19 +24,16 @@ describe('mapErrorToResponse()', () => {
     describe('HttpError mapping', () => {
         test('should map HttpError code and message to response', () => {
             const err = new HttpError(422, 'Cannot parse request body content!');
-            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST, INFO);
+            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST);
 
-            expect(res).toMatchObject({
-                code: 422,
-                version: HttpVersion.HTTP_1_1,
-                headers: new Map(),
-                body: { length: err.message.length },
-            });
+            expect(res.code).toBe(422);
+            expect(res.version).toBe(HttpVersion.HTTP_1_1);
+            expect(res.body.length).toBe(err.message.length);
         });
 
         test('should render notFound template on 404', async () => {
             const err = new HttpError(404, 'Not found');
-            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST, INFO);
+            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST);
 
             expect(res.code).toBe(404);
             expect(res.body.length).toBeGreaterThan(0);
@@ -119,7 +115,7 @@ describe('ResponseWriter.write()', () => {
             };
 
             await ResponseWriter.write(conn, response);
-            expect(response.headers.get('content-length')).toBe('5');
+            expect(response.getHeader('content-length')).toBe('5');
         });
 
         test('should write body content to connection', async () => {
@@ -145,8 +141,8 @@ describe('ResponseWriter.write()', () => {
             };
 
             await expect(ResponseWriter.write(conn, response)).resolves.toBeUndefined();
-            expect(response.headers.get('transfer-encoding')).toBe('chunked');
-            expect(response.headers.get('content-length')).toBeUndefined();
+            expect(response.getHeader('transfer-encoding')).toBe('chunked');
+            expect(response.getHeader('content-length')).toBeUndefined();
         });
 
         test('should write a chunked terminator after the last body chunk', async () => {
@@ -162,7 +158,7 @@ describe('ResponseWriter.write()', () => {
             };
 
             await ResponseWriter.write(conn, response);
-            expect(response.headers.get('transfer-encoding')).toBe('chunked');
+            expect(response.getHeader('transfer-encoding')).toBe('chunked');
 
             // Concatenate every byte the mocked conn received and verify framing.
             const writes = (conn.write as unknown as { mock: { calls: [Buffer][] } }).mock.calls;

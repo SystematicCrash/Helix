@@ -4,13 +4,17 @@ import Router from '../../../../../src/network/http/routing/Router.js';
 import HttpResponse from '../../../../../src/network/http/response/HttpResponse.js';
 import HttpRequest from '../../../../../src/network/http/request/HttpRequest.js';
 import EmptyBody from '../../../../../src/network/http/body/EmptyBody.js';
-import {HttpHeader} from '../../../../../src/network/http/common/constants.js';
+import {HttpHeader, HttpMethod} from '../../../../../src/network/http/common/constants.js';
+import {setServerInfo} from '../../../../../src/common/serverInfo.js';
 import type {ServerInfo} from '../../../../../src/common/types.js';
 import type {HttpBody} from '../../../../../src/network/http/body/HttpBody.js';
 import type {RouteHandler} from '../../../../../src/network/http/routing/RouteHandler.js';
+import type {RouteTree} from '../../../../../src/network/http/routing/buildTree.js';
 
 const info: ServerInfo = {port: 1234, iface: '127.0.0.1', version: '1.0.0'};
 const body: HttpBody = new EmptyBody();
+
+setServerInfo(info);
 
 const requestFor = (method: string, url: string): HttpRequest =>
     HttpRequest.from(Buffer.from(`${method} ${url} HTTP/1.1\r\nHost: localhost\r\n\r\n`));
@@ -19,6 +23,11 @@ const handler = (label: string): RouteHandler => (_req, _body, _info, params) =>
     const response = HttpResponse.html(200, label);
     response.headers.set('x-params', JSON.stringify(params));
     return response;
+};
+
+const callHandleRequest = async (request: HttpRequest, tree: RouteTree) => {
+    const result = tree.lookup(request.method as HttpMethod, request.url);
+    return handleRequest(request, body, result);
 };
 
 const buildTestTree = (): ReturnType<Router['build']> => {
@@ -36,7 +45,7 @@ const buildTestTree = (): ReturnType<Router['build']> => {
 describe('handleRequest — found', () => {
     test('dispatches a static route and returns the handler response', async () => {
         const tree = buildTestTree();
-        const response = await handleRequest(requestFor('GET', '/echo'), body, info, tree);
+        const response = await callHandleRequest(requestFor('GET', '/echo'), tree);
         const text = await readResponseText(response);
 
         expect(response.code).toBe(200);
@@ -45,7 +54,7 @@ describe('handleRequest — found', () => {
 
     test('dispatches a root path', async () => {
         const tree = buildTestTree();
-        const response = await handleRequest(requestFor('GET', '/'), body, info, tree);
+        const response = await callHandleRequest(requestFor('GET', '/'), tree);
         const text = await readResponseText(response);
 
         expect(response.code).toBe(200);
@@ -54,8 +63,8 @@ describe('handleRequest — found', () => {
 
     test('static child takes precedence over a param sibling', async () => {
         const tree = buildTestTree();
-        const meResponse = await handleRequest(requestFor('GET', '/users/me'), body, info, tree);
-        const idResponse = await handleRequest(requestFor('GET', '/users/42'), body, info, tree);
+        const meResponse = await callHandleRequest(requestFor('GET', '/users/me'), tree);
+        const idResponse = await callHandleRequest(requestFor('GET', '/users/42'), tree);
 
         expect(await readResponseText(meResponse)).toBe('me');
         expect(await readResponseText(idResponse)).toBe('user-by-id');
@@ -66,7 +75,7 @@ describe('handleRequest — found', () => {
 
     test('routes inside a group resolve with the joined prefix', async () => {
         const tree = buildTestTree();
-        const response = await handleRequest(requestFor('GET', '/api/ping'), body, info, tree);
+        const response = await callHandleRequest(requestFor('GET', '/api/ping'), tree);
 
         expect(response.code).toBe(200);
         expect(await readResponseText(response)).toBe('api-ping');
@@ -74,10 +83,8 @@ describe('handleRequest — found', () => {
 
     test('wildcard route captures the remaining path', async () => {
         const tree = buildTestTree();
-        const response = await handleRequest(
+        const response = await callHandleRequest(
             requestFor('GET', '/files/docs/readme.md'),
-            body,
-            info,
             tree,
         );
 
@@ -94,10 +101,8 @@ describe('handleRequest — methodNotAllowed', () => {
         router.post('/only-get', handler('post-too'));
         const tree = router.build();
 
-        const response = await handleRequest(
+        const response = await callHandleRequest(
             requestFor('DELETE', '/only-get'),
-            body,
-            info,
             tree,
         );
 
@@ -111,10 +116,10 @@ describe('handleRequest — methodNotAllowed', () => {
         const tree = router.build();
 
         expect(
-            (await handleRequest(requestFor('POST', '/exists'), body, info, tree)).code,
+            (await callHandleRequest(requestFor('POST', '/exists'), tree)).code,
         ).toBe(405);
         expect(
-            (await handleRequest(requestFor('POST', '/missing'), body, info, tree)).code,
+            (await callHandleRequest(requestFor('POST', '/missing'), tree)).code,
         ).toBe(404);
     });
 });
@@ -122,17 +127,15 @@ describe('handleRequest — methodNotAllowed', () => {
 describe('handleRequest — notFound', () => {
     test('returns 404 for an unregistered path', async () => {
         const tree = buildTestTree();
-        const response = await handleRequest(requestFor('GET', '/nowhere'), body, info, tree);
+        const response = await callHandleRequest(requestFor('GET', '/nowhere'), tree);
 
         expect(response.code).toBe(404);
     });
 
     test('returns 404 when a deeper path is missing beyond a matched prefix', async () => {
         const tree = buildTestTree();
-        const response = await handleRequest(
+        const response = await callHandleRequest(
             requestFor('GET', '/users/42/nonexistent'),
-            body,
-            info,
             tree,
         );
 
@@ -148,9 +151,13 @@ describe('handleRequest — handler errors propagate', () => {
         });
         const tree = router.build();
 
-        await expect(
-            handleRequest(requestFor('GET', '/boom'), body, info, tree),
-        ).rejects.toThrow('kaboom');
+        const req = requestFor('GET', '/boom');
+        const result = tree.lookup(req.method as HttpMethod, req.url);
+        if (result.kind === 'found') {
+            await expect(
+                result.handler(req, body, info, result.params),
+            ).rejects.toThrow('kaboom');
+        }
     });
 });
 

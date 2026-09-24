@@ -3,7 +3,7 @@ import {CRLF} from "../../common/constants.js";
 import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {parseRangeHeader} from "./parser/parseRange.js";
-import {HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
+import {ContentType, HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
@@ -12,6 +12,7 @@ import {ByteRange} from "../../../common/types.js";
 import StreamBody from "../body/StreamBody.js";
 import {parseChunks} from "./parser/parseChunks.js";
 import EmptyBody from "../body/EmptyBody.js";
+import {parseAcceptHeader} from "./parser/parseAccept.js";
 
 /*
  * Parsed HTTP request head value object.
@@ -25,6 +26,7 @@ export default class HttpRequest {
     public url!: string;
     public version!: string;
     public headers: Map<string, string> = new Map();
+    private _acceptTypes: ContentType[] | null = null;
 
     constructor(requestData: Buffer) {
         this.parse(requestData);
@@ -69,6 +71,13 @@ export default class HttpRequest {
     /** Returns false for methods that must not carry a body (GET, HEAD). */
     get isBodyAllowed(): boolean {
         return this.method !== HttpMethod.GET && this.method !== HttpMethod.HEAD;
+    }
+
+    get acceptTypes(): ContentType[] {
+        if (!this._acceptTypes) {
+            this._acceptTypes = parseAcceptHeader(this.headers.get(HttpHeader.Accept));
+        }
+        return this._acceptTypes;
     }
 
     /**
