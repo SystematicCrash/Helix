@@ -8,8 +8,8 @@ import {HttpHeader, HttpMethod} from '../../../../../src/network/http/common/con
 import {setServerInfo} from '../../../../../src/common/serverInfo.js';
 import type {ServerInfo} from '../../../../../src/common/types.js';
 import type {HttpBody} from '../../../../../src/network/http/body/HttpBody.js';
-import type {RouteHandler} from '../../../../../src/network/http/routing/RouteHandler.js';
 import type {RouteTree} from '../../../../../src/network/http/routing/buildTree.js';
+import {RouteHandler} from "../../../../../src/network/http/routing/types.js";
 
 const info: ServerInfo = {port: 1234, iface: '127.0.0.1', version: '1.0.0'};
 const body: HttpBody = new EmptyBody();
@@ -21,7 +21,7 @@ const requestFor = (method: string, url: string): HttpRequest =>
 
 const handler = (label: string): RouteHandler => (_req, _body, _info, params) => {
     const response = HttpResponse.html(200, label);
-    response.headers.set('x-params', JSON.stringify(params));
+    response.setHeader('x-params', JSON.stringify(params));
     return response;
 };
 
@@ -69,7 +69,7 @@ describe('handleRequest — found', () => {
         expect(await readResponseText(meResponse)).toBe('me');
         expect(await readResponseText(idResponse)).toBe('user-by-id');
 
-        const params = idResponse.headers.get('x-params');
+        const params = idResponse.getHeader('x-params');
         expect(JSON.parse(params ?? '{}')).toEqual({id: '42'});
     });
 
@@ -89,7 +89,7 @@ describe('handleRequest — found', () => {
         );
 
         expect(response.code).toBe(200);
-        const params = JSON.parse(response.headers.get('x-params') ?? '{}');
+        const params = JSON.parse(response.getHeader('x-params') ?? '{}');
         expect(params).toEqual({filepath: 'docs/readme.md'});
     });
 });
@@ -107,7 +107,7 @@ describe('handleRequest — methodNotAllowed', () => {
         );
 
         expect(response.code).toBe(405);
-        expect(response.headers.get(HttpHeader.Allow)).toBe('GET, POST');
+        expect(response.getHeader(HttpHeader.Allow)).toBe('GET, POST');
     });
 
     test('405 on one path does not bleed into an unrelated 404', async () => {
@@ -146,7 +146,7 @@ describe('handleRequest — notFound', () => {
 describe('handleRequest — handler errors propagate', () => {
     test('a throwing handler bubbles up for the per-connection error path', async () => {
         const router = new Router();
-        router.get('/boom', () => {
+        router.get('/boom', async () => {
             throw new Error('kaboom');
         });
         const tree = router.build();
