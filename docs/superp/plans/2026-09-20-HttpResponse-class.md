@@ -91,7 +91,7 @@ Task 4 → Task 5
 
 **Depends on:** Task 1.
 
-**Parallel-safe with:** Task 3 (disjoint file sets: Task 2 touches `src/network/http/response/mapErrorToResponse.ts`, `src/network/http/response/ResponseWriter.ts`, `src/network/http/response/encoder/encodeHeaders.ts`; Task 3 touches `src/network/http/request/RequestRouter.ts`). Each task reads the other's files for compile-time guarantees only; no overlap.
+**Parallel-safe with:** Task 3 (disjoint file sets: Task 2 touches `src/network/http/response/mapErrorToResponse.ts`, `src/network/http/response/ResponseWriter.ts`, `src/network/http/response/encoder/encodeHeaders.ts`; Task 3 touches `src/network/http/request/handleRequest.ts`). Each task reads the other's files for compile-time guarantees only; no overlap.
 
 **Files:**
 - Modify: `src/network/http/response/mapErrorToResponse.ts` — anchors: function `mapErrorToResponse` (signature + return body) and the `renderHtml` import line.
@@ -130,10 +130,10 @@ Task 4 → Task 5
 
 **Depends on:** Task 1.
 
-**Parallel-safe with:** Task 2 (disjoint file set: only `src/network/http/request/RequestRouter.ts` is touched).
+**Parallel-safe with:** Task 2 (disjoint file set: only `src/network/http/request/handleRequest.ts` is touched).
 
 **Files:**
-- Modify: `src/network/http/request/RequestRouter.ts` — anchors: the `import {HttpResponse}` line, the `renderHtml` import line, the `/` branch of `handleRequest` (calls `renderHtml('index', ...)`), and every branch's return literal.
+- Modify: `src/network/http/request/handleRequest.ts` — anchors: the `import {HttpResponse}` line, the `renderHtml` import line, the `/` branch of `handleRequest` (calls `renderHtml('index', ...)`), and every branch's return literal.
 
 **Shared files (conflict risk):** none.
 
@@ -150,11 +150,11 @@ Task 4 → Task 5
 - `handleRequest` for `request.url === '/echo'` returns an `HttpResponse` with `code === 200` and the request body.
 - `handleRequest` for `request.url === '/sheep'` returns an `HttpResponse` with `code === 200` and the streaming body.
 - `handleRequest` for `request.url === '/files/...'` returns an `HttpResponse` with `code === file.status`, `Accept-Range: bytes` header set, optional `content-range` header, and the file body. The 404 from `rethrowFsNotFound` still bubbles through `mapErrorToResponse`.
-- The line `import {renderHtml} from "../../../infra/index.js"` is removed from `src/network/http/request/RequestRouter.ts` (it is unused after the `/` branch is rewired).
-- `src/network/http/request/RequestRouter.ts` imports `HttpResponse` from `"../response/HttpResponse.js"` (default-import) and `indexPage` from `"../response/pages.js"`.
+- The line `import {renderHtml} from "../../../infra/index.js"` is removed from `src/network/http/request/handleRequest.ts` (it is unused after the `/` branch is rewired).
+- `src/network/http/request/handleRequest.ts` imports `HttpResponse` from `"../response/HttpResponse.js"` (default-import) and `indexPage` from `"../response/pages.js"`.
 - `npm test` exits 0; no test scenario was modified.
 
-- [ ] **Step 1:** Edit `src/network/http/request/RequestRouter.ts`: replace `import {HttpResponse} from "../common/types.js"` with `import HttpResponse from "../response/HttpResponse.js"`; replace `import {renderHtml} from "../../../infra/index.js"` with `import {indexPage} from "../response/pages.js"` (drop `renderHtml` entirely). In `handleRequest`, replace the `/` branch's `renderHtml('index', {...})` + `new MemoryBody(html)` + returned literal with `return HttpResponse.html(200, indexPage(info), request.version)`. Replace the `/echo`, `/sheep`, and `/files/...` branches' returned literals with `new HttpResponse(statusCode, payload, request.version)` calls; set `Accept-Range: bytes` and `content-range` headers via `response.setHeader(...)` if needed (or assign to the response's `headers` Map directly). Confirm no other lines reference `renderHtml` in the file.
+- [ ] **Step 1:** Edit `src/network/http/request/handleRequest.ts`: replace `import {HttpResponse} from "../common/types.js"` with `import HttpResponse from "../response/HttpResponse.js"`; replace `import {renderHtml} from "../../../infra/index.js"` with `import {indexPage} from "../response/pages.js"` (drop `renderHtml` entirely). In `handleRequest`, replace the `/` branch's `renderHtml('index', {...})` + `new MemoryBody(html)` + returned literal with `return HttpResponse.html(200, indexPage(info), request.version)`. Replace the `/echo`, `/sheep`, and `/files/...` branches' returned literals with `new HttpResponse(statusCode, payload, request.version)` calls; set `Accept-Range: bytes` and `content-range` headers via `response.setHeader(...)` if needed (or assign to the response's `headers` Map directly). Confirm no other lines reference `renderHtml` in the file.
 - [ ] **Step 2:** Run `npm test`. Confirm exit 0.
 - [ ] **Step 3: Commit** (executor writes the commit message and runs `git commit`).
 
@@ -218,7 +218,7 @@ Task 4 → Task 5
 **Acceptance Criteria:**
 
 - `npm test` exits 0 with zero failures across the full Vitest suite (unit + integration).
-- `grep -rn "TODO\|TBD\|XXX\|FIXME" src/network/http/response/HttpResponse.ts src/network/http/response/mapErrorToResponse.ts src/network/http/response/pages.ts src/network/http/request/RequestRouter.ts src/network/http/common/types.ts` returns zero lines.
+- `grep -rn "TODO\|TBD\|XXX\|FIXME" src/network/http/response/HttpResponse.ts src/network/http/response/mapErrorToResponse.ts src/network/http/response/pages.ts src/network/http/request/handleRequest.ts src/network/http/common/types.ts` returns zero lines.
 - `grep -rn "HttpResponse" src/network/http/common/` returns zero lines (interface is fully removed).
 - Manual: with the server started via `npx tsx index.ts` (or the project's documented launch command), `curl -i http://localhost:<port>/` returns HTTP 200 with a body containing the index HTML and a `Content-Type: text/html; charset=utf-8` header.
 - Manual: `curl -i http://localhost:<port>/missing` returns HTTP 404 with the not-found HTML body.
@@ -237,12 +237,12 @@ Task 4 → Task 5
 Project is DONE when all of the following hold:
 
 - [ ] `npm test` exits 0 with zero failures (full Vitest unit + integration suite, per Task 5 Step 1)
-- [ ] `grep -rn "TODO\|TBD\|XXX\|FIXME" src/network/http/response/HttpResponse.ts src/network/http/response/mapErrorToResponse.ts src/network/http/response/pages.ts src/network/http/request/RequestRouter.ts src/network/http/common/types.ts` returns nothing (Task 5 Step 2)
+- [ ] `grep -rn "TODO\|TBD\|XXX\|FIXME" src/network/http/response/HttpResponse.ts src/network/http/response/mapErrorToResponse.ts src/network/http/response/pages.ts src/network/http/request/handleRequest.ts src/network/http/common/types.ts` returns nothing (Task 5 Step 2)
 - [ ] `grep -rn "HttpResponse" src/network/http/common/` returns nothing — the interface is fully deleted (Task 5 Step 3, produced by Task 4)
 - [ ] Manual: `curl -i http://localhost:<port>/` returns HTTP 200 with a `text/html` body containing the index template output (Task 5 Step 4)
 - [ ] Manual: `curl -i http://localhost:<port>/missing` returns HTTP 404 with a `text/html` body containing the not-found template output (Task 5 Step 4)
 - [ ] Manual: triggering a 5xx error path returns HTTP 500 with a `text/html` body containing the internal-error template output (Task 5 Step 4)
 - [ ] `src/network/http/response/HttpResponse.ts` exists and exports the class described in the spec (Task 1)
 - [ ] `src/network/http/common/types.ts` no longer contains any `HttpResponse` declaration (Task 4)
-- [ ] `src/network/http/response/mapErrorToResponse.ts` and `src/network/http/request/RequestRouter.ts` no longer import `renderHtml` (Tasks 2 and 3)
+- [ ] `src/network/http/response/mapErrorToResponse.ts` and `src/network/http/request/handleRequest.ts` no longer import `renderHtml` (Tasks 2 and 3)
 - [ ] Every task above is checked off and its own Acceptance Criteria verified

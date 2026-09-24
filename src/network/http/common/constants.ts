@@ -1,7 +1,3 @@
-import HttpError from "./HttpError.js";
-import FsError from "../../../fs/common/FsError.js";
-import BufferError from "../../../buffer/BufferError.js";
-import TCPError from "../../tcp/common/TCPError.js";
 import {FsErrCode} from "../../../fs/index.js";
 import {BufferErrCode} from "../../../buffer/constants.js";
 import {TCPErrCode} from "../../tcp/index.js";
@@ -22,6 +18,9 @@ export const HEADER_VALUE_REGEX = /^[\x09\x20\x21-\x7E\x80-\xFF]+$/;
 /** RFC 7230 §4.1.1 — chunk-size grammar: 1*HEXDIG */
 export const HEX_DIGITS = /^[0-9A-Fa-f]+$/;
 export const DEC_DIGITS = /^\d+$/;
+
+/** Validates param/wildcard names in route paths (`:name`, `*name`) — must be a JS identifier. */
+export const IDENT_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
 /**
  * RFC 7230 token-char set as a numeric code lookup. Use with `String.charCodeAt(i)`
@@ -70,6 +69,7 @@ export enum HttpHeader {
     Authorization     = 'authorization',
     ContentType       = 'content-type',
     ContentLength     = 'content-length',
+    ContentRange      = 'content-range',
     Cookie            = 'cookie',
     Origin            = 'origin',
     Referer           = 'referer',
@@ -89,6 +89,46 @@ export enum HttpHeader {
     RetryAfter        = 'retry-after',
 }
 
+export enum ContentType {
+    // Application
+    Json = 'application/json',
+    JsonUtf8 = 'application/json; charset=utf-8',
+    OctetStream = 'application/octet-stream',
+    FormUrlEncoded = 'application/x-www-form-urlencoded',
+    Pdf = 'application/pdf',
+    Xml = 'application/xml',
+    Zip = 'application/zip',
+    Gzip = 'application/gzip',
+
+    // Text
+    TextPlain = 'text/plain',
+    TextPlainUtf8 = 'text/plain; charset=utf-8',
+    TextHtml = 'text/html',
+    TextHtmlUtf8 = 'text/html; charset=utf-8',
+    TextCss = 'text/css',
+    TextJavascript = 'text/javascript',
+    TextCsv = 'text/csv',
+    TextEventStream = 'text/event-stream',
+
+    // Multipart
+    MultipartFormData = 'multipart/form-data',
+    MultipartByteRanges = 'multipart/byteranges',
+
+    // Images
+    ImagePng = 'image/png',
+    ImageJpeg = 'image/jpeg',
+    ImageGif = 'image/gif',
+    ImageWebp = 'image/webp',
+    ImageSvg = 'image/svg+xml',
+    ImageIcon = 'image/x-icon',
+
+    // Audio & Video
+    AudioMpeg = 'audio/mpeg',
+    AudioOgg = 'audio/ogg',
+    VideoMp4 = 'video/mp4',
+    VideoWebm = 'video/webm',
+}
+
 export enum HttpMethod {
     POST = 'POST',
     PUT = 'PUT',
@@ -97,6 +137,7 @@ export enum HttpMethod {
     OPTIONS = 'OPTIONS',
     HEAD = 'HEAD',
     GET = 'GET',
+    ANY = 'ANY',
 }
 
 export const VALID_METHODS = new Set([
@@ -210,21 +251,21 @@ export const BUFFER_TO_HTTP_STATUS: Record<BufferErrCode, number> = {
 };
 
 export const TCP_TO_HTTP_STATUS: Record<TCPErrCode, number> = {
-    [TCPErrCode.READ_AFTER_EOF]:            400,
-    [TCPErrCode.WRITE_AFTER_EOF]:           400,
-    [TCPErrCode.READ_AFTER_CLOSE]:          400,
-    [TCPErrCode.WRITE_AFTER_CLOSE]:         400,
+    [TCPErrCode.READ_AFTER_EOF]:            500,
+    [TCPErrCode.WRITE_AFTER_EOF]:           500,
+    [TCPErrCode.READ_AFTER_CLOSE]:          500,
+    [TCPErrCode.WRITE_AFTER_CLOSE]:         500,
     [TCPErrCode.WRITE_BACKPRESSURE]:        503,
-    [TCPErrCode.EMPTY_DATA_BUFFER]:         400,
+    [TCPErrCode.EMPTY_DATA_BUFFER]:         500,
     [TCPErrCode.SIMULTANEOUS_READ]:         500,
     [TCPErrCode.SIMULTANEOUS_WRITE]:        500,
     [TCPErrCode.IDLE_TIMEOUT]:              408,
-    [TCPErrCode.WRITE_TIMEOUT]:             504,
-    [TCPErrCode.READ_TIMEOUT]:              504,
+    [TCPErrCode.READ_TIMEOUT]:              408,
+    [TCPErrCode.WRITE_TIMEOUT]:             500,
     [TCPErrCode.UNKNOWN_TIMEOUT]:           500,
     [TCPErrCode.UNEXPECTED_ERROR]:          500,
-    [TCPErrCode.FORCED_CLOSE]:              503,
-    [TCPErrCode.CLOSED_WHILE_WRITE]:        503,
+    [TCPErrCode.FORCED_CLOSE]:              500,
+    [TCPErrCode.CLOSED_WHILE_WRITE]:        500,
     [TCPErrCode.MAXIMUM_CONNECTIONS_EXCEEDED]: 503,
 };
 

@@ -12,7 +12,7 @@ describe('new HttpResponse()', () => {
         expect(response.code).toBe(200);
         expect(response.body).toBe(body);
         expect(response.version).toBe('HTTP/1.1');
-        expect(response.headers).toEqual(new Map());
+        expect(response.getHeader('content-length')).toBe('0');
 
         const otherResponse = new HttpResponse(200, new EmptyBody());
         expect(response.headers).not.toBe(otherResponse.headers);
@@ -81,6 +81,37 @@ describe('HttpResponse factories', () => {
 
         expect(response.headers.get('location')).toBe('/x');
         expect(response.body.length).toBeGreaterThan(0);
+    });
+
+    test('file wraps the stream in a StreamBody with the reported size', () => {
+        const empty = async function* () { if (false) yield Buffer.alloc(0); }();
+        const response = HttpResponse.file({stream: empty, size: 1234, status: 200});
+
+        expect(response.code).toBe(200);
+        expect(response.body).toBeInstanceOf(StreamBody);
+        expect(response.body.length).toBe(1234);
+    });
+
+    test('file sets Accept-Range and forwards the supplied status code', () => {
+        const empty = async function* () { if (false) yield Buffer.alloc(0); }();
+        const response = HttpResponse.file({stream: empty, size: 100, status: 206});
+
+        expect(response.headers.get('accept-range')).toBe('bytes');
+        expect(response.code).toBe(206);
+    });
+
+    test('file sets content-range only when the result carries one', () => {
+        const empty = async function* () { if (false) yield Buffer.alloc(0); }();
+        const ranged = HttpResponse.file({
+            stream: empty,
+            size: 100,
+            status: 206,
+            contentRange: 'bytes 0-99/1000',
+        });
+        const full = HttpResponse.file({stream: empty, size: 1000, status: 200});
+
+        expect(ranged.headers.get('content-range')).toBe('bytes 0-99/1000');
+        expect(full.hasHeader('content-range')).toBe(false);
     });
 });
 

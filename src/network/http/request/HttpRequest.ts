@@ -3,7 +3,7 @@ import {CRLF} from "../../common/constants.js";
 import {parseHeaders} from "./parser/parseHeaders.js";
 import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {parseRangeHeader} from "./parser/parseRange.js";
-import {HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
+import {ContentType, HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import TCPConnection from "../../tcp/conn/TCPConnection.js";
@@ -12,6 +12,7 @@ import {ByteRange} from "../../../common/types.js";
 import StreamBody from "../body/StreamBody.js";
 import {parseChunks} from "./parser/parseChunks.js";
 import EmptyBody from "../body/EmptyBody.js";
+import {parseAcceptHeader} from "./parser/parseAccept.js";
 
 /*
  * Parsed HTTP request head value object.
@@ -21,10 +22,11 @@ import EmptyBody from "../body/EmptyBody.js";
  * createBodyReader() below once the head has been parsed.
  */
 export default class HttpRequest {
-    public method!: string;
+    public method!: HttpMethod;
     public url!: string;
     public version!: string;
     public headers: Map<string, string> = new Map();
+    private _acceptTypes: ContentType[] | null = null;
 
     constructor(requestData: Buffer) {
         this.parse(requestData);
@@ -71,6 +73,13 @@ export default class HttpRequest {
         return this.method !== HttpMethod.GET && this.method !== HttpMethod.HEAD;
     }
 
+    get acceptTypes(): ContentType[] {
+        if (!this._acceptTypes) {
+            this._acceptTypes = parseAcceptHeader(this.headers.get(HttpHeader.Accept));
+        }
+        return this._acceptTypes;
+    }
+
     /**
      * Creates the lazy HttpBody that streams this request's body.
      * Selects the concrete reader based on Content-Length, Transfer-Encoding,
@@ -109,9 +118,9 @@ export default class HttpRequest {
         }
 
         const {method, url, version} = parseRequestLine(firstLine);
-        this.headers = parseHeaders(lines.slice(1, lines.length));
         this.url = url;
-        this.method = method;
         this.version = version;
+        this.method = method as HttpMethod;
+        this.headers = parseHeaders(lines.slice(1, lines.length));
     }
 }

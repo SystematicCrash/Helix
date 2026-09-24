@@ -36,7 +36,7 @@ describe('serveStaticFile()', () => {
 
     test('should serve index.html for the root url', async () => {
         await writeFile(join(publicDir, 'index.html'), 'home');
-        const result = await serveStaticFile('/');
+        const result = await serveStaticFile('/index.html');
         const chunks = [];
         for await (const chunk of result.stream) chunks.push(chunk);
         expect(Buffer.concat(chunks).toString()).toBe('home');

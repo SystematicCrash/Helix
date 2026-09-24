@@ -78,6 +78,34 @@ export default class TCPConnection {
     }
 
     /**
+     * Indicates whether the socket can currently accept write operations.
+     * Returns false if an error occurred, the writer has finished, or the
+     * underlying socket is closed/destroyed.
+     */
+    public get isWritable(): boolean {
+        return (
+            this._error === null &&
+            !this.sockWriter.isFinished &&
+            this.socket.writable &&
+            !this.socket.destroyed
+        );
+    }
+
+    /**
+     * Indicates whether the socket can currently accept read operations.
+     * Returns false if an error occurred, the reader has reached EOF/closed,
+     * or the underlying socket is no longer readable.
+     */
+    public get isReadable(): boolean {
+        return (
+            this._error === null &&
+            !this.sockReader.isFinished &&
+            this.socket.readable &&
+            !this.socket.destroyed
+        );
+    }
+
+    /**
      * Indicates that the connection is fully closed or not.
      * Checks that the write and read both are closed.
      */
