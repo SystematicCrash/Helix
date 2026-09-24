@@ -1,12 +1,13 @@
-import { TCPConnection } from "../../tcp/index.js";
+import {TCPConnection} from "../../tcp/index.js";
 import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
 import HttpRequest from "../request/HttpRequest.js";
-import { HttpBody } from "../body/HttpBody.js";
-import { parseRequest } from "../request/parser/parseRequest.js";
-import { handleRequest } from "../request/handleRequest.js";
-import { ResponseWriter } from "../response/ResponseWriter.js";
-import { mapErrorToResponse } from "../response/mapErrorToResponse.js";
-import { mapToHttpError } from "../common/mappers.js";
+import HttpResponse from "../response/HttpResponse.js";
+import {HttpBody} from "../body/HttpBody.js";
+import {parseRequest} from "../request/parser/parseRequest.js";
+import {handleRequest} from "../request/handleRequest.js";
+import {ResponseWriter} from "../response/ResponseWriter.js";
+import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
+import {mapToHttpError} from "../common/mappers.js";
 import HttpError from "../common/HttpError.js";
 import {HttpHeader, HttpMethod} from "../common/constants.js";
 import type {RouteTree} from "../routing/buildTree.js";
@@ -28,6 +29,21 @@ export class HttpConnection {
         }
     }
 
+    /**
+     * Checks connection state and safely serializes the HTTP response to the wire.
+     * Returns false if the socket is already closed, errored, or if the write fails.
+     */
+    public async writeResponse(response: HttpResponse): Promise<boolean> {
+        if (!this.conn.isWritable) return false;
+
+        try {
+            await ResponseWriter.write(this.conn, response);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     /** Processes a single HTTP request and returns true if the connection should stay open. */
     private async processRequest(): Promise<boolean> {
         let body: HttpBody | null = null;
@@ -37,14 +53,16 @@ export class HttpConnection {
             request = await this.readNextRequest();
             if (!request) return false;
 
-
             body = request.getBody(this.conn, this.buf);
-            const result = this.tree.lookup(request.method as HttpMethod, request.url)
+            const result = this.tree.lookup(request.method as HttpMethod, request.url);
             const response = await handleRequest(request, body, result);
-            await ResponseWriter.write(this.conn, response);
+
+            const written = await this.writeResponse(response);
+            if (!written) return false;
 
             await this.drainBody(body);
-            return !this.clientWantsClose(request);
+
+            return this.shouldKeepAlive(request, response);
         } catch (error: unknown) {
             return await this.handleError(error, body, request);
         }
@@ -65,7 +83,7 @@ export class HttpConnection {
         return request;
     }
 
-    /** Drains any remaining bytes from the request body stream. */
+    /** Drains any remaining unread bytes from the request body stream. */
     private async drainBody(body: HttpBody): Promise<void> {
         while (true) {
             const chunk = await body.read();
@@ -73,26 +91,42 @@ export class HttpConnection {
         }
     }
 
-    /** Normalizes errors and sends an appropriate HTTP response. */
-    private async handleError(error: unknown, body: HttpBody | null, request: HttpRequest | null): Promise<boolean> {
+    /** Normalizes errors and sends an appropriate HTTP response if the socket is alive. */
+    private async handleError(
+        error: unknown,
+        body: HttpBody | null,
+        request: HttpRequest | null,
+    ): Promise<boolean> {
         try {
+            if (this.conn.isFullyClosed || this.conn.error !== null) {
+                return false;
+            }
+
             const httpErr = mapToHttpError(error);
             const response = mapErrorToResponse(httpErr, request);
-            await ResponseWriter.write(this.conn, response);
 
-            const keepAlive = !httpErr.fatal && !this.clientWantsClose(request);
+            const written = await this.writeResponse(response);
+            if (!written) return false;
 
-            if (!httpErr.fatal && body) {
+            const keepAlive = !httpErr.fatal && this.shouldKeepAlive(request, response);
+
+            if (keepAlive && body) {
                 await this.drainBody(body);
             }
+
             return keepAlive;
         } catch {
             return false;
         }
     }
 
-    /** Checks if the client requested the connection to be closed. */
-    private clientWantsClose(request: HttpRequest | null): boolean {
-        return request === null || request.headers.get(HttpHeader.Connection)?.toLowerCase() === 'close';
+    /** Determines if the connection should remain open based on request and response framing headers. */
+    private shouldKeepAlive(request: HttpRequest | null, response: HttpResponse): boolean {
+        if (!request) return false;
+
+        const clientClose = request.headers.get(HttpHeader.Connection)?.toLowerCase() === "close";
+        const serverClose = response.getHeader(HttpHeader.Connection)?.toLowerCase() === "close";
+
+        return !clientClose && !serverClose;
     }
 }
