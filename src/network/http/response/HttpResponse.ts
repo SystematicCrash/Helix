@@ -6,15 +6,13 @@ import { ContentType, HTTP_STATUS, HttpHeader, HttpVersion, TransferEncoding } f
 import type { StaticFileStream } from '../common/types.js';
 
 export default class HttpResponse {
-    public code: number;
-    public body: HttpBody;
-    public version: string;
+    private _shouldClose: boolean = false;
     private readonly _headers: Map<string, string> = new Map();
 
     constructor(
-        code: number,
-        body: HttpBody,
-        version: string = HttpVersion.HTTP_1_1,
+        public code: number,
+        public body: HttpBody,
+        public version: string = HttpVersion.HTTP_1_1,
         initialHeaders?: Record<string, string> | Map<string, string>,
     ) {
         this.validateCode(code);
@@ -83,8 +81,6 @@ export default class HttpResponse {
         return response;
     }
 
-    // ---- Getters & Lookups -------------------------------------------
-
     get headers(): ReadonlyMap<string, string> {
         return this._headers;
     }
@@ -125,6 +121,12 @@ export default class HttpResponse {
     setBody(body: HttpBody): this {
         this.body = body;
         this.applyDefaultFraming();
+        return this;
+    }
+
+    public markAsLast(): HttpResponse {
+        this._shouldClose = true;
+        this._headers.set(HttpHeader.Connection, 'close');
         return this;
     }
 
