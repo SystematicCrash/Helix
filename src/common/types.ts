@@ -10,3 +10,6 @@ export interface ServerInfo {
     readonly iface: string;
     readonly version: string;
 }
+
+/** Async generator yielding the bytes of a body or file stream. */
+export type BufferGenerator = AsyncGenerator<Buffer, void, void>;

@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { serveStaticFile } from '../../../src/fs/server/serveFile.js';
+import { serveStaticFile, streamWithCleanup } from '../../../src/fs/server/serveFile.js';
 import FsError from '../../../src/fs/common/FsError.js';
 import { FsErrCode, errnoToFsErrCode } from '../../../src/fs/common/constants.js';
 import FileHandle from '../../../src/fs/file/FileHandle.js';
@@ -10,8 +10,10 @@ import FileHandle from '../../../src/fs/file/FileHandle.js';
 let root: string;
 let publicDir: string;
 let outsideDir: string;
+let originalCwd: string;
 
 beforeAll(async () => {
+    originalCwd = process.cwd();
     root = await mkdtemp(join(tmpdir(), 'helix-serve-'));
     publicDir = join(root, 'public');
     outsideDir = join(root, 'outside');
@@ -21,42 +23,38 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    process.chdir(root);
+    process.chdir(originalCwd);
     await rm(root, {recursive: true, force: true});
 });
 
-describe('serveStaticFile()', () => {
-    test('should return the file contents for an existing file', async () => {
-        await writeFile(join(publicDir, 'hello.txt'), 'file content');
-        const result = await serveStaticFile('/hello.txt');
-        const chunks = [];
-        for await (const chunk of result.stream) chunks.push(chunk);
-        expect(Buffer.concat(chunks).toString()).toBe('file content');
-    });
+/** Drains the served stream, which also closes the handle. */
+async function readAll(served: Awaited<ReturnType<typeof serveStaticFile>>): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of streamWithCleanup(served.handle, served.rangeStart, served.rangeLength)) chunks.push(chunk);
+    return Buffer.concat(chunks);
+}
 
-    test('should serve index.html for the root url', async () => {
-        await writeFile(join(publicDir, 'index.html'), 'home');
-        const result = await serveStaticFile('/index.html');
-        const chunks = [];
-        for await (const chunk of result.stream) chunks.push(chunk);
-        expect(Buffer.concat(chunks).toString()).toBe('home');
+describe('serveStaticFile()', () => {
+    test('should return an open handle plus stats for an existing file', async () => {
+        await writeFile(join(publicDir, 'hello.txt'), 'file content');
+        const served = await serveStaticFile('/hello.txt');
+        expect(served.handle).toBeInstanceOf(FileHandle);
+        expect(served.stats.size).toBe('file content'.length);
+        expect(served.ranged).toBe(false);
+        expect(await readAll(served)).toEqual(Buffer.from('file content'));
     });
 
     test('should serve nested paths', async () => {
         await mkdir(join(publicDir, 'assets'));
         await writeFile(join(publicDir, 'assets', 'app.js'), 'js');
-        const result = await serveStaticFile('/assets/app.js');
-        const chunks = [];
-        for await (const chunk of result.stream) chunks.push(chunk);
-        expect(Buffer.concat(chunks).toString()).toBe('js');
+        const served = await serveStaticFile('/assets/app.js');
+        expect(await readAll(served)).toEqual(Buffer.from('js'));
     });
 
     test('should strip query strings and fragments from the url', async () => {
         await writeFile(join(publicDir, 'query.txt'), 'q');
-        const result = await serveStaticFile('/query.txt?x=1#frag');
-        const chunks = [];
-        for await (const chunk of result.stream) chunks.push(chunk);
-        expect(Buffer.concat(chunks).toString()).toBe('q');
+        const served = await serveStaticFile('/query.txt?x=1#frag');
+        expect(await readAll(served)).toEqual(Buffer.from('q'));
     });
 
     test('should reject path traversal with FsError INVALID_PATH', async () => {
@@ -74,21 +72,50 @@ describe('serveStaticFile()', () => {
         expect(FsError.is(err as Error, FsErrCode.NOT_FOUND)).toBe(true);
     });
 
-    test('should read an empty file as an empty buffer', async () => {
+    test('should read an empty file as an empty result', async () => {
         await writeFile(join(publicDir, 'empty.txt'), '');
-        const result = await serveStaticFile('/empty.txt');
-        const chunks = [];
-        for await (const chunk of result.stream) chunks.push(chunk);
-        expect(Buffer.concat(chunks).length).toBe(0);
+        const served = await serveStaticFile('/empty.txt');
+        expect(served.stats.size).toBe(0);
+        expect(await readAll(served)).toEqual(Buffer.alloc(0));
     });
 
     test('should read a file larger than one chunk', async () => {
         const content = 'x'.repeat(200_000);
         await writeFile(join(publicDir, 'large.txt'), content);
-        const result = await serveStaticFile('/large.txt');
-        const chunks = [];
-        for await (const chunk of result.stream) chunks.push(chunk);
-        expect(Buffer.concat(chunks).toString()).toBe(content);
+        const served = await serveStaticFile('/large.txt');
+        expect(await readAll(served)).toEqual(Buffer.from(content));
+    });
+});
+
+describe('serveStaticFile() range resolution', () => {
+    test('should compute a content-range for a satisfiable range and only yield that slice', async () => {
+        await writeFile(join(publicDir, 'range.txt'), '0123456789');
+        const served = await serveStaticFile('/range.txt', [{ start: 2, end: 5 }]);
+
+        expect(served.ranged).toBe(true);
+        expect(served.contentRange).toBe('bytes 2-5/10');
+        expect(await readAll(served)).toEqual(Buffer.from('2345'));
+    });
+
+    test('should compute an open-ended range to the end of the file', async () => {
+        const served = await serveStaticFile('/range.txt', [{ start: 7, end: -1 }]);
+
+        expect(served.contentRange).toBe('bytes 7-9/10');
+        expect(await readAll(served)).toEqual(Buffer.from('789'));
+    });
+
+    test('should compute a suffix range', async () => {
+        const served = await serveStaticFile('/range.txt', [{ end: -1, suffix: 3 }]);
+
+        expect(served.contentRange).toBe('bytes 7-9/10');
+        expect(await readAll(served)).toEqual(Buffer.from('789'));
+    });
+
+    test('should throw HttpError 416 for an unsatisfiable range', async () => {
+        const HttpError = await import('../../../src/network/http/common/HttpError.js');
+        const err: unknown = await serveStaticFile('/range.txt', [{ start: 100, end: 200 }]).catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(HttpError.default);
+        expect((err as HttpError.default).status).toBe(416);
     });
 });
 

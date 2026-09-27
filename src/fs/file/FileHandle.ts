@@ -10,7 +10,7 @@ import {
 import FsError from "../common/FsError.js";
 import {resolveIOOptions} from "./IOOptions.js";
 import {IOOptions, RawIOOptions} from "../common/types.js";
-import {BufferGenerator} from "../../network/http/common/types.js";
+import type {BufferGenerator} from "../../common/types.js";
 
 /** Resolves a value from the previous in-flight operation, or undefined if none. */
 type Tail = Promise<unknown> | undefined;

@@ -2,7 +2,7 @@ import DynamicBuffer from "../../../../buffer/DynamicBuffer.js";
 import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
 import {CRLF} from "../../../common/constants.js";
 import HttpError from "../../common/HttpError.js";
-import {BufferGenerator} from "../../common/types.js";
+import type {BufferGenerator} from "../../../../common/types.js";
 
 /**
  * Decodes an HTTP/1.1 chunked stream from any Buffer generator/iterator.

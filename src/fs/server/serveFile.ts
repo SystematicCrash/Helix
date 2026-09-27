@@ -1,16 +1,32 @@
 import {realpath} from "node:fs/promises";
 import FileHandle from "../file/FileHandle.js";
+import FileStats from "../file/FileStats.js";
 import FsError from "../common/FsError.js";
 import {DOCUMENT_ROOT, FsErrCode} from "../common/constants.js";
-import {BufferGenerator, StaticFileStream} from "../../network/http/common/types.js";
-import {ByteRange} from "../../common/types.js";
+import {ByteRange, BufferGenerator} from "../../common/types.js";
 import {rangeToIOOptions} from "../common/utils.js";
 import HttpError from "../../network/http/common/HttpError.js";
 
-export async function serveStaticFile(
-    url: string,
-    rangeSet: ByteRange[] = []
-): Promise<StaticFileStream> {
+export interface ServedFile {
+    readonly handle: FileHandle;
+    readonly stats: FileStats;
+    /** `bytes start-end/total` for a partial (range) response, otherwise null. */
+    readonly contentRange: string | null;
+    /** True when a satisfiable byte range was applied; the stream then yields only the slice. */
+    readonly ranged: boolean;
+    /** Byte offset the range slice begins at; 0 for a full-file response. */
+    readonly rangeStart: number;
+    /** Byte length of the range slice; the full file size when not ranged. */
+    readonly rangeLength: number;
+}
+
+/**
+ * Opens a file under the document root and resolves it for response generation.
+ * On success the handle is left OPEN — the caller (FileResponder) owns it and closes
+ * it either immediately (304 / HEAD) or via the streaming generator (GET). On failure
+ * the handle is closed before re-throwing, so no fd leaks through an error.
+ */
+export async function serveStaticFile(url: string, rangeSet: ByteRange[] = []): Promise<ServedFile> {
     const filePath = resolvePath(url);
     const handle = await FileHandle.open(filePath);
 
@@ -18,30 +34,26 @@ export async function serveStaticFile(
         const resolved = await realpath(filePath).catch(() => filePath);
         await assertInsideRoot(resolved);
 
-        const stat = await handle.getStats();
-
+        const stats = await handle.getStats();
         if (!rangeSet.length) {
-            return {
-                stream: streamWithCleanup(handle),
-                size: stat.size,
-                status: 200,
-            };
+            return {handle, stats, contentRange: null, ranged: false, rangeStart: 0, rangeLength: stats.size};
         }
 
-        const range = rangeSet[0]!;
-        const opts = rangeToIOOptions(range, stat.size);
-
+        const opts = rangeToIOOptions(rangeSet[0]!, stats.size);
         if (!opts || opts.position === null || opts.position === undefined || opts.length === undefined) {
-            throw new HttpError(416, "Range Not Satisfiable");
+            await handle.close();
+            throw HttpError.rangeNotSatisfiable(stats.size);
         }
 
         const start = opts.position;
         const end = start + opts.length - 1;
         return {
-            stream: streamRangeWithCleanup(handle, opts.position, opts.length),
-            size: opts.length,
-            status: 206,
-            contentRange: `bytes ${start}-${end}/${(stat.size)}`,
+            handle,
+            stats,
+            contentRange: `bytes ${start}-${end}/${stats.size}`,
+            ranged: true,
+            rangeStart: start,
+            rangeLength: opts.length,
         };
     } catch (err) {
         await handle.close();
@@ -49,38 +61,32 @@ export async function serveStaticFile(
     }
 }
 
-/** Streams the full file and guarantees handle closure on termination or break */
-async function* streamWithCleanup(handle: FileHandle): BufferGenerator {
-    try {
-        yield* handle.stream();
-    } finally {
-        await handle.close();
-    }
-}
-
-/** Streams a bounded range slice and guarantees handle closure */
-async function* streamRangeWithCleanup(
-    handle: FileHandle,
-    startPos: number,
-    totalLength: number
-): BufferGenerator {
-    let remaining = totalLength;
-    try {
-        for await (const chunk of handle.stream(undefined, startPos)) {
-            if (remaining <= 0) break;
-
-            if (chunk.length <= remaining) {
-                yield chunk;
-                remaining -= chunk.length;
-            } else {
-                yield chunk.subarray(0, remaining);
-                remaining = 0;
-                break;
+/**
+ * Wraps the handle's stream so the handle is closed when iteration finishes, the
+ * consumer breaks early, or the body reader drops the stream. `position` offsets the
+ * stream to the start of a byte range and `length` caps the bytes yielded (a full-file
+ * response leaves it undefined to stream to EOF). The caller must also close the handle
+ * up-front on the paths that never stream (304 / HEAD).
+ */
+export function streamWithCleanup(handle: FileHandle, position?: number, length?: number): BufferGenerator {
+    return (async function* (): BufferGenerator {
+        let remaining = length;
+        try {
+            for await (const chunk of handle.stream(undefined, position)) {
+                if (remaining !== undefined && remaining <= 0) break;
+                if (remaining === undefined || chunk.length <= remaining) {
+                    yield chunk;
+                    if (remaining !== undefined) remaining -= chunk.length;
+                } else {
+                    yield chunk.subarray(0, remaining);
+                    remaining = 0;
+                    break;
+                }
             }
+        } finally {
+            await handle.close();
         }
-    } finally {
-        await handle.close();
-    }
+    })();
 }
 
 /** Resolves `url` to a file path, rejecting traversal. */
