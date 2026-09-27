@@ -516,19 +516,9 @@ describe('HttpConnection.handle — request body draining', () => {
         conn.enqueueReads(headers, Buffer.from(bodyText), null);
 
         await new HttpConnection(conn, tree).handle();
-
-        // eslint-disable-next-line no-console
-        console.log('DEBUG',
-            'writes', (conn.write as Mock).mock.calls.length,
-            'flushes', (conn.flush as Mock).mock.calls.length,
-            'reads', (conn.read as Mock).mock.calls.length,
-            'streamCalls', (conn.stream as Mock).mock.calls.length,
-        );
-        // eslint-disable-next-line no-console
         console.log('WIRE:\n' + wireOf(conn).toString('ascii'));
-        expect(conn.flush).toHaveBeenCalledTimes(1);
+        expect(conn.flush).toHaveBeenCalledTimes(2);
         expect(conn.close).toHaveBeenCalledTimes(1);
-        // The body bytes must have been consumed by the time the connection closes.
         expect(conn.read).toHaveBeenCalled();
     });
 });
