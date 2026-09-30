@@ -1,10 +1,8 @@
 import {realpath} from "node:fs/promises";
 import FileHandle from "../file/FileHandle.js";
 import FileStats from "../file/FileStats.js";
-import FsError from "../common/FsError.js";
-import {DOCUMENT_ROOT, FsErrCode} from "../common/constants.js";
 import {ByteRange, BufferGenerator} from "../../common/types.js";
-import {rangeToIOOptions} from "../common/utils.js";
+import {assertInsideRoot, rangeToIOOptions, resolvePath} from "../common/utils.js";
 import HttpError from "../../network/http/common/HttpError.js";
 
 export interface ServedFile {
@@ -55,9 +53,9 @@ export async function serveStaticFile(url: string, rangeSet: ByteRange[] = []): 
             rangeStart: start,
             rangeLength: opts.length,
         };
-    } catch (err) {
+    } catch (error) {
         await handle.close();
-        throw err;
+        throw error;
     }
 }
 
@@ -87,25 +85,4 @@ export function streamWithCleanup(handle: FileHandle, position?: number, length?
             await handle.close();
         }
     })();
-}
-
-/** Resolves `url` to a file path, rejecting traversal. */
-function resolvePath(url: string): string {
-    const clean = url.split('?')[0]?.split('#')[0] ?? url;
-    if (clean.includes('..'))
-        throw FsError.from(FsErrCode.INVALID_PATH, 'Path traversal is not allowed');
-    return `${DOCUMENT_ROOT}/${clean}`;
-}
-
-/**
- * Verifies that `resolved` (a realpath) is contained inside the document root.
- * Defeats TOCTOU where an attacker replaces a regular file with a symlink to
- * /etc/passwd (or anywhere outside the root) between path validation and open.
- */
-async function assertInsideRoot(resolved: string): Promise<void> {
-    const rootReal = await realpath(DOCUMENT_ROOT).catch(() => DOCUMENT_ROOT);
-    const rootPrefix = rootReal.endsWith('/') ? rootReal : `${rootReal}/`;
-    if (resolved !== rootReal && !resolved.startsWith(rootPrefix)) {
-        throw FsError.from(FsErrCode.PATH_OUTSIDE_ROOT, `Resolved path ${resolved} is outside ${rootReal}`);
-    }
 }
