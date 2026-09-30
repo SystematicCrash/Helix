@@ -68,7 +68,7 @@ export class HttpConnection {
             const written = await this.writeResponse(response);
             if (!written) return false;
 
-            await this.drainBody(body);
+            await body.drain();
             return keepAlive;
         } catch (error: unknown) {
             return await this.handleError(error, body, request);
@@ -88,14 +88,6 @@ export class HttpConnection {
             request = parseRequest(this.buf);
         }
         return request;
-    }
-
-    /** Drains any remaining unread bytes from the request body stream. */
-    private async drainBody(body: HttpBody): Promise<void> {
-        while (true) {
-            const chunk = await body.read();
-            if (chunk === null) break;
-        }
     }
 
     /** Normalizes errors and sends an appropriate HTTP response if the socket is alive. */
@@ -118,7 +110,7 @@ export class HttpConnection {
             const keepAlive = !httpErr.fatal && this.shouldKeepAlive(request, response);
 
             if (keepAlive && body) {
-                await this.drainBody(body);
+                await body.drain();
             }
 
             return keepAlive;

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { serveStaticFile, streamWithCleanup } from '../../../src/fs/server/serveFile.js';
 import FsError from '../../../src/fs/common/FsError.js';
-import { FsErrCode, errnoToFsErrCode } from '../../../src/fs/common/constants.js';
+import { FsErrCode, errnoToFsErrCode } from '../../../src/fs/index.js';
 import FileHandle from '../../../src/fs/file/FileHandle.js';
 
 let root: string;

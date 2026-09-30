@@ -25,6 +25,16 @@ export abstract class HttpBody {
         return chunk;
     }
 
+    /**
+     * Reads and discards every remaining chunk until EOF. Throws
+     * `contentTooLarge` if the cumulative size exceeds `MAX_BODY_LENGTH`.
+     */
+    public async drain(): Promise<void> {
+        while ((await this.read()) !== null) {
+            /* discard */
+        }
+    }
+
     protected checkMaxSize(): void {
         if (this.length !== -1 && this.length > MAX_BODY_LENGTH) {
             throw HttpError.contentTooLarge();
