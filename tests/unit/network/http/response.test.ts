@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, beforeAll } from 'vitest';
 import HttpError from '../../../../src/network/http/common/HttpError.js';
-import { mapErrorToResponse } from '../../../../src/network/http/response/mapErrorToResponse.js';
+import ErrorResponder from '../../../../src/network/http/response/ErrorResponder.js';
 import { ResponseWriter } from '../../../../src/network/http/response/ResponseWriter.js';
 import { ContentType, HttpHeader, HttpVersion, TransferEncoding } from '../../../../src/network/http/common/constants.js';
 import StreamBody from '../../../../src/network/http/body/StreamBody.js';
@@ -30,7 +30,7 @@ function createMockRequest(headers: Map<string, string> = new Map(), acceptTypes
 
 const PLACEHOLDER_REQUEST = createMockRequest();
 
-describe('mapErrorToResponse()', () => {
+describe('ErrorResponder.respond()', () => {
     beforeAll(() => {
         try {
             setServerInfo(MOCK_SERVER_INFO);
@@ -42,7 +42,7 @@ describe('mapErrorToResponse()', () => {
     describe('HttpError mapping', () => {
         test('should map HttpError code and message to response', () => {
             const err = new HttpError(422, 'Cannot parse request body content!');
-            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST);
+            const res = ErrorResponder.respond(err, PLACEHOLDER_REQUEST);
 
             expect(res.code).toBe(422);
             expect(res.version).toBe(HttpVersion.HTTP_1_1);
@@ -51,7 +51,7 @@ describe('mapErrorToResponse()', () => {
 
         test('should render notFound template on 404', async () => {
             const err = new HttpError(404, 'Not found');
-            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST);
+            const res = ErrorResponder.respond(err, PLACEHOLDER_REQUEST);
 
             expect(res.code).toBe(404);
             expect(res.body.length).toBeGreaterThan(0);
@@ -64,14 +64,14 @@ describe('mapErrorToResponse()', () => {
 
         test('should use HttpError status code directly', () => {
             const err = new HttpError(404, 'Not found');
-            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST);
+            const res = ErrorResponder.respond(err, PLACEHOLDER_REQUEST);
 
             expect(res.code).toBe(404);
         });
 
         test('should mark Connection: close on fatal errors', () => {
             const err = new HttpError(400, 'Bad request', true);
-            const res = mapErrorToResponse(err, PLACEHOLDER_REQUEST);
+            const res = ErrorResponder.respond(err, PLACEHOLDER_REQUEST);
 
             expect(res.getHeader(HttpHeader.Connection)).toBe('close');
         });
@@ -79,7 +79,7 @@ describe('mapErrorToResponse()', () => {
 
     describe('unknown error mapping', () => {
         test('should map non-error object to 500 response with default message', () => {
-            const res = mapErrorToResponse({} as unknown as HttpError, PLACEHOLDER_REQUEST);
+            const res = ErrorResponder.respond({} as unknown as HttpError, PLACEHOLDER_REQUEST);
 
             expect(res.code).toBe(500);
             expect(res.version).toBe(HttpVersion.HTTP_1_1);
@@ -88,7 +88,7 @@ describe('mapErrorToResponse()', () => {
         });
 
         test('should map null to 500 response with default message', () => {
-            const res = mapErrorToResponse(null as unknown as HttpError, PLACEHOLDER_REQUEST);
+            const res = ErrorResponder.respond(null as unknown as HttpError, PLACEHOLDER_REQUEST);
 
             expect(res.code).toBe(500);
             expect(res.version).toBe(HttpVersion.HTTP_1_1);
@@ -96,7 +96,7 @@ describe('mapErrorToResponse()', () => {
         });
 
         test('should map string to 500 response', () => {
-            const res = mapErrorToResponse('something went wrong' as unknown as HttpError, PLACEHOLDER_REQUEST);
+            const res = ErrorResponder.respond('something went wrong' as unknown as HttpError, PLACEHOLDER_REQUEST);
 
             expect(res.code).toBe(500);
             expect(res.version).toBe(HttpVersion.HTTP_1_1);

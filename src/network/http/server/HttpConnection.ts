@@ -6,7 +6,7 @@ import {HttpBody} from "../body/HttpBody.js";
 import {parseRequest} from "../request/parser/parseRequest.js";
 import {handleRequest} from "../request/handleRequest.js";
 import {ResponseWriter} from "../response/ResponseWriter.js";
-import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
+import ErrorResponder from "../response/ErrorResponder.js";
 import {mapToHttpError} from "../common/mappers.js";
 import HttpError from "../common/HttpError.js";
 import {HttpHeader, HttpMethod, MAX_REQUEST_COUNT} from "../common/constants.js";
@@ -102,7 +102,7 @@ export class HttpConnection {
             }
 
             const httpErr = mapToHttpError(error);
-            const response = mapErrorToResponse(httpErr, request);
+            const response = ErrorResponder.respond(httpErr, request);
 
             const written = await this.writeResponse(response);
             if (!written) return false;
