@@ -1,7 +1,7 @@
 import HttpResponse from "../network/http/response/HttpResponse.js";
 import {indexPage} from "../network/http/response/pages.js";
 import {RouteHandler} from "../network/http/routing/types.js";
-import FileResponder from "../fs/server/FileResponder.js";
+import FileResponder from "../network/http/response/FileResponder.js";
 
 /** Renders the default index page. Bound at `/` and `/index.html`. */
 export const indexPageHandler: RouteHandler = (_req, _body, info) =>

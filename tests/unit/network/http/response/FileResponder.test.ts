@@ -2,13 +2,13 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, vi 
 import { mkdtemp, writeFile, rm, stat, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import FileResponder from '../../../src/fs/server/FileResponder.js';
-import FileHandle from '../../../src/fs/file/FileHandle.js';
-import HttpRequest from '../../../src/network/http/request/HttpRequest.js';
-import StreamBody from '../../../src/network/http/body/StreamBody.js';
-import EmptyBody from '../../../src/network/http/body/EmptyBody.js';
-import { HttpBody } from '../../../src/network/http/body/HttpBody.js';
-import { HttpHeader, HttpMethod } from '../../../src/network/http/common/constants.js';
+import FileResponder from '../../../../../src/network/http/response/FileResponder.js';
+import FileHandle from '../../../../../src/fs/file/FileHandle.js';
+import HttpRequest from '../../../../../src/network/http/request/HttpRequest.js';
+import StreamBody from '../../../../../src/network/http/body/StreamBody.js';
+import EmptyBody from '../../../../../src/network/http/body/EmptyBody.js';
+import { HttpBody } from '../../../../../src/network/http/body/HttpBody.js';
+import { HttpHeader, HttpMethod } from '../../../../../src/network/http/common/constants.js';
 
 let root: string;
 let publicDir: string;

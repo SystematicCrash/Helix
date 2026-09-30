@@ -15,8 +15,8 @@ const buildTextResponse = (error: HttpError, request: HttpRequest | null): HttpR
     return res;
 }
 
-const buildJsonResponse = (error: HttpError, request: HttpRequest | null): HttpResponse =>
-    HttpResponse.json(error.status, {
+const buildJsonResponse = (error: HttpError, request: HttpRequest | null): HttpResponse => {
+    return HttpResponse.json(error.status, {
         error: {
             status: error.status,
             message: error.message,
@@ -24,6 +24,7 @@ const buildJsonResponse = (error: HttpError, request: HttpRequest | null): HttpR
             method: request?.method ?? "",
         },
     })
+}
 
 const buildHtmlResponse = (error: HttpError, request: HttpRequest | null): HttpResponse => {
     const info = getServerInfo();
@@ -48,7 +49,6 @@ function resolveFormat(request: HttpRequest | null): PreferredFormat {
 
     return "html";
 }
-
 
 /** Formats the error into JSON, Plain Text, or HTML based on client Accept preference. */
 function formatErrorPayload(error: HttpError, request: HttpRequest | null): HttpResponse {

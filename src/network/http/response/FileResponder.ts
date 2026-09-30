@@ -1,11 +1,11 @@
-import {HttpHeader, HttpMethod} from "../../network/http/common/constants.js";
-import HttpResponse from "../../network/http/response/HttpResponse.js";
-import HttpRequest from "../../network/http/request/HttpRequest.js";
-import StreamBody from "../../network/http/body/StreamBody.js";
-import {serveStaticFile, streamWithCleanup} from "./serveFile.js";
-import type {ServedFile} from "./serveFile.js";
-import FileHandle from "../file/FileHandle.js";
-import FileStats from "../file/FileStats.js";
+import {HttpHeader, HttpMethod} from "../common/constants.js";
+import HttpResponse from "./HttpResponse.js";
+import HttpRequest from "../request/HttpRequest.js";
+import StreamBody from "../body/StreamBody.js";
+import {serveStaticFile, streamWithCleanup} from "../../../fs/server/serveFile.js";
+import type {ServedFile} from "../../../fs/server/serveFile.js";
+import FileHandle from "../../../fs/file/FileHandle.js";
+import FileStats from "../../../fs/file/FileStats.js";
 
 /**
  * Translates filesystem access into an HTTP response: cache validation
@@ -20,6 +20,7 @@ export default class FileResponder {
         return FileResponder.buildResponse(request, served);
     }
 
+    /** Dispatches HEAD/OPTIONS/GET to the right response builder and owns the file-handle cleanup. */
     private static async buildResponse(request: HttpRequest, served: ServedFile): Promise<HttpResponse> {
         const {handle, stats, contentRange, ranged} = served;
 
@@ -64,6 +65,7 @@ export default class FileResponder {
         return response;
     }
 
+    /** Builds a 200 OK response that streams the entire file. */
     private static fullContent(handle: FileHandle, stats: FileStats): HttpResponse {
         const stream = streamWithCleanup(handle);
         const body = new StreamBody(stream, stats.size);
@@ -73,6 +75,7 @@ export default class FileResponder {
         return response;
     }
 
+    /** Builds a 206 Partial Content response over the requested byte slice. */
     private static partialContent(
         handle: FileHandle,
         stats: FileStats,
@@ -106,12 +109,14 @@ export default class FileResponder {
         return false;
     }
 
+    /** Builds a 304 Not Modified response carrying validator headers. */
     private static notModified(stats: FileStats): HttpResponse {
         const response = HttpResponse.empty(304);
         FileResponder.applyValidator(response, stats);
         return response;
     }
 
+    /** Builds a 204 response advertising GET, HEAD, OPTIONS, and byte ranges. */
     private static optionsAllowed(): HttpResponse {
         const response = HttpResponse.empty(204);
         response.setHeader(HttpHeader.Allow, [HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS].join(', '));
@@ -119,6 +124,7 @@ export default class FileResponder {
         return response;
     }
 
+    /** Sets Content-Length, Accept-Range, and Content-Range on the response. */
     private static applyFraming(
         response: HttpResponse,
         length: number,
@@ -132,11 +138,13 @@ export default class FileResponder {
         }
     }
 
+    /** Sets ETag and Last-Modified from file stats. */
     private static applyValidator(response: HttpResponse, stats: FileStats): void {
         response.setHeader(HttpHeader.ETag, `"${FileResponder.makeEtag(stats)}"`);
         response.setHeader(HttpHeader.LastModified, new Date(stats.mtimeMs).toUTCString());
     }
 
+    /** Computes a strong ETag from the file's mtime and size. */
     private static makeEtag(stats: FileStats): string {
         return `${stats.mtimeMs.toString(16)}-${stats.size.toString(16)}`;
     }
