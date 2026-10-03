@@ -35,6 +35,7 @@ async function main(): Promise<void> {
    });
 
    const httpServer = new HttpServer(tcpServer, routeTree);
+   console.log('Server is up and running!');
    await httpServer.run();
 }
 

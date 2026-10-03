@@ -56,7 +56,7 @@ export class HttpConnection {
 
             this.requestCount++;
 
-            body = request.getBody(this.conn, this.buf);
+            body = await request.getBody(this.conn, this.buf);
             const result = this.tree.lookup(request.method as HttpMethod, request.url);
             const response = await handleRequest(request, body, result);
 

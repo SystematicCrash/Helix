@@ -69,8 +69,13 @@ export default class HttpRequest {
     }
 
     /** Returns false for methods that must not carry a body (GET, HEAD). */
-    get isBodyAllowed(): boolean {
-        return this.method !== HttpMethod.GET && this.method !== HttpMethod.HEAD;
+    get shouldDiscardBody(): boolean {
+        return [
+            HttpMethod.GET,
+            HttpMethod.HEAD,
+            HttpMethod.OPTIONS
+        ]
+            .includes(this.method);
     }
 
     get acceptTypes(): ContentType[] {
@@ -82,23 +87,34 @@ export default class HttpRequest {
 
     /**
      * Creates the lazy HttpBody that streams this request's body.
-     * Selects the concrete reader based on Content-Length, Transfer-Encoding,
-     * or connection-close framing, validating the head-to-body contract first.
+     * Selects the concrete reader based on Content-Length or Transfer-Encoding.
+     * If the method must not carry a body (GET, HEAD, OPTIONS), the framed
+     * bytes are drained completely to keep the TCP stream aligned, and an
+     * EmptyBody is returned.
      */
-    public getBody(conn: TCPConnection, buf: DynamicBuffer): HttpBody {
+    public async getBody(conn: TCPConnection, buf: DynamicBuffer): Promise<HttpBody> {
         const bodyLen = this.contentLength;
         const chunked = this.transferEncoding === TransferEncoding.CHUNKED;
 
         if (bodyLen > 0 && chunked) {
             throw HttpError.invalidHeaders();
         }
-        if (!this.isBodyAllowed && (bodyLen > 0 || chunked)) {
-            throw HttpError.badRequest("Request body not allowed");
+
+        let body: HttpBody;
+        if (bodyLen > 0) {
+            body = new StreamBody(conn.stream(), bodyLen);
+        } else if (chunked) {
+            body = new StreamBody(parseChunks(conn.stream(), buf));
+        } else {
+            return new EmptyBody();
         }
 
-        if (bodyLen > 0) return new StreamBody(conn.stream(), bodyLen);
-        else if (chunked) return new StreamBody(parseChunks(conn.stream(), buf));
-        else return new EmptyBody();
+        if (this.shouldDiscardBody) {
+            await body.drain();
+            return new EmptyBody();
+        }
+
+        return body;
     }
 
     /**
