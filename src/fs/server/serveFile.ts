@@ -23,7 +23,7 @@ export interface ServedFile {
  * On success the handle is left OPEN — the caller (FileResponder) owns it and closes
  * it either immediately (304 / HEAD) or via the streaming generator (GET). On failure
  * the handle is closed before re-throwing, so no fd leaks through an error.
- */
+ */ // TODO: this function is dealing with http details which is not correct for a function in fs layer, maybe it's better to move it somewhere else or completely delegate it's job to another component
 export async function serveStaticFile(url: string, rangeSet: ByteRange[] = []): Promise<ServedFile> {
     const filePath = resolvePath(url);
     const handle = await FileHandle.open(filePath);
@@ -65,6 +65,7 @@ export async function serveStaticFile(url: string, rangeSet: ByteRange[] = []): 
  * stream to the start of a byte range and `length` caps the bytes yielded (a full-file
  * response leaves it undefined to stream to EOF). The caller must also close the handle
  * up-front on the paths that never stream (304 / HEAD).
+ * @deprecated - No caller for this API
  */
 export function streamWithCleanup(handle: FileHandle, position?: number, length?: number): BufferGenerator {
     return (async function* (): BufferGenerator {

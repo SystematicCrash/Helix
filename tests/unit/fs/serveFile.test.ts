@@ -2,10 +2,11 @@ import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { serveStaticFile, streamWithCleanup } from '../../../src/fs/server/serveFile.js';
+import { serveStaticFile } from '../../../src/fs/server/serveFile.js';
 import FsError from '../../../src/fs/common/FsError.js';
 import { FsErrCode, errnoToFsErrCode } from '../../../src/fs/index.js';
 import FileHandle from '../../../src/fs/file/FileHandle.js';
+import {takeBytes} from "../../../src/buffer/bytes.js";
 
 let root: string;
 let publicDir: string;
@@ -30,7 +31,8 @@ afterAll(async () => {
 /** Drains the served stream, which also closes the handle. */
 async function readAll(served: Awaited<ReturnType<typeof serveStaticFile>>): Promise<Buffer> {
     const chunks: Buffer[] = [];
-    for await (const chunk of streamWithCleanup(served.handle, served.rangeStart, served.rangeLength)) chunks.push(chunk);
+    const source = takeBytes(served.handle.streamAndClose(undefined, served.rangeStart), served.rangeLength);
+    for await (const chunk of source) chunks.push(chunk);
     return Buffer.concat(chunks);
 }
 

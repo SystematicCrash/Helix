@@ -1,3 +1,5 @@
+import type { BufferGenerator } from "../common/types.js";
+
 /** Splits a buffer on all occurrences of a delimiter, returning the parts without the delimiter.
  * Empty parts are dropped unless `keepEmpty` is set (needed when empty parts are significant,
  * e.g. double spaces in a request-line are malformed per RFC 9112 §3). */
@@ -30,4 +32,27 @@ export function stripBuffer(bytes: Buffer, delimiter: Buffer): Buffer {
         r = r.subarray(delimRev.length);
 
     return r.reverse();
+}
+
+/**
+ * Yields up to `maxBytes` from an async buffer generator, slicing
+ * the final chunk if necessary. Automatically terminates when the limit is reached.
+ */
+export async function* takeBytes(source: BufferGenerator, maxBytes: number): BufferGenerator {
+    if (maxBytes <= 0) return;
+
+    let remaining = maxBytes;
+
+    for await (const chunk of source) {
+        if (remaining <= 0) break;
+
+        if (chunk.length <= remaining) {
+            yield chunk;
+            remaining -= chunk.length;
+        } else {
+            yield chunk.subarray(0, remaining);
+            remaining = 0;
+            break;
+        }
+    }
 }

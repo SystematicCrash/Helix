@@ -2,11 +2,12 @@ import { HttpHeader, HttpMethod } from "../common/constants.js";
 import HttpResponse from "./HttpResponse.js";
 import HttpRequest from "../request/HttpRequest.js";
 import StreamBody from "../body/StreamBody.js";
-import { serveStaticFile, streamWithCleanup } from "../../../fs/server/serveFile.js";
+import { serveStaticFile } from "../../../fs/index.js";
 import type { ServedFile } from "../../../fs/server/serveFile.js";
 import FileHandle from "../../../fs/file/FileHandle.js";
 import FileStats from "../../../fs/file/FileStats.js";
 import CacheValidator from "../cache/CacheValidator.js";
+import {takeBytes} from "../../../buffer/bytes.js";
 
 /**
  * Translates filesystem access into an HTTP response: cache validation
@@ -65,7 +66,7 @@ export default class FileResponder {
 
     /** Builds a 200 OK response that streams the entire file. */
     private static fullContent(handle: FileHandle, stats: FileStats): HttpResponse {
-        const stream = streamWithCleanup(handle);
+        const stream = handle.streamAndClose();
         const body = new StreamBody(stream, stats.size);
         const response = new HttpResponse(200, body);
         FileResponder.applyFraming(response, stats.size, null, false);
@@ -81,7 +82,7 @@ export default class FileResponder {
         rangeStart: number,
         rangeLength: number,
     ): HttpResponse {
-        const stream = streamWithCleanup(handle, rangeStart, rangeLength);
+        const stream = takeBytes(handle.streamAndClose(undefined, rangeStart), rangeLength);
         const body = new StreamBody(stream, rangeLength);
         const response = new HttpResponse(206, body);
         FileResponder.applyFraming(response, rangeLength, contentRange, true);

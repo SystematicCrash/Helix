@@ -104,6 +104,18 @@ export default class FileHandle {
     }
 
     /**
+     * Streams file contents and automatically closes the handle when iteration finishes,
+     * breaks early, or throws an error.
+     */
+    public async* streamAndClose(chunkSize: number = DEFAULT_READ_CHUNK_SIZE, position?: number): BufferGenerator {
+        try {
+            yield* this.stream(chunkSize, position);
+        } finally {
+            await this.close();
+        }
+    }
+
+    /**
      * Yields the file contents in `chunkSize` chunks, optionally from `position` to EOF.
      * Holds the in-flight lock for the lifetime of the stream so concurrent reads/stat/close
      * on the same handle wait until iteration finishes.
