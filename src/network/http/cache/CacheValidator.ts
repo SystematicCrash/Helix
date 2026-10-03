@@ -38,7 +38,7 @@ export default class CacheValidator {
         if (ifNoneMatch !== undefined) {
             return CacheValidator.etagMatches(ifNoneMatch, currentEtag);
         }
-
+        // TODO: Extract this section into separate method called `timestampMatches`.
         const ifModifiedSince = request.headers.get(HttpHeader.IfModifiedSince);
         if (ifModifiedSince !== undefined) {
             const clientDate = new Date(ifModifiedSince);
