@@ -2,12 +2,12 @@ import { HttpHeader, HttpMethod } from "../common/constants.js";
 import HttpResponse from "./HttpResponse.js";
 import HttpRequest from "../request/HttpRequest.js";
 import StreamBody from "../body/StreamBody.js";
-import { serveStaticFile } from "../../../fs/index.js";
-import type { ServedFile } from "../../../fs/server/serveFile.js";
+import { openSandboxedFile } from "../../../fs/index.js";
 import FileHandle from "../../../fs/file/FileHandle.js";
 import FileStats from "../../../fs/file/FileStats.js";
 import CacheValidator from "../cache/CacheValidator.js";
-import {takeBytes} from "../../../buffer/bytes.js";
+import { rangeToIOOptions } from "../../../fs/common/utils.js";
+import HttpError from "../common/HttpError.js";
 
 /**
  * Translates filesystem access into an HTTP response: cache validation
@@ -17,18 +17,16 @@ import {takeBytes} from "../../../buffer/bytes.js";
 export default class FileResponder {
     /** Serves `filepath` (relative to the document root) as a static file for `request`. */
     public static async respond(request: HttpRequest, filepath: string): Promise<HttpResponse> {
-        const rangeSet = request.rangeSet ?? [];
-        const served = await serveStaticFile(filepath, rangeSet);
-        return FileResponder.buildResponse(request, served);
+        const handle = await openSandboxedFile(filepath);
+        const stats = await handle.getStats();
+        return FileResponder.buildResponse(request, handle, stats);
     }
 
     /** Dispatches HEAD/OPTIONS/GET to the right response builder and owns the file-handle cleanup. */
-    private static async buildResponse(request: HttpRequest, served: ServedFile): Promise<HttpResponse> {
-        const { handle, stats, contentRange, ranged } = served;
-
+    private static async buildResponse(request: HttpRequest, handle: FileHandle, stats: FileStats): Promise<HttpResponse> {
         if (request.method === HttpMethod.HEAD || request.method === HttpMethod.OPTIONS) {
             try {
-                return FileResponder.describeFile(request, stats, contentRange, ranged);
+                return FileResponder.describeFile(request, stats);
             } finally {
                 await handle.close();
             }
@@ -42,9 +40,22 @@ export default class FileResponder {
             }
         }
 
-        if (ranged) {
-            return FileResponder.partialContent(handle, stats, contentRange!, served.rangeStart, served.rangeLength);
+        const rangeSet = request.rangeSet;
+        if (rangeSet && rangeSet.length > 0) {
+            const opts = rangeToIOOptions(rangeSet[0]!, stats.size);
+            if (!opts || opts.position === null || opts.position === undefined || opts.length === undefined) {
+                await handle.close();
+                throw HttpError.rangeNotSatisfiable(stats.size);
+            }
+
+            const start = opts.position;
+            const length = opts.length;
+            const end = start + length - 1;
+            const contentRange = `bytes ${start}-${end}/${stats.size}`;
+
+            return FileResponder.partialContent(handle, stats, contentRange, start, length);
         }
+
         return FileResponder.fullContent(handle, stats);
     }
 
@@ -52,8 +63,8 @@ export default class FileResponder {
     private static describeFile(
         request: HttpRequest,
         stats: FileStats,
-        contentRange: string | null,
-        ranged: boolean,
+        contentRange: string | null = null,
+        ranged = false,
     ): HttpResponse {
         if (request.method === HttpMethod.OPTIONS) {
             return FileResponder.optionsAllowed();
@@ -82,7 +93,7 @@ export default class FileResponder {
         rangeStart: number,
         rangeLength: number,
     ): HttpResponse {
-        const stream = takeBytes(handle.streamAndClose(undefined, rangeStart), rangeLength);
+        const stream = handle.streamAndClose(undefined, rangeStart);
         const body = new StreamBody(stream, rangeLength);
         const response = new HttpResponse(206, body);
         FileResponder.applyFraming(response, rangeLength, contentRange, true);
@@ -100,8 +111,8 @@ export default class FileResponder {
     /** Builds a 204 response advertising GET, HEAD, OPTIONS, and byte ranges. */
     private static optionsAllowed(): HttpResponse {
         const response = HttpResponse.empty(204);
-        response.setHeader(HttpHeader.Allow, [HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS].join(', '));
-        response.setHeader(HttpHeader.AcceptRange, 'bytes');
+        response.setHeader(HttpHeader.Allow, [HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS].join(", "));
+        response.setHeader(HttpHeader.AcceptRange, "bytes");
         return response;
     }
 
@@ -113,7 +124,7 @@ export default class FileResponder {
         ranged: boolean,
     ): void {
         response.setHeader(HttpHeader.ContentLength, length.toString());
-        response.setHeader(HttpHeader.AcceptRange, 'bytes');
+        response.setHeader(HttpHeader.AcceptRange, "bytes");
         if (ranged && contentRange !== null) {
             response.setHeader(HttpHeader.ContentRange, contentRange);
         }
