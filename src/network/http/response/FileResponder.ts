@@ -1,15 +1,16 @@
-import {HttpHeader, HttpMethod} from "../common/constants.js";
+import { HttpHeader, HttpMethod } from "../common/constants.js";
 import HttpResponse from "./HttpResponse.js";
 import HttpRequest from "../request/HttpRequest.js";
 import StreamBody from "../body/StreamBody.js";
-import {serveStaticFile, streamWithCleanup} from "../../../fs/server/serveFile.js";
-import type {ServedFile} from "../../../fs/server/serveFile.js";
+import { serveStaticFile, streamWithCleanup } from "../../../fs/server/serveFile.js";
+import type { ServedFile } from "../../../fs/server/serveFile.js";
 import FileHandle from "../../../fs/file/FileHandle.js";
 import FileStats from "../../../fs/file/FileStats.js";
+import CacheValidator from "../cache/CacheValidator.js";
 
 /**
  * Translates filesystem access into an HTTP response: cache validation
- * (ETag / If-Modified-Since), HEAD vs GET vs OPTIONS negotiation, byte-range
+ * (delegated to CacheValidator), HEAD vs GET vs OPTIONS negotiation, byte-range
  * streaming, and `FileHandle` cleanup across every outcome (200, 206, 304, errors).
  */
 export default class FileResponder {
@@ -22,9 +23,8 @@ export default class FileResponder {
 
     /** Dispatches HEAD/OPTIONS/GET to the right response builder and owns the file-handle cleanup. */
     private static async buildResponse(request: HttpRequest, served: ServedFile): Promise<HttpResponse> {
-        const {handle, stats, contentRange, ranged} = served;
+        const { handle, stats, contentRange, ranged } = served;
 
-        // HEAD and OPTIONS never read the file body, so the handle closes up-front.
         if (request.method === HttpMethod.HEAD || request.method === HttpMethod.OPTIONS) {
             try {
                 return FileResponder.describeFile(request, stats, contentRange, ranged);
@@ -33,9 +33,7 @@ export default class FileResponder {
             }
         }
 
-        // GET: not-modified closes up-front; a 200/206 streams and the
-        // generator's finally owns the close, so we return without closing here.
-        if (await FileResponder.isNotModified(request, stats)) {
+        if (CacheValidator.isNotModified(request, { mtimeMs: stats.mtimeMs, size: stats.size })) {
             try {
                 return FileResponder.notModified(stats);
             } finally {
@@ -91,24 +89,6 @@ export default class FileResponder {
         return response;
     }
 
-    /** RFC 9110 §13.1.2/13.1.3: If-None-Match wins; If-Modified-Since is ignored when it is present. */
-    private static async isNotModified(request: HttpRequest, stats: FileStats): Promise<boolean> {
-        const etag = FileResponder.makeEtag(stats);
-        const ifNoneMatch = request.headers.get(HttpHeader.IfNoneMatch);
-        if (ifNoneMatch !== undefined) {
-            return FileResponder.etagMatches(ifNoneMatch, etag);
-        }
-
-        const ifModifiedSince = request.headers.get(HttpHeader.IfModifiedSince);
-        if (ifModifiedSince !== undefined) {
-            const clientDate = new Date(ifModifiedSince);
-            if (Number.isNaN(clientDate.getTime())) return false;
-            return Math.floor(stats.mtimeMs / 1000) <= Math.floor(clientDate.getTime() / 1000);
-        }
-
-        return false;
-    }
-
     /** Builds a 304 Not Modified response carrying validator headers. */
     private static notModified(stats: FileStats): HttpResponse {
         const response = HttpResponse.empty(304);
@@ -140,28 +120,8 @@ export default class FileResponder {
 
     /** Sets ETag and Last-Modified from file stats. */
     private static applyValidator(response: HttpResponse, stats: FileStats): void {
-        response.setHeader(HttpHeader.ETag, `"${FileResponder.makeEtag(stats)}"`);
+        const etag = CacheValidator.makeEtag({ mtimeMs: stats.mtimeMs, size: stats.size });
+        response.setHeader(HttpHeader.ETag, CacheValidator.formatEtag(etag));
         response.setHeader(HttpHeader.LastModified, new Date(stats.mtimeMs).toUTCString());
-    }
-
-    /** Computes a strong ETag from the file's mtime and size. */
-    private static makeEtag(stats: FileStats): string {
-        return `${stats.mtimeMs.toString(16)}-${stats.size.toString(16)}`;
-    }
-
-    /**
-     * True when the response entity tag is among the request's etag-list. Tolerant of a
-     * leading weak-validator (`W/`) and surrounding quotes, and honors the `*` entity-tag
-     * (RFC 9110 §13.1.2).
-     */
-    private static etagMatches(headerValue: string, etag: string): boolean {
-        for (const raw of headerValue.split(',')) {
-            let token = raw.trim();
-            if (token === '*') return true;
-            if (token.startsWith('W/')) token = token.slice(2);
-            if (token.length >= 2 && token.startsWith('"') && token.endsWith('"')) token = token.slice(1, -1);
-            if (token === etag) return true;
-        }
-        return false;
     }
 }
