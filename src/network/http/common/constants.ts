@@ -77,6 +77,7 @@ export enum HttpHeader {
     UserAgent         = 'user-agent',
     IfNoneMatch       = 'if-none-match',
     IfModifiedSince   = 'if-modified-since',
+    IfRage            = 'if-range',
     Range             = 'range',
 
     // Response

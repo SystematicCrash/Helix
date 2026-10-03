@@ -32,11 +32,10 @@ export default class CacheValidator {
      * Returns true if the client's cache is valid and a `304 Not Modified` should be sent.
      */
     public static isNotModified(request: HttpRequest, metadata: CacheMetadata): boolean {
-        const currentEtag = CacheValidator.makeEtag(metadata);
         const ifNoneMatch = request.headers.get(HttpHeader.IfNoneMatch);
 
         if (ifNoneMatch !== undefined) {
-            return CacheValidator.etagMatches(ifNoneMatch, currentEtag);
+            return CacheValidator.etagMatches(ifNoneMatch, CacheValidator.makeEtag(metadata));
         }
 
         const ifModifiedSince = request.headers.get(HttpHeader.IfModifiedSince);
@@ -91,5 +90,24 @@ export default class CacheValidator {
         }
 
         return false;
+    }
+
+    /**
+     * Evaluates the If-Range header per RFC 9110 §13.1.5.
+     * Returns:
+     * - `true` if If-Range is missing OR matches the current resource (proceed with 206 Partial Content).
+     * - `false` if If-Range is present but does NOT match (fallback to 200 OK full body).
+     */
+    public static ifRangeMatches(request: HttpRequest, metadata: CacheMetadata): boolean {
+        const ifRange = request.headers.get(HttpHeader.IfRage);
+        if (!ifRange) {
+            return true;
+        }
+
+        if (ifRange.startsWith('"')) {
+            return this.etagMatches(ifRange, CacheValidator.makeEtag(metadata));
+        }
+
+        return this.timestampMatches(ifRange, metadata.mtimeMs);
     }
 }

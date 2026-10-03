@@ -32,7 +32,9 @@ export default class FileResponder {
             }
         }
 
-        if (CacheValidator.isNotModified(request, { mtimeMs: stats.mtimeMs, size: stats.size })) {
+        const metadata = { mtimeMs: stats.mtimeMs, size: stats.size };
+
+        if (CacheValidator.isNotModified(request, metadata)) {
             try {
                 return FileResponder.notModified(stats);
             } finally {
@@ -41,7 +43,12 @@ export default class FileResponder {
         }
 
         const rangeSet = request.rangeSet;
-        if (rangeSet && rangeSet.length > 0) {
+        const canServeRange =
+            rangeSet
+            && rangeSet.length > 0
+            && CacheValidator.ifRangeMatches(request, metadata)
+
+        if (canServeRange) {
             const opts = rangeToIOOptions(rangeSet[0]!, stats.size);
             if (!opts || opts.position === null || opts.position === undefined || opts.length === undefined) {
                 await handle.close();
