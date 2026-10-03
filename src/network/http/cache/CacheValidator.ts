@@ -38,21 +38,29 @@ export default class CacheValidator {
         if (ifNoneMatch !== undefined) {
             return CacheValidator.etagMatches(ifNoneMatch, currentEtag);
         }
-        // TODO: Extract this section into separate method called `timestampMatches`.
+
         const ifModifiedSince = request.headers.get(HttpHeader.IfModifiedSince);
         if (ifModifiedSince !== undefined) {
-            const clientDate = new Date(ifModifiedSince);
-            if (Number.isNaN(clientDate.getTime())) {
-                return false;
-            }
-
-            const serverSec = Math.floor(metadata.mtimeMs / 1000);
-            const clientSec = Math.floor(clientDate.getTime() / 1000);
-
-            return serverSec <= clientSec;
+            return CacheValidator.timestampMatches(ifModifiedSince, metadata.mtimeMs);
         }
 
         return false;
+    }
+
+    /**
+     * Checks if the resource has not been modified since the timestamp in `headerValue`.
+     * Uses 1-second resolution per RFC 9110. Returns false if the header date is invalid.
+     */
+    public static timestampMatches(headerValue: string, mtimeMs: number): boolean {
+        const clientDate = new Date(headerValue);
+        if (Number.isNaN(clientDate.getTime())) {
+            return false;
+        }
+
+        const serverSec = Math.floor(mtimeMs / 1000);
+        const clientSec = Math.floor(clientDate.getTime() / 1000);
+
+        return serverSec <= clientSec;
     }
 
     /**
