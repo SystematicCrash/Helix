@@ -1,22 +1,23 @@
-import {TCPConnection} from "../../tcp/index.js";
-import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
+import { TCPConnection } from "../../tcp/index.js";
+import ByteConsumer from "../../../buffer/ByteConsumer.js";
 import HttpRequest from "../request/HttpRequest.js";
 import HttpResponse from "../response/HttpResponse.js";
-import {HttpBody} from "../body/HttpBody.js";
-import {parseRequest} from "../request/parser/parseRequest.js";
-import {handleRequest} from "../request/handleRequest.js";
-import {ResponseWriter} from "../response/ResponseWriter.js";
+import { HttpBody } from "../body/HttpBody.js";
+import { handleRequest } from "../request/handleRequest.js";
+import { ResponseWriter } from "../response/ResponseWriter.js";
 import ErrorResponder from "../response/ErrorResponder.js";
-import {mapToHttpError} from "../common/mappers.js";
+import { mapToHttpError } from "../common/mappers.js";
 import HttpError from "../common/HttpError.js";
-import {HttpHeader, HttpMethod, MAX_REQUEST_COUNT} from "../common/constants.js";
-import type {RouteTree} from "../routing/buildTree.js";
+import { HEADER_TERMINATOR, HttpHeader, HttpMethod, MAX_REQUEST_COUNT } from "../common/constants.js";
+import type { RouteTree } from "../routing/buildTree.js";
 
 export class HttpConnection {
-    private buf = new DynamicBuffer();
     private requestCount = 0;
+    private readonly consumer: ByteConsumer;
 
-    constructor(private conn: TCPConnection, private tree: RouteTree) {}
+    constructor(private conn: TCPConnection, private tree: RouteTree) {
+        this.consumer = new ByteConsumer(this.conn.stream());
+    }
 
     /** Handles the client connection lifecycle, processing requests until EOF. */
     public async handle(): Promise<void> {
@@ -26,6 +27,7 @@ export class HttpConnection {
                 if (!keepAlive) break;
             }
         } finally {
+            await this.consumer.dispose();
             await this.conn.close();
         }
     }
@@ -56,7 +58,7 @@ export class HttpConnection {
 
             this.requestCount++;
 
-            body = await request.getBody(this.conn, this.buf);
+            body = await request.getBody(this.consumer);
             const result = this.tree.lookup(request.method as HttpMethod, request.url);
             const response = await handleRequest(request, body, result);
 
@@ -75,19 +77,16 @@ export class HttpConnection {
         }
     }
 
-    /** Reads and parses the next incoming HTTP request from the connection. */
+    /** Reads and parses the next incoming HTTP request from the consumer. */
     private async readNextRequest(): Promise<HttpRequest | null> {
-        let request = parseRequest(this.buf);
-        while (!request) {
-            const data = await this.conn.read();
-            if (data === null) {
-                if (this.buf.length === 0) return null;
-                throw HttpError.badRequest("Unexpected EOF", true);
-            }
-            this.buf.push(data);
-            request = parseRequest(this.buf);
+        const rawHead = await this.consumer.readUntil(HEADER_TERMINATOR);
+
+        if (rawHead === null) {
+            if (this.consumer.bufferedBytes === 0) return null;
+            throw HttpError.badRequest("Unexpected EOF", true);
         }
-        return request;
+
+        return HttpRequest.from(rawHead);
     }
 
     /** Normalizes errors and sends an appropriate HTTP response if the socket is alive. */
