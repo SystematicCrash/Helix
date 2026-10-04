@@ -1,16 +1,19 @@
-import { HttpBody } from "./HttpBody.js";
+import {HttpBody} from "./HttpBody.js";
 import ByteConsumer from "../../../buffer/ByteConsumer.js";
-import type { BufferGenerator } from "../../../common/types.js";
+import type {BufferGenerator} from "../../../common/types.js";
 
 export default class StreamBody extends HttpBody {
-    private readonly consumer: ByteConsumer;
+    private consumer!: ByteConsumer;
 
-    constructor(readonly generator: BufferGenerator, length?: number) {
+    constructor(source: ByteConsumer | BufferGenerator, length?: number) {
         super();
         if (length !== undefined) {
             this.length = length;
         }
-        this.consumer = new ByteConsumer(generator, length);
+
+        this.consumer = source instanceof ByteConsumer
+            ? source
+            : new ByteConsumer(source);
     }
 
     /**
@@ -20,10 +23,12 @@ export default class StreamBody extends HttpBody {
      */
     public override async consume(sink: (chunk: Buffer) => Promise<void> | void): Promise<void> {
         await this.consumer.consume(async (chunk) => {
-            this.readBytes += chunk.length;
-            this.checkMaxSize();
-            await sink(chunk);
-        });
+                this.readBytes += chunk.length;
+                this.checkMaxSize();
+                await sink(chunk);
+            },
+            this.length
+        );
     }
 
     /**

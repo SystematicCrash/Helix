@@ -5,14 +5,13 @@ import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {parseRangeHeader} from "./parser/parseRange.js";
 import {ContentType, HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
-import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
-import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import {HttpBody} from "../body/HttpBody.js";
 import {ByteRange} from "../../../common/types.js";
 import StreamBody from "../body/StreamBody.js";
 import {parseChunks} from "./parser/parseChunks.js";
 import EmptyBody from "../body/EmptyBody.js";
 import {parseAcceptHeader} from "./parser/parseAccept.js";
+import ByteConsumer from "../../../buffer/ByteConsumer.js";
 
 /*
  * Parsed HTTP request head value object.
@@ -78,6 +77,7 @@ export default class HttpRequest {
             .includes(this.method);
     }
 
+    /** Returns a list of client acceptable mime-types. */
     get acceptTypes(): ContentType[] {
         if (!this._acceptTypes) {
             this._acceptTypes = parseAcceptHeader(this.headers.get(HttpHeader.Accept));
@@ -92,7 +92,7 @@ export default class HttpRequest {
      * bytes are drained completely to keep the TCP stream aligned, and an
      * EmptyBody is returned.
      */
-    public async getBody(conn: TCPConnection, buf: DynamicBuffer): Promise<HttpBody> {
+    public async getBody(consumer: ByteConsumer): Promise<HttpBody> {
         const bodyLen = this.contentLength;
         const chunked = this.transferEncoding === TransferEncoding.CHUNKED;
 
@@ -102,9 +102,9 @@ export default class HttpRequest {
 
         let body: HttpBody;
         if (bodyLen > 0) {
-            body = new StreamBody(conn.stream(), bodyLen);
+            body = new StreamBody(consumer, bodyLen);
         } else if (chunked) {
-            body = new StreamBody(parseChunks(conn.stream(), buf));
+            body = new StreamBody(parseChunks(consumer));
         } else {
             return new EmptyBody();
         }
