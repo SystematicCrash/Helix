@@ -1,6 +1,6 @@
 import HttpError from "../common/HttpError.js";
 import {HttpHeader, HttpMethod} from "../common/constants.js";
-import {mapErrorToResponse} from "../response/mapErrorToResponse.js";
+import ErrorResponder from "../response/ErrorResponder.js";
 import HttpResponse from "../response/HttpResponse.js";
 import HttpRequest from "./HttpRequest.js";
 import type {HttpBody} from "../body/HttpBody.js";
@@ -18,7 +18,7 @@ export async function handleRequest(request: HttpRequest, body: HttpBody, result
             return result.handler(request, body, info, result.params);
 
         case "methodNotAllowed": {
-            const response = mapErrorToResponse(
+            const response = ErrorResponder.respond(
                 HttpError.methodNotAllowed(),
                 request,
             );
@@ -28,6 +28,6 @@ export async function handleRequest(request: HttpRequest, body: HttpBody, result
 
         case "notFound":
         default:
-            return mapErrorToResponse(HttpError.notFound(), request);
+            return ErrorResponder.respond(HttpError.notFound(), request);
     }
 }

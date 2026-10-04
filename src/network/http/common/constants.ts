@@ -1,4 +1,4 @@
-import {FsErrCode} from "../../../fs/index.js";
+import {FsErrCode} from "../../../fs/common/constants.js";
 import {BufferErrCode} from "../../../buffer/constants.js";
 import {TCPErrCode} from "../../tcp/index.js";
 import {CRLF} from "../../common/constants.js";
@@ -77,6 +77,7 @@ export enum HttpHeader {
     UserAgent         = 'user-agent',
     IfNoneMatch       = 'if-none-match',
     IfModifiedSince   = 'if-modified-since',
+    IfRage            = 'if-range',
     Range             = 'range',
 
     // Response

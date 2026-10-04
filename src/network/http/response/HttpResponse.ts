@@ -1,9 +1,7 @@
 import EmptyBody from '../body/EmptyBody.js';
 import MemoryBody from '../body/MemoryBody.js';
-import StreamBody from '../body/StreamBody.js';
 import { HttpBody } from '../body/HttpBody.js';
 import { ContentType, HTTP_STATUS, HttpHeader, HttpVersion, TransferEncoding } from '../common/constants.js';
-import type { StaticFileStream } from '../common/types.js';
 
 export default class HttpResponse {
     private _shouldClose: boolean = false;
@@ -67,18 +65,6 @@ export default class HttpResponse {
             [HttpHeader.ContentType]: ContentType.TextHtmlUtf8,
             [HttpHeader.Location]: location,
         });
-    }
-
-    static file(result: StaticFileStream): HttpResponse {
-        const response = new HttpResponse(result.status, new StreamBody(result.stream, result.size));
-        response.addFileHeaders(result);
-        return response;
-    }
-
-    static headFile(result: StaticFileStream): HttpResponse {
-        const response = new HttpResponse(result.status, new EmptyBody());
-        response.addFileHeaders(result);
-        return response;
     }
 
     get headers(): ReadonlyMap<string, string> {
@@ -149,14 +135,6 @@ export default class HttpResponse {
     private validateVersion(version: string): void {
         if (version.length === 0) {
             throw new RangeError('HTTP version cannot be empty');
-        }
-    }
-
-    private addFileHeaders(result: StaticFileStream): void {
-        this.setHeader(HttpHeader.ContentLength, result.size.toString());
-        this.setHeader(HttpHeader.AcceptRange, 'bytes');
-        if (result.contentRange) {
-            this.setHeader(HttpHeader.ContentRange, result.contentRange);
         }
     }
 }
