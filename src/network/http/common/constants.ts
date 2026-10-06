@@ -1,4 +1,4 @@
-import {FsErrCode} from "../../../fs/common/constants.js";
+import {FsErrCode} from "../../../fs/index.js";
 import {BufferErrCode} from "../../../buffer/constants.js";
 import {TCPErrCode} from "../../tcp/index.js";
 import {CRLF} from "../../common/constants.js";

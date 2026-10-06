@@ -8,6 +8,7 @@ import FileStats from "../../../fs/file/FileStats.js";
 import CacheValidator from "../cache/CacheValidator.js";
 import { rangeToIOOptions } from "../../../fs/common/utils.js";
 import HttpError from "../common/HttpError.js";
+import {resolveCacheDirective} from "../cache/cacheControl.js";
 
 /**
  * Translates filesystem access into an HTTP response: cache validation
@@ -19,7 +20,9 @@ export default class FileResponder {
     public static async respond(request: HttpRequest, filepath: string): Promise<HttpResponse> {
         const handle = await openSandboxedFile(filepath);
         const stats = await handle.getStats();
-        return FileResponder.buildResponse(request, handle, stats);
+
+        return FileResponder.buildResponse(request, handle, stats)
+            .then(res => res.setCacheControl(resolveCacheDirective(filepath)));
     }
 
     /** Dispatches HEAD/OPTIONS/GET to the right response builder and owns the file-handle cleanup. */

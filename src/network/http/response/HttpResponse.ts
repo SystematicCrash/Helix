@@ -1,7 +1,14 @@
 import EmptyBody from '../body/EmptyBody.js';
 import MemoryBody from '../body/MemoryBody.js';
-import { HttpBody } from '../body/HttpBody.js';
-import { ContentType, HTTP_STATUS, HttpHeader, HttpVersion, TransferEncoding } from '../common/constants.js';
+import {HttpBody} from '../body/HttpBody.js';
+import {
+    ContentType,
+    HTTP_STATUS,
+    HttpHeader,
+    HttpVersion,
+    TransferEncoding
+} from '../common/constants.js';
+import {CacheDirectiveType} from "../cache/constants.js";
 
 export default class HttpResponse {
     private _shouldClose: boolean = false;
@@ -113,6 +120,11 @@ export default class HttpResponse {
     public markAsLast(): HttpResponse {
         this._shouldClose = true;
         this._headers.set(HttpHeader.Connection, 'close');
+        return this;
+    }
+
+    public setCacheControl(directive: CacheDirectiveType): this {
+        this._headers.set(HttpHeader.CacheControl, directive);
         return this;
     }
 
