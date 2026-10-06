@@ -99,7 +99,7 @@ export default class CacheValidator {
      * - `false` if If-Range is present but does NOT match (fallback to 200 OK full body).
      */
     public static ifRangeMatches(request: HttpRequest, metadata: CacheMetadata): boolean {
-        const ifRange = request.headers.get(HttpHeader.IfRage);
+        const ifRange = request.headers.get(HttpHeader.IfRange);
         if (!ifRange) {
             return true;
         }
