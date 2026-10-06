@@ -5,6 +5,7 @@ import HttpRequest from "../request/HttpRequest.js";
 import {internalErrorPage, notFoundPage} from "./pages.js";
 import HttpResponse from "./HttpResponse.js";
 import {getServerInfo} from "../../../common/serverInfo.js";
+import {CacheDirective} from "../cache/constants.js";
 
 /**
  * Translates an `HttpError` into an `HttpResponse`: picks JSON / Plain Text /
@@ -21,7 +22,7 @@ export default class ErrorResponder {
                 response.setHeader(HttpHeader.Connection, "close");
             }
 
-            return response;
+            return response.setCacheControl(CacheDirective.NO_STORE);
         } catch(error) {
             return HttpResponse.from(500, MemoryBody.from("Internal server error"));
         }
