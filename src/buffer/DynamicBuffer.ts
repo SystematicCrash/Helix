@@ -105,7 +105,7 @@ export default class DynamicBuffer {
      * Scans for the next delimiter-delimited message and returns it, advancing the start pointer.
      * Returns null if no complete message is available yet.
      */
-    public consume(delimiter: Buffer): Buffer | null {
+    public consumeUntil(delimiter: Buffer): Buffer | null {
         const view = this.getView(this._length);
         let idx: number;
         if (delimiter.length === 1) {

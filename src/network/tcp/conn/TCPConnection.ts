@@ -8,7 +8,7 @@ import {
     IDLE_TIMEOUT,
     TCPErrCode,
 } from "../common/constants.js";
-import {BufferGenerator} from "../../http/common/types.js";
+import type {BufferGenerator} from "../../../common/types.js";
 
 /**
  * Provides a high-level promise-based wrapper around a Node.js TCP conn.

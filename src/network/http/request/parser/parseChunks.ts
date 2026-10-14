@@ -1,97 +1,60 @@
-import DynamicBuffer from "../../../../buffer/DynamicBuffer.js";
-import {HEX_DIGITS, MAX_CHUNK_SIZE} from "../../common/constants.js";
-import {CRLF} from "../../../common/constants.js";
+import { HEX_DIGITS, MAX_CHUNK_SIZE } from "../../common/constants.js";
+import { CRLF } from "../../../common/constants.js";
 import HttpError from "../../common/HttpError.js";
-import {BufferGenerator} from "../../common/types.js";
+import ByteConsumer from "../../../../buffer/ByteConsumer.js";
+import type { BufferGenerator } from "../../../../common/types.js";
 
 /**
- * Decodes an HTTP/1.1 chunked stream from any Buffer generator/iterator.
- * Strips hex sizes, extensions, and chunk-framing CRLFs.
- * Leaves unconsumed pipelined bytes inside `buff`.
+ * Decodes an HTTP/1.1 chunked stream using a unified ByteConsumer.
+ * Strips hex sizes, chunk extensions, and chunk-framing CRLFs.
+ * Yields only the decoded chunk payload bytes.
  */
-export async function* parseChunks(source: BufferGenerator, buff: DynamicBuffer,): BufferGenerator {
+export async function* parseChunks(consumer: ByteConsumer): BufferGenerator {
     for (let last = false; !last;) {
-        const size = await readChunkSize(source, buff);
+        const size = await readChunkSize(consumer);
         last = size === 0;
 
         if (size > 0) {
-            yield* consumeChunkData(source, buff, size);
+            yield* consumer.stream(size);
         }
 
-        await skipCRLF(source, buff);
+        await skipCRLF(consumer);
     }
 }
 
-/** Pulls the next chunk from the source generator and pushes into the sliding buffer */
-async function pullFromSource(source: BufferGenerator, buff: DynamicBuffer): Promise<void> {
-    const result = await source.next();
-    if (result.done || result.value === null) {
-        throw HttpError.badRequest("Unexpected EOF", true);
-    }
-    buff.push(result.value);
-}
+/** Reads and parses the hexadecimal chunk-size line up to CRLF */
+async function readChunkSize(consumer: ByteConsumer): Promise<number> {
+    const lineBuffer = await consumer.readUntil(CRLF);
 
-/** Reads and parses the hexadecimal chunk-size line */
-async function readChunkSize(source: BufferGenerator, buff: DynamicBuffer): Promise<number> {
-    while (true) {
-        const idx = buff.getView().indexOf(CRLF);
-
-        if (idx < 0) {
-            await pullFromSource(source, buff);
-            continue;
-        }
-
-        const line = buff.getView(idx).toString("ascii");
-        const size = parseChunkSizeLine(line);
-
-        if (size > MAX_CHUNK_SIZE) {
-            throw HttpError.contentTooLarge(`Chunk size exceeded ${MAX_CHUNK_SIZE}`);
-        }
-
-        buff.clear(idx + CRLF.length);
-        return size;
-    }
-}
-
-/** Slices and yields exact chunk payload bytes */
-async function* consumeChunkData(source: BufferGenerator, buff: DynamicBuffer, remain: number,): BufferGenerator {
-    while (remain > 0) {
-        if (!buff.length) {
-            await pullFromSource(source, buff);
-        }
-
-        const consume = Math.min(remain, buff.length);
-        const data = buff.pop(consume);
-        remain -= consume;
-        yield data;
-    }
-}
-
-/** Asserts and consumes the trailing CRLF delimiter */
-async function skipCRLF(source: BufferGenerator, buff: DynamicBuffer): Promise<void> {
-    while (buff.length < CRLF.length) {
-        await pullFromSource(source, buff);
+    if (lineBuffer === null) {
+        throw HttpError.badRequest("Unexpected EOF while reading chunk size", true);
     }
 
-    if (!buff.getView(CRLF.length).equals(CRLF)) {
-        throw HttpError.badRequest('Invalid chunk framing');
-    }
-
-    buff.clear(CRLF.length);
-}
-
-/** Validates and parses the hex size up to any chunk extension delimiter */
-function parseChunkSizeLine(line: string): number {
+    const line = lineBuffer.toString("ascii");
     const semi = line.indexOf(";");
     const sizePart = (semi < 0 ? line : line.slice(0, semi)).trim();
 
     if (sizePart.length === 0 || !HEX_DIGITS.test(sizePart)) {
-        throw HttpError.badRequest('Invalid chunk framing');
+        throw HttpError.badRequest("Invalid chunk framing");
     }
 
     const size = parseInt(sizePart, 16);
     if (!Number.isFinite(size) || size < 0) {
-        throw HttpError.badRequest('Invalid chunk framing');
+        throw HttpError.badRequest("Invalid chunk framing");
     }
+
+    if (size > MAX_CHUNK_SIZE) {
+        throw HttpError.contentTooLarge(`Chunk size exceeded ${MAX_CHUNK_SIZE}`);
+    }
+
     return size;
+}
+
+/** Asserts and consumes the trailing CRLF delimiter following chunk data */
+async function skipCRLF(consumer: ByteConsumer): Promise<void> {
+    const crlf = await consumer.readExact(CRLF.length);
+
+    if (crlf === null || !crlf.equals(CRLF)) {
+        throw HttpError.badRequest("Invalid chunk framing");
+    }
 }

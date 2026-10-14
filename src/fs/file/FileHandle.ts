@@ -10,7 +10,7 @@ import {
 import FsError from "../common/FsError.js";
 import {resolveIOOptions} from "./IOOptions.js";
 import {IOOptions, RawIOOptions} from "../common/types.js";
-import {BufferGenerator} from "../../network/http/common/types.js";
+import type {BufferGenerator} from "../../common/types.js";
 
 /** Resolves a value from the previous in-flight operation, or undefined if none. */
 type Tail = Promise<unknown> | undefined;
@@ -101,6 +101,18 @@ export default class FileHandle {
             if (bytesRead === null) return null;
             return buffer.subarray(0, bytesRead);
         });
+    }
+
+    /**
+     * Streams file contents and automatically closes the handle when iteration finishes,
+     * breaks early, or throws an error.
+     */
+    public async* streamAndClose(chunkSize: number = DEFAULT_READ_CHUNK_SIZE, position?: number): BufferGenerator {
+        try {
+            yield* this.stream(chunkSize, position);
+        } finally {
+            await this.close();
+        }
     }
 
     /**

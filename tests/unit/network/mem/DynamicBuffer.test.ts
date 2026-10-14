@@ -190,11 +190,11 @@ describe("DynamicBuffer", () => {
             const buffer = new DynamicBuffer();
             buffer.push(Buffer.from("hello\nworld\n"));
 
-            const msg1 = buffer.consume(LF);
+            const msg1 = buffer.consumeUntil(LF);
             expect(msg1?.toString()).toEqual("hello");
             expect(buffer.length).toEqual(6);
 
-            const msg2 = buffer.consume(LF);
+            const msg2 = buffer.consumeUntil(LF);
             expect(msg2?.toString()).toEqual("world");
             expect(buffer.length).toEqual(0);
         });
@@ -203,7 +203,7 @@ describe("DynamicBuffer", () => {
             const buffer = new DynamicBuffer();
             buffer.push(Buffer.from("hello"));
 
-            expect(buffer.consume(LF)).toBeNull();
+            expect(buffer.consumeUntil(LF)).toBeNull();
         });
 
         test("should consume message until custom delimiter Buffer", () => {
@@ -211,7 +211,7 @@ describe("DynamicBuffer", () => {
             buffer.push(Buffer.from("foo|bar|baz"));
 
             const pipe = Buffer.from("|");
-            const msg1 = buffer.consume(pipe);
+            const msg1 = buffer.consumeUntil(pipe);
             expect(msg1?.toString()).toEqual("foo");
             expect(buffer.length).toEqual(7);
         });

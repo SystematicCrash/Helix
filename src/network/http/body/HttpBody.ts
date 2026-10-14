@@ -1,4 +1,4 @@
-import {HTTP_STATUS, MAX_BODY_LENGTH} from "../common/constants.js";
+import {MAX_BODY_LENGTH} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
 
 export abstract class HttpBody {
@@ -23,6 +23,27 @@ export abstract class HttpBody {
         this.readBytes += chunk.length;
         this.checkMaxSize();
         return chunk;
+    }
+
+    /**
+     * Streams each chunk to a sink callback.
+     * Subclasses can override this to implement managed consumption with
+     * automatic cleanup (e.g. using ByteConsumer for generators).
+     */
+    public async consume(sink: (chunk: Buffer) => Promise<void> | void): Promise<void> {
+        while (true) {
+            const chunk = await this.read();
+            if (chunk === null) break;
+            await sink(chunk);
+        }
+    }
+
+    /**
+     * Reads and discards every remaining chunk until EOF. Throws
+     * `contentTooLarge` if the cumulative size exceeds `MAX_BODY_LENGTH`.
+     */
+    public async drain(): Promise<void> {
+        await this.consume(() => {});
     }
 
     protected checkMaxSize(): void {

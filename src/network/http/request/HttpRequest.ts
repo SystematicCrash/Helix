@@ -5,14 +5,13 @@ import {parseRequestLine} from "./parser/parseRequestLine.js";
 import {parseRangeHeader} from "./parser/parseRange.js";
 import {ContentType, HttpHeader, HttpMethod, MAX_BODY_LENGTH, TransferEncoding} from "../common/constants.js";
 import HttpError from "../common/HttpError.js";
-import DynamicBuffer from "../../../buffer/DynamicBuffer.js";
-import TCPConnection from "../../tcp/conn/TCPConnection.js";
 import {HttpBody} from "../body/HttpBody.js";
 import {ByteRange} from "../../../common/types.js";
 import StreamBody from "../body/StreamBody.js";
 import {parseChunks} from "./parser/parseChunks.js";
 import EmptyBody from "../body/EmptyBody.js";
 import {parseAcceptHeader} from "./parser/parseAccept.js";
+import ByteConsumer from "../../../buffer/ByteConsumer.js";
 
 /*
  * Parsed HTTP request head value object.
@@ -69,10 +68,16 @@ export default class HttpRequest {
     }
 
     /** Returns false for methods that must not carry a body (GET, HEAD). */
-    get isBodyAllowed(): boolean {
-        return this.method !== HttpMethod.GET && this.method !== HttpMethod.HEAD;
+    get shouldDiscardBody(): boolean {
+        return [
+            HttpMethod.GET,
+            HttpMethod.HEAD,
+            HttpMethod.OPTIONS
+        ]
+            .includes(this.method);
     }
 
+    /** Returns a list of client acceptable mime-types. */
     get acceptTypes(): ContentType[] {
         if (!this._acceptTypes) {
             this._acceptTypes = parseAcceptHeader(this.headers.get(HttpHeader.Accept));
@@ -82,23 +87,34 @@ export default class HttpRequest {
 
     /**
      * Creates the lazy HttpBody that streams this request's body.
-     * Selects the concrete reader based on Content-Length, Transfer-Encoding,
-     * or connection-close framing, validating the head-to-body contract first.
+     * Selects the concrete reader based on Content-Length or Transfer-Encoding.
+     * If the method must not carry a body (GET, HEAD, OPTIONS), the framed
+     * bytes are drained completely to keep the TCP stream aligned, and an
+     * EmptyBody is returned.
      */
-    public getBody(conn: TCPConnection, buf: DynamicBuffer): HttpBody {
+    public async getBody(consumer: ByteConsumer): Promise<HttpBody> {
         const bodyLen = this.contentLength;
         const chunked = this.transferEncoding === TransferEncoding.CHUNKED;
 
         if (bodyLen > 0 && chunked) {
             throw HttpError.invalidHeaders();
         }
-        if (!this.isBodyAllowed && (bodyLen > 0 || chunked)) {
-            throw HttpError.badRequest("Request body not allowed");
+
+        let body: HttpBody;
+        if (bodyLen > 0) {
+            body = new StreamBody(consumer, bodyLen);
+        } else if (chunked) {
+            body = new StreamBody(parseChunks(consumer));
+        } else {
+            return new EmptyBody();
         }
 
-        if (bodyLen > 0) return new StreamBody(conn.stream(), bodyLen);
-        else if (chunked) return new StreamBody(parseChunks(conn.stream(), buf));
-        else return new EmptyBody();
+        if (this.shouldDiscardBody) {
+            await body.drain();
+            return new EmptyBody();
+        }
+
+        return body;
     }
 
     /**
