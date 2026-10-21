@@ -83,6 +83,7 @@ export enum HttpHeader {
     // Response
     SetCookie         = 'set-cookie',
     Location          = 'location',
+    Date              = 'Date',
     ETag              = 'etag',
     LastModified      = 'last-modified',
     ContentEncoding   = 'content-encoding',

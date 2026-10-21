@@ -136,6 +136,7 @@ export default class HttpResponse {
                 this._headers.set(HttpHeader.TransferEncoding, TransferEncoding.CHUNKED);
             }
         }
+        this._headers.set(HttpHeader.Date, new Date().toUTCString())
     }
 
     private validateCode(code: number): void {
