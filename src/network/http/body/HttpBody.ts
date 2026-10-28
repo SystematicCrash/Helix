@@ -1,4 +1,4 @@
-import {MAX_BODY_LENGTH} from "../common/constants.js";
+import {MAX_BODY_LENGTH} from "./constants.js";
 import HttpError from "../common/HttpError.js";
 
 export abstract class HttpBody {

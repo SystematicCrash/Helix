@@ -1,13 +1,17 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import HttpError from '../../../../src/network/http/common/HttpError.js';
-import { mockedTCPConnection } from '../common/utils.js';
-import DynamicBuffer from '../../../../src/buffer/DynamicBuffer.js';
 import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
-import {MAX_BODY_LENGTH} from '../../../../src/network/http/common/constants.js';
+import {MAX_BODY_LENGTH} from '../../../../src/network/http/body/constants.js';
+import ByteConsumer from '../../../../src/buffer/ByteConsumer.js';
 import EmptyBody from '../../../../src/network/http/body/EmptyBody.js';
 
 function fromRaw(head: string): HttpRequest {
     return new HttpRequest(Buffer.from(head));
+}
+
+/** An empty byte source; used when the tests only inspect the resolved body type/length. */
+function emptyConsumer(): ByteConsumer {
+    return new ByteConsumer((async function* () {})());
 }
 
 describe('new HttpRequest()', () => {
@@ -93,79 +97,73 @@ describe('new HttpRequest()', () => {
 describe('createBodyReader()', () => {
 
     describe('content-length body', () => {
-        test('should return fixed reader with correct length', () => {
+        test('should return fixed reader with correct length', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 1000');
 
-            const reader = request.getBody(mockedTCPConnection(), new DynamicBuffer());
+            const reader = await request.getBody(emptyConsumer());
             expect(reader).toMatchObject({ length: 1000 });
         });
 
-        test('should return fixed reader with zero length when content-length is 0', () => {
+        test('should return fixed reader with zero length when content-length is 0', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0');
 
-            const reader = request.getBody(mockedTCPConnection(), new DynamicBuffer());
+            const reader = await request.getBody(emptyConsumer());
             expect(reader).toMatchObject({length: 0});
         });
     });
 
     describe('content-length validation', () => {
-        test('should throw 400 when content-length is not a number', () => {
+        test('should throw 400 when content-length is not a number', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: abc');
-            expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(HttpError.invalidHeaders());
+            await expect(request.getBody(emptyConsumer()))
+                .rejects.toThrow(HttpError.invalidHeaders());
         });
 
-        test('should throw 400 when content-length is negative', () => {
+        test('should throw 400 when content-length is negative', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: -1');
-            expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(HttpError.invalidHeaders());
+            await expect(request.getBody(emptyConsumer()))
+                .rejects.toThrow(HttpError.invalidHeaders());
         });
 
-        test('should throw 400 when content-length is a float', () => {
+        test('should throw 400 when content-length is a float', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 12.5');
-            expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(HttpError.invalidHeaders());
+            await expect(request.getBody(emptyConsumer()))
+                .rejects.toThrow(HttpError.invalidHeaders());
         });
 
-        test('should throw 400 when content-length has a leading plus sign', () => {
+        test('should throw 400 when content-length has a leading plus sign', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: +100');
-            expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(HttpError.invalidHeaders());
+            await expect(request.getBody(emptyConsumer()))
+                .rejects.toThrow(HttpError.invalidHeaders());
         });
 
-        test('should throw 400 when content-length is hex', () => {
+        test('should throw 400 when content-length is hex', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0x10');
-            expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(HttpError.invalidHeaders());
+            await expect(request.getBody(emptyConsumer()))
+                .rejects.toThrow(HttpError.invalidHeaders());
         });
 
-        test('should throw 413 when content-length exceeds MAX_BODY_LENGTH', () => {
+        test('should throw 413 when content-length exceeds MAX_BODY_LENGTH', async () => {
             const request = fromRaw(`POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: ${MAX_BODY_LENGTH + 1}`);
-            expect(() => request.getBody(mockedTCPConnection(), new DynamicBuffer()))
-                .toThrow(HttpError.contentTooLarge());
+            await expect(request.getBody(emptyConsumer()))
+                .rejects.toThrow(HttpError.contentTooLarge());
         });
 
-        test('should accept content-length exactly at MAX_BODY_LENGTH', () => {
+        test('should accept content-length exactly at MAX_BODY_LENGTH', async () => {
             const request = fromRaw(`POST /user/messages HTTP/1.1\r\nHost: example.com\r\nContent-Length: ${MAX_BODY_LENGTH}`);
-            const reader = request.getBody(mockedTCPConnection(), new DynamicBuffer());
+            const reader = await request.getBody(emptyConsumer());
             expect(reader).toMatchObject({length: MAX_BODY_LENGTH});
         });
     });
 
     describe('chunked body', () => {
         test('should read chunked body correctly', async () => {
-            const conn = {
-                read: vi.fn(),
-                stream: vi.fn()
-                    .mockReturnValueOnce({
-                        next: vi.fn().mockResolvedValue({ value: Buffer.from('4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n'), done: false })
-                    })
-            } as any;
-
-            const buf = new DynamicBuffer();
+            const consumer = new ByteConsumer((async function* () {
+                yield Buffer.from('4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n');
+            })());
             const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
-            const reader = request.getBody(conn, buf);
+            const reader = await request.getBody(consumer);
             const chunks: Buffer[] = [];
             let chunk;
             while ((chunk = await reader.read()) !== null) {
@@ -176,46 +174,35 @@ describe('createBodyReader()', () => {
         });
 
         test('should throw on unexpected EOF while reading chunk size', async () => {
-            const conn = {
-                stream: vi.fn().mockReturnValue({
-                    next: vi.fn().mockResolvedValue({ done: true })
-                })
-            } as any;
-
-            const buf = new DynamicBuffer();
             const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
-            const reader = request.getBody(conn, buf);
+            const reader = await request.getBody(emptyConsumer());
             await expect(reader.read()).rejects.toThrow();
         });
 
         test('should throw on invalid chunk size hex', async () => {
-            const conn = {
-                stream: vi.fn().mockReturnValue({
-                    next: vi.fn().mockResolvedValue({ value: Buffer.from('XYZ\r\n'), done: false })
-                })
-            } as any;
-
-            const buf = new DynamicBuffer();
+            const consumer = new ByteConsumer((async function* () {
+                yield Buffer.from('XYZ\r\n');
+            })());
             const request = fromRaw('POST / HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked');
 
-            const reader = request.getBody(conn, buf);
+            const reader = await request.getBody(consumer);
             await expect(reader.read()).rejects.toThrow();
         });
     });
 
     describe('no body', () => {
-        test('should return empty body when no content-length or transfer-encoding is set', () => {
+        test('should return empty body when no content-length or transfer-encoding is set', async () => {
             const request = fromRaw('POST /user/messages HTTP/1.1\r\nHost: example.com');
 
-            const body = request.getBody(mockedTCPConnection(), new DynamicBuffer());
+            const body = await request.getBody(emptyConsumer());
             expect(body).toBeInstanceOf(EmptyBody);
         });
 
-        test('should return empty body for GET request without framing', () => {
+        test('should return empty body for GET request without framing', async () => {
             const request = fromRaw('GET /api/users HTTP/1.1\r\nHost: example.com');
 
-            const body = request.getBody(mockedTCPConnection(), new DynamicBuffer());
+            const body = await request.getBody(emptyConsumer());
             expect(body).toBeInstanceOf(EmptyBody);
             expect(body.length).toBe(0);
         });

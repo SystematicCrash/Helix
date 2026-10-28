@@ -1,11 +1,12 @@
 import HttpError from "../../common/HttpError.js";
+import {HttpHeader} from "../../common/constants.js";
 import {
     HEADER_NAME_REGEX,
-    HEADER_VALUE_REGEX, HttpHeader,
+    HEADER_VALUE_REGEX,
     MANDATORY_HEADERS, MAX_HEADER_COUNT, MAX_HEADER_LENGTH,
     MAX_HEADER_NAME_LENGTH,
     MAX_HEADER_VALUE_LENGTH, UNIQUE_HEADERS
-} from "../../common/constants.js";
+} from "../constants.js";
 import {HTAB, SP} from "../../../common/constants.js";
 
 /** Parses and validates raw header buffers into a name/value map.

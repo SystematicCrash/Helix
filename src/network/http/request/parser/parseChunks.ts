@@ -1,4 +1,4 @@
-import { HEX_DIGITS, MAX_CHUNK_SIZE } from "../../common/constants.js";
+import { HEX_DIGITS, MAX_CHUNK_SIZE } from "../constants.js";
 import { CRLF } from "../../../common/constants.js";
 import HttpError from "../../common/HttpError.js";
 import ByteConsumer from "../../../../buffer/ByteConsumer.js";
