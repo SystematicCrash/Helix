@@ -65,15 +65,13 @@ function createFakeConnection(): FakeConnection {
         flush: vi.fn().mockResolvedValue(undefined),
         close: vi.fn().mockResolvedValue(undefined),
         socket: {},
-        stream: vi.fn().mockImplementation(() => ({
-            [Symbol.asyncIterator]: async function* () {
-                while (true) {
-                    const v = reads.shift();
-                    if (v === undefined || v === null) break;
-                    yield v;
-                }
-            },
-        })),
+        stream: vi.fn().mockImplementation(async function* () {
+            while (true) {
+                const v = reads.shift();
+                if (v === undefined || v === null) break;
+                yield v;
+            }
+        }),
         get isWritable() { return writable; },
         get isFullyClosed() { return fullyClosed; },
         get error() { return connError; },
@@ -513,12 +511,18 @@ describe('HttpConnection.handle — request body draining', () => {
         const headers = makeRequest('POST', '/echo', {
             'Content-Length': bodyText.length.toString(),
         });
-        conn.enqueueReads(headers, Buffer.from(bodyText), null);
+        conn.enqueueReads(headers, Buffer.from(bodyText), makeRequest('GET', '/hello'), null);
 
         await new HttpConnection(conn, tree).handle();
-        console.log('WIRE:\n' + wireOf(conn).toString('ascii'));
+
+        // echo response + follow-up GET response: proves the body was drained
+        // before the next request was parsed (otherwise the body bytes would
+        // corrupt the next request line and produce a 400).
         expect(conn.flush).toHaveBeenCalledTimes(2);
         expect(conn.close).toHaveBeenCalledTimes(1);
-        expect(conn.read).toHaveBeenCalled();
+        const wire = wireOf(conn).toString('ascii');
+        expect(wire).toContain('echo');
+        expect(wire).toContain('hello');
+        expect(wire).not.toContain('400');
     });
 });
