@@ -3,7 +3,7 @@ import HttpError from '../../../../src/network/http/common/HttpError.js';
 import { mockedTCPConnection } from '../common/utils.js';
 import DynamicBuffer from '../../../../src/buffer/DynamicBuffer.js';
 import HttpRequest from '../../../../src/network/http/request/HttpRequest.js';
-import {MAX_BODY_LENGTH} from '../../../../src/network/http/common/constants.js';
+import {MAX_BODY_LENGTH} from '../../../../src/network/http/body/constants.js';
 import EmptyBody from '../../../../src/network/http/body/EmptyBody.js';
 
 function fromRaw(head: string): HttpRequest {

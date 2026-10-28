@@ -2,7 +2,7 @@ import FsError from '../../../fs/common/FsError.js';
 import BufferError from '../../../buffer/BufferError.js';
 import TCPError from '../../tcp/common/TCPError.js';
 import HttpError from './HttpError.js';
-import {BUFFER_TO_HTTP_STATUS, FS_TO_HTTP_STATUS, TCP_TO_HTTP_STATUS} from "./constants.js";
+import {BUFFER_TO_HTTP_STATUS, FS_TO_HTTP_STATUS, TCP_TO_HTTP_STATUS} from "../response/constants.js";
 
 /**
  * Maps a known underlying-layer error to an HttpError with the appropriate

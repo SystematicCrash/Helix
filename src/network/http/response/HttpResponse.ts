@@ -3,11 +3,11 @@ import MemoryBody from '../body/MemoryBody.js';
 import {HttpBody} from '../body/HttpBody.js';
 import {
     ContentType,
-    HTTP_STATUS,
     HttpHeader,
     HttpVersion,
     TransferEncoding
 } from '../common/constants.js';
+import {HTTP_STATUS} from './constants.js';
 import {CacheDirectiveType} from "../cache/constants.js";
 
 export default class HttpResponse {

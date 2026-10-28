@@ -12,9 +12,9 @@ import type {RouteTree} from '../../../../../src/network/http/routing/buildTree.
 import type {RouteHandler} from '../../../../../src/network/http/routing/types.js';
 
 // Override MAX_REQUEST_COUNT so keep-alive boundary tests can run in unit-time.
-vi.mock('../../../../../src/network/http/common/constants.js', async () => {
-    const actual = await vi.importActual<typeof import('../../../../../src/network/http/common/constants.js')>(
-        '../../../../../src/network/http/common/constants.js',
+vi.mock('../../../../../src/network/http/server/constants.js', async () => {
+    const actual = await vi.importActual<typeof import('../../../../../src/network/http/server/constants.js')>(
+        '../../../../../src/network/http/server/constants.js',
     );
     return {...actual, MAX_REQUEST_COUNT: 3};
 });

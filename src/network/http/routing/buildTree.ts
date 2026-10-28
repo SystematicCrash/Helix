@@ -1,4 +1,5 @@
-import {HttpMethod, IDENT_REGEX} from "../common/constants.js";
+import {HttpMethod} from "../common/constants.js";
+import {IDENT_REGEX} from "./constants.js";
 import RadixNode from "./RadixNode.js";
 import {LookupResult, RouteSpec, SegmentKind} from "./types.js";
 

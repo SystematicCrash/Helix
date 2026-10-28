@@ -1,0 +1,1 @@
+export const MAX_BODY_LENGTH = 1024 * 1024;

@@ -1,12 +1,12 @@
 import {splitBuffer} from "../../../../buffer/bytes.js";
 import {SP} from "../../../common/constants.js";
 import HttpError from "../../common/HttpError.js";
+import {HttpVersion} from "../../common/constants.js";
 import {
-    HttpVersion,
     MAX_REQUEST_LINE_LENGTH,
     SUPPORTED_VERSIONS,
     VALID_METHODS,
-} from "../../common/constants.js";
+} from "../constants.js";
 
 /** Parses an HTTP request-line into method / request-target / HTTP-version (RFC 9110 §3.2.1). */
 export function parseRequestLine(line: Buffer): { method: string; url: string; version: string } {

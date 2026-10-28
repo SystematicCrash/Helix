@@ -1,4 +1,4 @@
-import {DEC_DIGITS, MAX_RANGES_LIMIT} from "../../common/constants.js";
+import {DEC_DIGITS, MAX_RANGES_LIMIT} from "../constants.js";
 import { ByteRange } from "../../../../common/types.js";
 
 /**

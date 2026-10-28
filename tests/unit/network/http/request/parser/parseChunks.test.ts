@@ -37,7 +37,7 @@ describe('parseChunks', () => {
 
     it('should `throw HttpError(413) when chunk size exceeds limit`', async () => {
         // Need to know MAX_CHUNK_SIZE value or mock constants if possible
-        // Based on src/network/http/common/constants.js
+        // Based on src/network/http/request/constants.js
         const buff = new DynamicBuffer();
         const input = [Buffer.from('100000000\r\n')]; // Extremely large
         

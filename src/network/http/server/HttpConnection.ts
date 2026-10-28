@@ -8,7 +8,8 @@ import { ResponseWriter } from "../response/ResponseWriter.js";
 import ErrorResponder from "../response/ErrorResponder.js";
 import { mapToHttpError } from "../common/mappers.js";
 import HttpError from "../common/HttpError.js";
-import { HEADER_TERMINATOR, HttpHeader, HttpMethod, MAX_REQUEST_COUNT } from "../common/constants.js";
+import {HttpHeader, HttpMethod} from "../common/constants.js";
+import {HEADER_TERMINATOR, MAX_REQUEST_COUNT} from "./constants.js";
 import type { RouteTree } from "../routing/buildTree.js";
 
 export class HttpConnection {
